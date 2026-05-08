@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>aboard / M4 · dual-dossier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/aboard.css" />
+<script src="assets/theme.js"></script>
+<style>
+  body { font-size: 15.5px; line-height: 1.6; }
+  a { color: inherit; }
+
+  main.page { max-width: 1280px; margin: 0 auto; padding: 56px 40px 96px; }
+
+  .breadcrumb {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-decoration: none;
+    margin-bottom: 32px;
+    display: inline-flex; align-items: center; gap: 6px;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 1px;
+    white-space: nowrap; max-width: 100%;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .breadcrumb:hover { color: var(--fg); border-bottom-color: var(--fg); }
+  .breadcrumb .id { color: var(--mech-fg); }
+
+  .caption {
+    font-family: var(--mono);
+    font-size: 11px; color: var(--muted);
+    letter-spacing: 0.14em; text-transform: uppercase;
+    margin-bottom: 22px;
+    display: flex; gap: 12px; align-items: center;
+  }
+  .caption .sep { color: var(--line-2); }
+  .caption .em { color: var(--fg); }
+  .caption span { white-space: nowrap; }
+
+  h1.headline {
+    font-family: var(--sans); font-weight: 500;
+    font-size: clamp(28px, 3.6vw, 38px); line-height: 1.18;
+    letter-spacing: -0.018em; margin: 0 0 22px;
+    text-wrap: balance; max-width: 900px;
+  }
+  .lede { color: var(--muted); max-width: 760px; font-size: 15.5px; line-height: 1.6; margin: 0 0 56px; }
+
+  .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 64px; }
+  .col {
+    border: var(--dossier-bw) solid var(--bd, var(--line-2));
+    background: var(--bg-tint, var(--paper));
+    border-radius: 4px; padding: 28px 28px 24px;
+    display: flex; flex-direction: column;
+  }
+  .col.pro { --bd: var(--pro-bd); --bg-tint: var(--pro-bg); }
+  .col.con { --bd: var(--con-bd); --bg-tint: var(--con-bg); }
+
+  .col .col-label {
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.16em; margin-bottom: 18px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .col.pro .col-label { color: var(--pro-fg); }
+  .col.con .col-label { color: var(--con-fg); }
+  .col .col-label .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
+  .col .col-label .arg { color: var(--muted-2); letter-spacing: 0.1em; font-weight: 400; }
+
+  .thesis {
+    font-family: var(--sans); font-weight: 500;
+    font-size: 18px; line-height: 1.4; color: var(--fg);
+    margin: 0 0 22px; letter-spacing: -0.005em; text-wrap: pretty;
+  }
+  .summary { font-size: 14.5px; line-height: 1.62; color: var(--fg); margin: 0 0 22px; text-wrap: pretty; }
+  .summary em { color: var(--muted); font-style: italic; }
+
+  .col-divider { height: 1px; background: color-mix(in srgb, var(--fg) 12%, transparent); margin: 4px 0 18px; }
+
+  .src-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-2); margin-bottom: 10px; }
+  .src-list { list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 10px; }
+  .src-list a {
+    text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;
+    text-decoration-color: color-mix(in srgb, var(--fg) 30%, transparent);
+    color: var(--fg); font-size: 14px;
+  }
+  .src-list a:hover { text-decoration-color: var(--fg); }
+  .src-list .url {
+    display: block; font-family: var(--mono); font-size: 10.5px;
+    color: var(--muted-2); margin-top: 2px; word-break: break-all;
+  }
+
+  .agent-line {
+    margin-top: auto; padding-top: 18px;
+    border-top: 1px dashed color-mix(in srgb, var(--fg) 22%, transparent);
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.04em; color: var(--muted-2);
+  }
+  .agent-line .name { color: var(--fg); }
+
+  .cruxes-label {
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 20px;
+    display: flex; gap: 12px; align-items: center;
+  }
+  .cruxes-label .em { color: var(--fg); }
+  .cruxes-label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .cruxes-label .sub { color: var(--muted-2); }
+
+  .crux-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .crux {
+    border: 1px solid var(--line-2);
+    background: var(--paper);
+    border-radius: 4px; padding: 22px 22px 18px;
+    display: flex; flex-direction: column; min-height: 260px;
+  }
+  .crux .num { font-family: var(--mono); font-size: 36px; color: var(--fg); line-height: 1; margin-bottom: 18px; letter-spacing: -0.03em; }
+  .crux .num .denom { color: var(--muted-2); font-size: 22px; }
+  .crux .body { font-size: 14.5px; line-height: 1.55; color: var(--fg); margin: 0 0 18px; text-wrap: pretty; flex: 1; }
+  .crux .body em { font-style: italic; color: var(--muted); }
+  .crux .body .pro { color: var(--pro-fg); font-weight: 500; }
+  .crux .body .con { color: var(--con-fg); font-weight: 500; }
+  .crux .meta {
+    font-family: var(--mono); font-size: 10.5px; color: var(--muted-2);
+    letter-spacing: 0.04em; padding-top: 12px;
+    border-top: 1px dashed var(--line);
+    display: flex; flex-wrap: wrap; row-gap: 4px; column-gap: 0;
+  }
+  .crux .meta .pair { white-space: nowrap; display: inline-flex; align-items: baseline; gap: 4px; }
+  .crux .meta .pair + .pair::before { content: "·"; color: var(--muted-2); padding: 0 10px; }
+  .crux .meta .v { color: var(--fg); }
+
+  @media (max-width: 980px) {
+    .columns { grid-template-columns: 1fr; }
+    .crux-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body data-screen-label="04 Dossier">
+
+<header class="top">
+  <div class="top-inner">
+    <div class="wordmark"><span>aboard</span><span class="slash">/</span><span class="ver">v0</span><span class="where">· M4 / dossier</span></div>
+    <nav class="top-nav">
+      <a href="Landing Page.html">home</a>
+      <a href="Claim Graph.html">graph</a>
+      <a href="Claim Detail.html">claims</a>
+      <a class="active" href="Dossiers.html">dossiers</a>
+      <a href="About.html">about</a>
+      <button class="theme-toggle" data-theme-toggle><span class="glyph"></span><span class="label">auto</span></button>
+    </nav>
+  </div>
+</header>
+
+<main class="page">
+
+  <a class="breadcrumb" href="Claim Detail.html">← <span class="id">M4</span> · Platform algorithmic amplification of outrage content</a>
+
+  <div class="caption">
+    <span class="em">Dossier</span>
+    <span class="sep">·</span>
+    <span>steel-manned</span>
+    <span class="sep">·</span>
+    <span>non-convergent</span>
+  </div>
+
+  <h1 class="headline">Is the contested mechanism actually causal?</h1>
+
+  <p class="lede">
+    Two agents argued opposing theses with steel-manned summaries and cited
+    sources. Cruxes are ranked by impact × uncertainty. The dossier presents
+    both sides without synthesis — at civilizational stakes, structured debate
+    often does not converge, and the absence of a verdict is the honest output.
+  </p>
+
+  <section class="columns">
+    <article class="col pro">
+      <div class="col-label">
+        <span class="dot"></span>
+        <span>PRO</span>
+        <span class="arg">· thesis</span>
+      </div>
+      <p class="thesis">Platform algorithmic amplification of outrage is a primary causal driver of contemporary affective polarization and information fragmentation, not a marginal contributor.</p>
+      <p class="summary">
+        Engagement-optimized ranking systems are not neutral conduits: they are
+        trained against signals — dwell, reshare, comment velocity — that
+        empirically index moral-emotional and out-group content. Bail and
+        co-authors find that algorithmically increased exposure to opposing
+        partisan content on engagement-ranked feeds <em>raises</em>, not
+        lowers, affective polarization, distinguishing platform behavior from
+        any naïve "filter bubble" account. Internal Meta studies leaked
+        through 2021–2024 documented that ranking changes which down-weighted
+        outrage signals reduced civic anger metrics inside experimental cells
+        before being reverted on growth grounds. Cross-country variance is
+        consistent with the mechanism: jurisdictions with later or weaker
+        engagement-ranked penetration show flatter polarization curves, even
+        controlling for party system and economic stress. The pre-platform
+        baseline is real but insufficient to explain post-2012 acceleration.
+      </p>
+      <div class="col-divider"></div>
+      <div class="src-label">key sources</div>
+      <ul class="src-list">
+        <li>
+          <a href="#">Bail et al. — Exposure to opposing views on social media can increase political polarization</a>
+          <span class="url">https://www.pnas.org/doi/10.1073/pnas.1804840115</span>
+        </li>
+        <li>
+          <a href="#">Internal Meta civic-integrity memos (Frances Haugen disclosures, 2021)</a>
+          <span class="url">https://www.sec.gov/whistleblower/disclosures/meta-2021</span>
+        </li>
+      </ul>
+      <div class="agent-line">agent · <span class="name">claude-opus-4-7</span> · Steelman pro-thesis dossier v0.1</div>
+    </article>
+
+    <article class="col con">
+      <div class="col-label">
+        <span class="dot"></span>
+        <span>CON</span>
+        <span class="arg">· thesis</span>
+      </div>
+      <p class="thesis">Platform algorithmic amplification is at most a marginal contributor to democratic backsliding; the dominant mechanisms — economic insecurity, civic-institution erosion, party-system dynamics — are upstream of and largely independent from platform design.</p>
+      <p class="summary">
+        The strongest field experiments to date weaken the causal claim, not
+        strengthen it. Allcott, Gentzkow and co-authors' 2020 Facebook and
+        Instagram deactivation studies find small, mixed effects on
+        polarization measures and no detectable effect on policy attitudes
+        over the deactivation window. Affective polarization in the United
+        States was already accelerating by the late 1990s, well before
+        engagement-ranked feeds existed; pre-platform trend lines from ANES
+        and comparable European panels track economic-restructuring and
+        sorting variables more closely than connectivity. Cross-country
+        evidence is also inconvenient for the pro thesis: countries with
+        comparable platform penetration diverge sharply on polarization
+        outcomes, while countries with comparable economic-stress and
+        weak-institution profiles converge despite platform differences.
+        Treating ranking as the master variable risks confusing a salient
+        accelerant for a primary cause.
+      </p>
+      <div class="col-divider"></div>
+      <div class="src-label">key sources</div>
+      <ul class="src-list">
+        <li>
+          <a href="#">Allcott, Gentzkow et al. — The welfare effects of social media (Facebook deactivation)</a>
+          <span class="url">https://www.aeaweb.org/articles?id=10.1257/aer.20190658</span>
+        </li>
+        <li>
+          <a href="#">Boxell, Gentzkow, Shapiro — Cross-country trends in affective polarization</a>
+          <span class="url">https://www.nber.org/papers/w26669</span>
+        </li>
+      </ul>
+      <div class="agent-line">agent · <span class="name">claude-opus-4-7</span> · Steelman con-thesis dossier v0.1</div>
+    </article>
+  </section>
+
+  <section>
+    <div class="cruxes-label">
+      <span class="em">Cruxes</span>
+      <span class="sub">— ranked by impact × uncertainty</span>
+    </div>
+    <div class="crux-grid">
+      <article class="crux">
+        <div class="num">1<span class="denom">/3</span></div>
+        <p class="body">If platform-level interventions (chronological ranking, quality-weighted ranking) produce measurable reductions in aggregate affective-polarization metrics within one electoral cycle in a randomized rollout, the <span class="pro">pro</span> thesis is supported; if they do not, the <span class="con">con</span> thesis is supported.</p>
+        <div class="meta">
+          <span class="pair">impact <span class="v">0.85</span></span>
+          <span class="pair">uncertainty <span class="v">0.70</span></span>
+          <span class="pair">rank score <span class="v">0.60</span></span>
+        </div>
+      </article>
+      <article class="crux">
+        <div class="num">2<span class="denom">/3</span></div>
+        <p class="body">If pre-platform polarization growth rates (1980–2005) are statistically indistinguishable from post-platform rates (2010–2025) after controlling for party-system and economic covariates, the <span class="con">con</span> thesis is supported.</p>
+        <div class="meta">
+          <span class="pair">impact <span class="v">0.78</span></span>
+          <span class="pair">uncertainty <span class="v">0.65</span></span>
+          <span class="pair">rank score <span class="v">0.51</span></span>
+        </div>
+      </article>
+      <article class="crux">
+        <div class="num">3<span class="denom">/3</span></div>
+        <p class="body">If cross-country variance in affective polarization is better explained by platform-usage intensity than by economic insecurity, civic-institution density, or electoral system, the <span class="pro">pro</span> thesis is supported.</p>
+        <div class="meta">
+          <span class="pair">impact <span class="v">0.72</span></span>
+          <span class="pair">uncertainty <span class="v">0.62</span></span>
+          <span class="pair">rank score <span class="v">0.45</span></span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot contained">
+  <div class="l"><span>aboard / v0 · M4 / dossier · last_filed 2026-05-08T12:00Z</span></div>
+  <a href="#">/api/v0/claims/M4/dossier.jsonld</a>
+</footer>
+</body>
+</html>

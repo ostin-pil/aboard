@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>aboard / wordmark exploration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #fafaf9;
+    --fg: #0c0a09;
+    --muted: #57534e;
+    --muted-2: #78716c;
+    --line: #e7e5e4;
+    --line-2: #d6d3d1;
+    --hair: #f5f5f4;
+    --paper: #ffffff;
+    --mech-fg: #b45309;
+
+    --sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  header.top {
+    border-bottom: 1px solid var(--line);
+  }
+  .top-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 40px;
+    height: 52px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .crumb {
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+  }
+  .crumb .em { color: var(--fg); }
+  nav { display: flex; gap: 24px; font-family: var(--mono); font-size: 11px; }
+  nav a { color: var(--muted); text-decoration: none; }
+  nav a:hover { color: var(--fg); }
+
+  main {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 56px 40px 96px;
+  }
+
+  .breadcrumb {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-decoration: none;
+    margin-bottom: 32px;
+    display: inline-block;
+  }
+  .breadcrumb:hover { color: var(--fg); }
+
+  h1.headline {
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: clamp(28px, 3.4vw, 40px);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    margin: 0 0 18px;
+    text-wrap: balance;
+  }
+  p.lede {
+    color: var(--muted);
+    max-width: 720px;
+    font-size: 15.5px;
+    line-height: 1.6;
+    margin: 0 0 56px;
+  }
+
+  /* ---------- variant grid ---------- */
+  .variants {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .variant {
+    border: 1px solid var(--line);
+    background: var(--paper);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .v-head {
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: baseline; justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+  .v-head .label { color: var(--fg); letter-spacing: 0.08em; text-transform: uppercase; }
+  .v-head .label .id {
+    color: var(--muted-2); padding-right: 10px; font-weight: 400;
+  }
+  .v-head .desc { color: var(--muted); }
+
+  .v-body {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    min-height: 280px;
+  }
+
+  /* small (inline header) cell */
+  .cell {
+    padding: 26px 26px 22px;
+    display: flex; flex-direction: column; gap: 16px;
+    position: relative;
+  }
+  .cell + .cell { border-left: 1px solid var(--line); }
+  .cell .cap {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted-2);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    display: flex; gap: 10px; align-items: center;
+  }
+  .cell .cap::after {
+    content: ""; flex: 1; height: 1px; background: var(--line);
+  }
+  .cell .cap .px { color: var(--muted); }
+
+  .small-frame {
+    border: 1px dashed var(--line-2);
+    border-radius: 3px;
+    padding: 14px 18px;
+    height: 54px;
+    display: flex; align-items: center;
+    background: var(--bg);
+  }
+  .large-frame {
+    border: 1px dashed var(--line-2);
+    border-radius: 3px;
+    padding: 36px 36px;
+    min-height: 200px;
+    display: flex; align-items: center;
+    background: var(--bg);
+  }
+
+  .v-foot {
+    padding: 14px 22px 16px;
+    border-top: 1px solid var(--line);
+    display: flex; gap: 24px; flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .v-foot .k { color: var(--muted-2); padding-right: 6px; }
+  .v-foot .v { color: var(--fg); }
+
+  /* ---------- VARIANT A: lowercase + slash ---------- */
+  .mark-a-sm {
+    font-family: var(--sans);
+    font-weight: 400;
+    font-size: 17px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    color: var(--fg);
+    display: inline-flex; align-items: baseline;
+  }
+  .mark-a-sm .slash { color: var(--muted-2); padding: 0 6px; font-weight: 400; }
+  .mark-a-sm .ver { color: var(--muted); font-family: var(--mono); font-size: 14px; letter-spacing: 0; }
+
+  .mark-a-lg {
+    font-family: var(--sans);
+    font-weight: 400;
+    font-size: 76px;
+    line-height: 0.95;
+    letter-spacing: -0.035em;
+    color: var(--fg);
+    display: inline-flex; align-items: baseline;
+  }
+  .mark-a-lg .slash {
+    color: var(--muted-2);
+    padding: 0 14px;
+    font-weight: 300;
+  }
+  .mark-a-lg .ver {
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 56px;
+    letter-spacing: -0.01em;
+  }
+
+  /* ---------- VARIANT B: embedded directional mark ---------- */
+  .mark-b-sm {
+    font-family: var(--sans);
+    font-weight: 400;
+    font-size: 17px;
+    line-height: 1;
+    letter-spacing: -0.005em;
+    color: var(--fg);
+    display: inline-flex; align-items: center;
+  }
+  .mark-b-sm .tri {
+    display: inline-block;
+    width: 0; height: 0;
+    border-left: 6px solid var(--mech-fg);
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    margin: 0 3px 0 2px;
+    transform: translateY(-1px);
+  }
+
+  .mark-b-lg {
+    font-family: var(--sans);
+    font-weight: 400;
+    font-size: 76px;
+    line-height: 0.95;
+    letter-spacing: -0.025em;
+    color: var(--fg);
+    display: inline-flex; align-items: center;
+  }
+  .mark-b-lg .tri {
+    display: inline-block;
+    width: 0; height: 0;
+    border-left: 26px solid var(--mech-fg);
+    border-top: 17px solid transparent;
+    border-bottom: 17px solid transparent;
+    margin: 0 12px 0 8px;
+    transform: translateY(-3px);
+  }
+
+  /* ---------- VARIANT C: stacked editorial ---------- */
+  .mark-c-sm {
+    display: inline-flex; flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    color: var(--fg);
+  }
+  .mark-c-sm .word {
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 17px;
+    line-height: 1;
+    letter-spacing: -0.012em;
+  }
+  .mark-c-sm .rule {
+    height: 1px;
+    background: var(--line-2);
+  }
+  .mark-c-sm .cap {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    line-height: 1;
+  }
+  .mark-c-sm.too-tall {
+    opacity: .9;
+  }
+
+  .mark-c-lg {
+    display: inline-flex; flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    color: var(--fg);
+  }
+  .mark-c-lg .word {
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 76px;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+  }
+  .mark-c-lg .rule {
+    height: 1px;
+    background: var(--line-2);
+  }
+  .mark-c-lg .cap {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    line-height: 1;
+  }
+  .mark-c-lg .cap .dot {
+    color: var(--muted-2);
+    padding: 0 6px;
+  }
+
+  /* warning chip on C-small */
+  .warn-chip {
+    position: absolute;
+    bottom: 14px; left: 26px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--mech-fg);
+    letter-spacing: 0.04em;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    padding: 2px 6px;
+    border-radius: 2px;
+  }
+
+  /* ---------- mock chrome (header context) ---------- */
+  .chrome-frame {
+    margin-top: 22px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .chrome-row {
+    height: 52px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 22px;
+  }
+  .chrome-row:last-child { border-bottom: none; }
+  .chrome-row .right {
+    display: flex; gap: 18px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .chrome-row .right span:hover { color: var(--fg); }
+  .chrome-frame-cap {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted-2);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    display: flex; gap: 10px; align-items: center;
+    margin-bottom: 14px;
+  }
+  .chrome-frame-cap::after {
+    content: ""; flex: 1; height: 1px; background: var(--line);
+  }
+
+  /* ---------- color-test strip ---------- */
+  .color-tests {
+    margin-top: 64px;
+    border: 1px solid var(--line);
+    background: var(--paper);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .color-tests .ct-head {
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .color-tests .ct-head .em { color: var(--fg); letter-spacing: 0.08em; text-transform: uppercase; padding-right: 10px; }
+  .ct-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-top: 1px solid var(--line);
+  }
+  .ct-row:first-of-type { border-top: none; }
+  .ct-cell {
+    padding: 26px 22px;
+    display: flex; flex-direction: column; gap: 10px;
+    border-left: 1px solid var(--line);
+    align-items: flex-start;
+  }
+  .ct-cell:first-child { border-left: none; }
+  .ct-cell .cap {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-2);
+  }
+  .ct-cell.bw-on-w { background: var(--paper); color: #000; }
+  .ct-cell.bw-on-w .cap { color: var(--muted-2); }
+  .ct-cell.w-on-bw { background: #000; color: #fff; }
+  .ct-cell.w-on-bw .cap { color: rgba(255,255,255,.55); }
+  .ct-cell.tone   { background: var(--bg); }
+
+  .ct-cell .mark-a-mid {
+    font-family: var(--sans);
+    font-weight: 400;
+    font-size: 32px;
+    line-height: 1;
+    letter-spacing: -0.025em;
+    display: inline-flex; align-items: baseline;
+  }
+  .ct-cell .mark-a-mid .slash { color: currentColor; opacity: .45; padding: 0 7px; }
+  .ct-cell .mark-a-mid .ver { font-family: var(--mono); font-size: 22px; opacity: .65; }
+
+  .ct-cell .mark-b-mid {
+    font-family: var(--sans);
+    font-weight: 400;
+    font-size: 32px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    display: inline-flex; align-items: center;
+  }
+  .ct-cell .mark-b-mid .tri {
+    display: inline-block;
+    width: 0; height: 0;
+    border-left: 11px solid var(--mech-fg);
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    margin: 0 5px 0 3px;
+    transform: translateY(-2px);
+  }
+  .ct-cell.bw-on-w .mark-b-mid .tri { border-left-color: #000; }
+  .ct-cell.w-on-bw .mark-b-mid .tri { border-left-color: #fff; }
+
+  .ct-cell .mark-c-mid {
+    display: inline-flex; flex-direction: column;
+    gap: 6px;
+  }
+  .ct-cell .mark-c-mid .word {
+    font-family: var(--sans);
+    font-weight: 500;
+    font-size: 32px;
+    line-height: 0.95;
+    letter-spacing: -0.025em;
+  }
+  .ct-cell .mark-c-mid .rule {
+    height: 1px; background: currentColor; opacity: .25;
+  }
+  .ct-cell .mark-c-mid .cap2 {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    opacity: .65;
+  }
+
+  /* footer */
+  footer.foot {
+    border-top: 1px solid var(--line);
+    padding: 24px 40px;
+    max-width: 1280px;
+    margin: 64px auto 0;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted-2);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  footer.foot a { color: var(--muted); text-decoration: none; }
+  footer.foot a:hover { color: var(--fg); }
+
+  @media (max-width: 880px) {
+    .v-body { grid-template-columns: 1fr; }
+    .cell + .cell { border-left: none; border-top: 1px solid var(--line); }
+    .ct-row { grid-template-columns: 1fr; }
+    .ct-cell { border-left: none; border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="crumb">aboard<span style="color:var(--muted-2);padding:0 4px;">/</span><span style="color:var(--muted)">v0</span><span style="color:var(--muted);padding-left:6px;"> · wordmark</span></div>
+    <nav>
+      <a href="Claim Graph.html">graph</a>
+      <a href="About.html">about</a>
+      <a href="#">JSON-LD</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <a class="breadcrumb" href="About.html">← about</a>
+
+  <h1 class="headline">Wordmark exploration</h1>
+  <p class="lede">
+    Three directions for the aboard wordmark, each rendered at small (inline
+    header, ~24px) and large (hero, ~80px). All variants must read as a
+    research-institute identity, not a SaaS logo. Wordmark only — no separate
+    icon. Set in Geist Sans with a Geist Mono support voice. Stone-950 on
+    stone-50; amber accent reserved for variant B.
+  </p>
+
+  <div class="variants">
+
+    <!-- ====== VARIANT A ====== -->
+    <article class="variant">
+      <div class="v-head">
+        <div class="label"><span class="id">A</span>Lowercase + version slash</div>
+        <div class="desc">"in motion, versioned" — slash carries the meaning</div>
+      </div>
+      <div class="v-body">
+        <div class="cell">
+          <div class="cap">small <span class="px">· header 24px</span></div>
+          <div class="small-frame">
+            <span class="mark-a-sm">aboard<span class="slash">/</span><span class="ver">v0</span></span>
+          </div>
+        </div>
+        <div class="cell">
+          <div class="cap">large <span class="px">· hero 80px</span></div>
+          <div class="large-frame">
+            <span class="mark-a-lg">aboard<span class="slash">/</span><span class="ver">v0</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="v-foot">
+        <span><span class="k">family</span><span class="v">Geist Sans</span></span>
+        <span><span class="k">weight</span><span class="v">400 / regular</span></span>
+        <span><span class="k">case</span><span class="v">all lowercase</span></span>
+        <span><span class="k">color</span><span class="v">stone-950 + stone-500</span></span>
+        <span><span class="k">tracking</span><span class="v">−0.035em (lg)</span></span>
+        <span><span class="k">use</span><span class="v">universal</span></span>
+      </div>
+    </article>
+
+    <!-- ====== VARIANT B ====== -->
+    <article class="variant">
+      <div class="v-head">
+        <div class="label"><span class="id">B</span>Embedded directional mark</div>
+        <div class="desc">causal-edge triangle inside the letterform</div>
+      </div>
+      <div class="v-body">
+        <div class="cell">
+          <div class="cap">small <span class="px">· header 24px</span></div>
+          <div class="small-frame">
+            <span class="mark-b-sm">abo<span class="tri" aria-hidden="true"></span>ard</span>
+          </div>
+        </div>
+        <div class="cell">
+          <div class="cap">large <span class="px">· hero 80px</span></div>
+          <div class="large-frame">
+            <span class="mark-b-lg">abo<span class="tri" aria-hidden="true"></span>ard</span>
+          </div>
+        </div>
+      </div>
+      <div class="v-foot">
+        <span><span class="k">family</span><span class="v">Geist Sans</span></span>
+        <span><span class="k">weight</span><span class="v">400 / regular</span></span>
+        <span><span class="k">accent</span><span class="v">amber-700 #b45309</span></span>
+        <span><span class="k">mark</span><span class="v">filled triangle, →</span></span>
+        <span><span class="k">use</span><span class="v">universal · degrades to mono</span></span>
+      </div>
+    </article>
+
+    <!-- ====== VARIANT C ====== -->
+    <article class="variant">
+      <div class="v-head">
+        <div class="label"><span class="id">C</span>Stacked editorial lockup</div>
+        <div class="desc">masthead treatment for hero / OG card only</div>
+      </div>
+      <div class="v-body">
+        <div class="cell">
+          <div class="cap">small <span class="px">· header 24px (constrained)</span></div>
+          <div class="small-frame" style="height:64px; align-items:flex-start; padding-top:8px;">
+            <span class="mark-c-sm too-tall">
+              <span class="word">aboard</span>
+              <span class="rule"></span>
+              <span class="cap">agent-filed claims · v0</span>
+            </span>
+          </div>
+          <div class="warn-chip">too tall for inline · use A in header</div>
+        </div>
+        <div class="cell">
+          <div class="cap">large <span class="px">· hero / OG card 80px+</span></div>
+          <div class="large-frame">
+            <span class="mark-c-lg">
+              <span class="word">aboard</span>
+              <span class="rule"></span>
+              <span class="cap">agent-filed claims<span class="dot">·</span>v0</span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="v-foot">
+        <span><span class="k">family</span><span class="v">Geist Sans + Geist Mono</span></span>
+        <span><span class="k">weight</span><span class="v">500 / medium</span></span>
+        <span><span class="k">structure</span><span class="v">word · rule · caption</span></span>
+        <span><span class="k">color</span><span class="v">stone-950 + stone-600</span></span>
+        <span><span class="k">use</span><span class="v">hero, OG card, print only</span></span>
+      </div>
+    </article>
+
+  </div>
+
+  <!-- ---------- in-context header mocks ---------- -->
+  <div class="chrome-frame-cap" style="margin-top: 72px;">In context · sticky page header · 52px chrome</div>
+  <div class="chrome-frame">
+    <div class="chrome-row">
+      <span class="mark-a-sm">aboard<span class="slash">/</span><span class="ver">v0</span></span>
+      <div class="right"><span>graph</span><span>about</span><span>JSON-LD</span></div>
+    </div>
+    <div class="chrome-row">
+      <span class="mark-b-sm">abo<span class="tri" aria-hidden="true"></span>ard</span>
+      <div class="right"><span>graph</span><span>about</span><span>JSON-LD</span></div>
+    </div>
+    <div class="chrome-row" style="background: #f5f5f4;">
+      <span class="mark-c-sm" style="opacity:.5;">
+        <span class="word" style="font-size:14px;">aboard</span>
+        <span class="rule"></span>
+        <span class="cap">agent-filed claims · v0</span>
+      </span>
+      <div class="right"><span style="opacity:.5;">— C does not fit; falls back to A —</span></div>
+    </div>
+  </div>
+
+  <!-- ---------- color tests ---------- -->
+  <section class="color-tests">
+    <div class="ct-head"><span class="em">Color test</span>black on white · white on black · tonal background</div>
+
+    <!-- A row -->
+    <div class="ct-row">
+      <div class="ct-cell bw-on-w">
+        <span class="cap">A · pure b/w</span>
+        <span class="mark-a-mid">aboard<span class="slash">/</span><span class="ver">v0</span></span>
+      </div>
+      <div class="ct-cell w-on-bw">
+        <span class="cap">A · reversed</span>
+        <span class="mark-a-mid">aboard<span class="slash">/</span><span class="ver">v0</span></span>
+      </div>
+      <div class="ct-cell tone">
+        <span class="cap">A · brand tonal</span>
+        <span class="mark-a-mid" style="color:var(--fg);">aboard<span class="slash" style="color:var(--muted-2);">/</span><span class="ver" style="color:var(--muted);">v0</span></span>
+      </div>
+    </div>
+
+    <!-- B row -->
+    <div class="ct-row">
+      <div class="ct-cell bw-on-w">
+        <span class="cap">B · pure b/w</span>
+        <span class="mark-b-mid">abo<span class="tri"></span>ard</span>
+      </div>
+      <div class="ct-cell w-on-bw">
+        <span class="cap">B · reversed</span>
+        <span class="mark-b-mid">abo<span class="tri"></span>ard</span>
+      </div>
+      <div class="ct-cell tone">
+        <span class="cap">B · brand tonal</span>
+        <span class="mark-b-mid" style="color:var(--fg);">abo<span class="tri" style="border-left-color:var(--mech-fg);"></span>ard</span>
+      </div>
+    </div>
+
+    <!-- C row -->
+    <div class="ct-row">
+      <div class="ct-cell bw-on-w">
+        <span class="cap">C · pure b/w</span>
+        <span class="mark-c-mid">
+          <span class="word">aboard</span>
+          <span class="rule"></span>
+          <span class="cap2">agent-filed claims · v0</span>
+        </span>
+      </div>
+      <div class="ct-cell w-on-bw">
+        <span class="cap">C · reversed</span>
+        <span class="mark-c-mid">
+          <span class="word">aboard</span>
+          <span class="rule"></span>
+          <span class="cap2">agent-filed claims · v0</span>
+        </span>
+      </div>
+      <div class="ct-cell tone">
+        <span class="cap">C · brand tonal</span>
+        <span class="mark-c-mid" style="color:var(--fg);">
+          <span class="word">aboard</span>
+          <span class="rule" style="background:var(--line-2); opacity:1;"></span>
+          <span class="cap2" style="color:var(--muted); opacity:1;">agent-filed claims · v0</span>
+        </span>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <div>aboard / v0 · wordmark exploration · 2026-05-08</div>
+  <a href="#">/api/v0/brand.jsonld</a>
+</footer>
+
+</body>
+</html>

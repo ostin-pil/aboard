@@ -1,0 +1,322 @@
+/* ============================================================
+   aboard / v0 — shared design tokens + chrome
+   light is default; [data-theme="dark"] inverts.
+   ============================================================ */
+
+:root {
+  /* surfaces */
+  --bg: #fafaf9;          /* stone-50  */
+  --fg: #0c0a09;          /* stone-950 */
+  --muted: #57534e;       /* stone-600 */
+  --muted-2: #78716c;     /* stone-500 */
+  --line: #e7e5e4;        /* stone-200 */
+  --line-2: #d6d3d1;      /* stone-300 */
+  --hair: #f5f5f4;        /* stone-100 */
+  --paper: #ffffff;
+  --paper-2: #fafaf9;
+
+  /* kinds */
+  --sym-fg: #b91c1c;       /* red-700  */
+  --sym-bg: #fef2f2;       /* red-50   */
+  --sym-bd: #fecaca;       /* red-200  */
+  --mech-fg: #b45309;      /* amber-700 */
+  --mech-bg: #fffbeb;      /* amber-50  */
+  --mech-bd: #fde68a;      /* amber-200 */
+  --lev-fg: #047857;       /* emerald-700 */
+  --lev-bg: #ecfdf5;       /* emerald-50 */
+  --lev-bd: #a7f3d0;       /* emerald-200 */
+
+  /* dossier */
+  --pro-fg: #047857;
+  --pro-bg: #ecfdf5;
+  --pro-bd: #047857;
+  --con-fg: #b91c1c;
+  --con-bg: #fef2f2;
+  --con-bd: #b91c1c;
+
+  /* edge ink */
+  --edge-causes:    #b45309;
+  --edge-moderates: #b45309;
+  --edge-reduces:   #047857;
+
+  /* dossier border weight */
+  --dossier-bw: 2px;
+
+  /* dot grid */
+  --grid-dot: #d6d3d1;
+  --grid-dot-alpha: 1;
+
+  /* type */
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* misc */
+  --shadow-pop: 0 4px 14px -4px rgba(12,10,9,.10), 0 1px 0 rgba(12,10,9,.04);
+  --shadow-card: 0 6px 18px -8px rgba(12,10,9,.18), 0 1px 0 rgba(12,10,9,.04);
+  color-scheme: light;
+}
+
+/* ---------- dark ----------
+   soft charcoal, desaturated dark fills, hairline borders.
+   --------------------------- */
+:root[data-theme="dark"] {
+  --bg: #171614;            /* soft charcoal */
+  --fg: #f5f5f4;            /* stone-100 */
+  --muted: #a8a29e;         /* stone-400 */
+  --muted-2: #78716c;       /* stone-500 */
+  --line: #292524;          /* stone-800 */
+  --line-2: #44403c;        /* stone-700 */
+  --hair: #1c1b18;
+  --paper: #1c1b18;
+  --paper-2: #201f1c;
+
+  --sym-fg: #fca5a5;        /* red-300 */
+  --sym-bg: #2a1414;        /* red-950-ish */
+  --sym-bd: #7f1d1d;        /* red-900 */
+  --mech-fg: #fcd34d;       /* amber-300 */
+  --mech-bg: #2a1f0a;       /* amber-950-ish */
+  --mech-bd: #78350f;       /* amber-900 */
+  --lev-fg:  #6ee7b7;       /* emerald-300 */
+  --lev-bg:  #0d2018;       /* emerald-950-ish */
+  --lev-bd:  #064e3b;       /* emerald-900 */
+
+  --pro-fg: #6ee7b7;
+  --pro-bg: #0d2018;
+  --pro-bd: #047857;
+  --con-fg: #fca5a5;
+  --con-bg: #2a1414;
+  --con-bd: #b91c1c;
+
+  --edge-causes:    #fcd34d;
+  --edge-moderates: #fcd34d;
+  --edge-reduces:   #6ee7b7;
+
+  --dossier-bw: 1px;        /* hairline on dark */
+
+  --grid-dot: #292524;      /* stone-800 */
+  --grid-dot-alpha: .55;
+
+  --shadow-pop: 0 6px 18px -6px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.03);
+  --shadow-card: 0 10px 24px -10px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.03);
+
+  color-scheme: dark;
+}
+
+/* respect system pref BEFORE manual override is set */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --bg: #171614; --fg: #f5f5f4;
+    --muted: #a8a29e; --muted-2: #78716c;
+    --line: #292524; --line-2: #44403c;
+    --hair: #1c1b18; --paper: #1c1b18; --paper-2: #201f1c;
+    --sym-fg: #fca5a5; --sym-bg: #2a1414; --sym-bd: #7f1d1d;
+    --mech-fg: #fcd34d; --mech-bg: #2a1f0a; --mech-bd: #78350f;
+    --lev-fg: #6ee7b7;  --lev-bg: #0d2018;  --lev-bd: #064e3b;
+    --pro-fg: #6ee7b7; --pro-bg: #0d2018; --pro-bd: #047857;
+    --con-fg: #fca5a5; --con-bg: #2a1414; --con-bd: #b91c1c;
+    --edge-causes: #fcd34d; --edge-moderates: #fcd34d; --edge-reduces: #6ee7b7;
+    --dossier-bw: 1px;
+    --grid-dot: #292524; --grid-dot-alpha: .55;
+    --shadow-pop: 0 6px 18px -6px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.03);
+    --shadow-card: 0 10px 24px -10px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.03);
+    color-scheme: dark;
+  }
+}
+
+/* ============================================================
+   base
+   ============================================================ */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================================================
+   chrome — shared header / nav / footer
+   ============================================================ */
+header.top {
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+header.top.fixed {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: saturate(140%) blur(6px);
+  -webkit-backdrop-filter: saturate(140%) blur(6px);
+}
+.top-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 40px;
+  height: 52px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 24px;
+}
+header.top.fixed .top-inner { max-width: none; padding: 0 24px; }
+
+.wordmark {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  color: var(--fg);
+  white-space: nowrap;
+}
+.wordmark .slash { color: var(--muted-2); padding: 0 4px; }
+.wordmark .ver { color: var(--muted); }
+.wordmark .where { color: var(--muted); padding-left: 6px; }
+
+nav.top-nav {
+  display: flex; gap: 22px; align-items: center;
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 0.02em;
+}
+nav.top-nav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 4px 0;
+  border-bottom: 1px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+nav.top-nav a:hover { color: var(--fg); border-bottom-color: var(--fg); }
+nav.top-nav a.active { color: var(--fg); border-bottom-color: var(--fg); }
+
+/* theme toggle button */
+.theme-toggle {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--line-2);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 4px 9px 5px;
+  border-radius: 3px;
+  cursor: pointer;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.theme-toggle:hover { color: var(--fg); border-color: var(--fg); }
+.theme-toggle .glyph { width: 10px; height: 10px; display: inline-block; }
+.theme-toggle .glyph::before {
+  content: "";
+  display: block; width: 100%; height: 100%;
+  border-radius: 50%;
+  background: currentColor;
+}
+:root[data-theme="dark"] .theme-toggle .glyph::before,
+:root:not([data-theme="light"]):not([data-theme="dark"]) .theme-toggle .glyph::before {
+  /* via @media query above: dark gets a hollow dot */
+}
+:root[data-theme="dark"] .theme-toggle .glyph::before {
+  background: transparent;
+  border: 1px solid currentColor;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) .theme-toggle .glyph::before {
+    background: transparent;
+    border: 1px solid currentColor;
+  }
+}
+
+footer.foot {
+  border-top: 1px solid var(--line);
+  padding: 24px 40px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted-2);
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+footer.foot.contained {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+footer.foot a { color: var(--muted); text-decoration: none; }
+footer.foot a:hover { color: var(--fg); }
+footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
+
+/* ============================================================
+   chips (kind chips, used on landing)
+   ============================================================ */
+.chip {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 6px 10px;
+  border: 1px solid var(--line-2);
+  background: var(--paper);
+  color: var(--fg);
+  border-radius: 4px;
+  display: inline-flex; align-items: center; gap: 6px;
+  cursor: default;
+  text-decoration: none;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.chip .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted-2);
+  display: inline-block;
+}
+.chip .num { color: var(--muted); }
+.chip:hover { border-color: var(--fg); }
+.chip.symptom   { color: var(--sym-fg);  background: var(--sym-bg);  border-color: var(--sym-bd); }
+.chip.symptom .dot { background: var(--sym-fg); }
+.chip.symptom .num { color: var(--sym-fg); opacity: .7; }
+.chip.mechanism { color: var(--mech-fg); background: var(--mech-bg); border-color: var(--mech-bd); }
+.chip.mechanism .dot { background: var(--mech-fg); }
+.chip.mechanism .num { color: var(--mech-fg); opacity: .7; }
+.chip.leverage  { color: var(--lev-fg);  background: var(--lev-bg);  border-color: var(--lev-bd); }
+.chip.leverage .dot { background: var(--lev-fg); }
+.chip.leverage .num { color: var(--lev-fg); opacity: .7; }
+.chip.cta { border-color: var(--fg); color: var(--fg); }
+.chip.cta:hover { background: var(--fg); color: var(--bg); }
+.chip .arrow { font-family: var(--mono); }
+
+/* ============================================================
+   buttons (small mono)
+   ============================================================ */
+.btn-mono {
+  appearance: none;
+  background: var(--paper);
+  border: 1px solid var(--line-2);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.btn-mono:hover { border-color: var(--fg); }
+.btn-mono.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.btn-mono.primary:hover { opacity: .9; }
+.btn-mono.danger:hover { color: var(--sym-fg); border-color: var(--sym-fg); }
+
+/* ============================================================
+   reusable: section label hairline
+   ============================================================ */
+.section-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin: 0 0 18px;
+  display: flex; align-items: center; gap: 14px;
+}
+.section-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.section-label .num { color: var(--muted-2); }

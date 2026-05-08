@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>aboard / v0 — claim graph</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/aboard.css" />
+<link rel="stylesheet" href="assets/graph.css" />
+<script src="assets/theme.js"></script>
+<style>
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; }
+
+  main.canvas-host {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  /* meta strip beneath the header */
+  .meta-strip {
+    position: fixed;
+    top: 52px; left: 0; right: 0;
+    z-index: 18;
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 9px 24px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .meta-strip .l { display: flex; gap: 22px; flex-wrap: wrap; align-items: center; }
+  .meta-strip .l .k { color: var(--muted-2); }
+  .meta-strip .l .v { color: var(--fg); }
+  .meta-strip .r { display: flex; gap: 8px; align-items: center; }
+  .meta-strip .saved { color: var(--lev-fg); }
+
+  .canvas-host > .ag-root { position: absolute; inset: 0; }
+
+  /* JSON-LD modal styles */
+  #jsonldModal { position: fixed; inset: 0; z-index: 100; display: none; align-items: center; justify-content: center; background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(4px); padding: 32px; }
+  #jsonldModal.open { display: flex; }
+  #jsonldModal .box {
+    width: min(880px, 100%); max-height: 80vh;
+    background: var(--paper);
+    border: 1px solid var(--line-2);
+    border-radius: 4px;
+    display: flex; flex-direction: column;
+    box-shadow: var(--shadow-card);
+  }
+  #jsonldModal .head {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+  #jsonldModal .head .t { color: var(--fg); }
+  #jsonldModal pre {
+    margin: 0;
+    padding: 18px 20px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--fg);
+    background: var(--bg);
+    overflow: auto;
+    flex: 1;
+    white-space: pre;
+  }
+  #jsonldModal .foot {
+    padding: 12px 18px;
+    border-top: 1px solid var(--line);
+    display: flex; gap: 8px; justify-content: flex-end;
+  }
+
+  /* status help line for edit mode */
+  .edit-help {
+    position: fixed;
+    bottom: 18px; left: 50%; transform: translateX(-50%);
+    z-index: 16;
+    background: var(--paper);
+    border: 1px solid var(--line-2);
+    border-radius: 3px;
+    padding: 8px 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    box-shadow: var(--shadow-pop);
+    display: none;
+  }
+  .edit-help.show { display: inline-flex; gap: 16px; }
+  .edit-help .k { color: var(--fg); padding: 1px 5px; border: 1px solid var(--line-2); border-radius: 2px; margin-right: 4px; font-size: 10px; }
+</style>
+</head>
+<body data-screen-label="02 Claim Graph">
+
+<header class="top fixed">
+  <div class="top-inner">
+    <div class="wordmark"><span>aboard</span><span class="slash">/</span><span class="ver">v0</span><span class="where">/ graph</span></div>
+    <nav class="top-nav">
+      <a href="Landing Page.html">home</a>
+      <a class="active" href="Claim Graph.html">graph</a>
+      <a href="Claim Detail.html">claims</a>
+      <a href="Dossiers.html">dossiers</a>
+      <a href="About.html">about</a>
+      <button class="theme-toggle" data-theme-toggle><span class="glyph"></span><span class="label">auto</span></button>
+    </nav>
+  </div>
+</header>
+
+<div class="meta-strip">
+  <div class="l">
+    <span><span class="k">domain</span> <span class="v">democratic_backsliding</span></span>
+    <span><span class="k">graph</span> <span class="v" id="msNE">12n / 17e</span></span>
+    <span><span class="k">last update</span> <span class="v">2026-05-08T11:42Z</span></span>
+    <span class="saved" id="msSaved" style="display:none;">● saved locally</span>
+  </div>
+  <div class="r">
+    <button class="btn-mono" id="btnExport">export JSON-LD</button>
+    <button class="btn-mono" id="btnReset" title="Reset to canonical seed (clears local edits)">reset</button>
+  </div>
+</div>
+
+<main class="canvas-host" style="padding-top: 90px;">
+  <!-- floating toolbar -->
+  <div class="ag-toolbar">
+    <div class="ag-tool-group">
+      <button class="ag-tool-btn primary" id="tNew">+ new claim</button>
+      <button class="ag-tool-btn" id="tEditMode">edit mode <span id="emState">on</span></button>
+    </div>
+    <div class="ag-tool-group">
+      <button class="ag-tool-btn" id="tUndo">undo</button>
+      <button class="ag-tool-btn" id="tRedo">redo</button>
+    </div>
+    <div class="ag-tool-group zoom">
+      <button class="ag-tool-btn" id="tZoomIn" title="zoom in">+</button>
+      <button class="ag-tool-btn" id="tFit" title="fit view">⊡</button>
+      <button class="ag-tool-btn" id="tZoomOut" title="zoom out">−</button>
+      <span class="ag-tool-btn ag-zoom-readout-btn"><span class="ag-zoom-readout" id="zoomRead">100%</span></span>
+    </div>
+  </div>
+
+  <div id="graphRoot" class="ag-fullbleed"></div>
+
+  <div class="edit-help" id="editHelp">
+    <span><span class="k">drag</span> node to move</span>
+    <span><span class="k">→</span> handle on hover to connect</span>
+    <span><span class="k">click</span> edge or ✎ to edit</span>
+  </div>
+</main>
+
+<!-- JSON-LD modal -->
+<div id="jsonldModal" role="dialog" aria-label="JSON-LD export">
+  <div class="box">
+    <div class="head">
+      <div><span class="t">JSON-LD export</span> · /api/v0/domain/democratic_backsliding.jsonld</div>
+      <button class="btn-mono" id="jlClose">close</button>
+    </div>
+    <pre id="jlPre"></pre>
+    <div class="foot">
+      <button class="btn-mono" id="jlCopy">copy to clipboard</button>
+      <button class="btn-mono primary" id="jlDownload">download .jsonld</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/graph.js"></script>
+<script>
+  const root = document.getElementById("graphRoot");
+  let editable = true;
+  let g;
+
+  function mount() {
+    root.innerHTML = "";
+    g = AboardGraph.mount(root, {
+      mode: "fullbleed",
+      editable,
+      onPersist: () => {
+        document.getElementById("msNE").textContent = g.state.nodes.length + "n / " + g.state.edges.length + "e";
+        const saved = document.getElementById("msSaved");
+        saved.style.display = "inline";
+        clearTimeout(window.__savedT);
+        window.__savedT = setTimeout(() => saved.style.display = "none", 1800);
+      },
+      onZoom: (s) => { document.getElementById("zoomRead").textContent = Math.round(s * 100) + "%"; },
+    });
+    document.getElementById("msNE").textContent = g.state.nodes.length + "n / " + g.state.edges.length + "e";
+    document.getElementById("editHelp").classList.toggle("show", editable);
+    document.getElementById("emState").textContent = editable ? "on" : "off";
+  }
+  mount();
+
+  document.getElementById("tNew").addEventListener("click", () => g.addNode());
+  document.getElementById("tUndo").addEventListener("click", () => g.undo());
+  document.getElementById("tRedo").addEventListener("click", () => g.redo());
+  document.getElementById("tZoomIn").addEventListener("click", () => g.zoomIn());
+  document.getElementById("tZoomOut").addEventListener("click", () => g.zoomOut());
+  document.getElementById("tFit").addEventListener("click", () => g.fitView());
+  document.getElementById("tEditMode").addEventListener("click", () => { editable = !editable; mount(); });
+
+  // export
+  const modal = document.getElementById("jsonldModal");
+  document.getElementById("btnExport").addEventListener("click", () => {
+    document.getElementById("jlPre").textContent = g.exportJSONLD();
+    modal.classList.add("open");
+  });
+  document.getElementById("jlClose").addEventListener("click", () => modal.classList.remove("open"));
+  modal.addEventListener("click", (e) => { if (e.target === modal) modal.classList.remove("open"); });
+  document.getElementById("jlCopy").addEventListener("click", () => {
+    navigator.clipboard.writeText(document.getElementById("jlPre").textContent).then(() => {
+      const b = document.getElementById("jlCopy");
+      const t = b.textContent;
+      b.textContent = "copied ✓";
+      setTimeout(() => b.textContent = t, 1400);
+    });
+  });
+  document.getElementById("jlDownload").addEventListener("click", () => {
+    const blob = new Blob([document.getElementById("jlPre").textContent], { type: "application/ld+json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "democratic_backsliding.jsonld";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  // reset
+  document.getElementById("btnReset").addEventListener("click", () => {
+    if (!confirm("Reset graph to canonical seed? Local edits will be discarded.")) return;
+    g.reset();
+    document.getElementById("msNE").textContent = g.state.nodes.length + "n / " + g.state.edges.length + "e";
+  });
+
+  // shortcuts
+  document.addEventListener("keydown", (e) => {
+    const target = e.target;
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT") return;
+    if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); g.undo(); }
+    else if ((e.metaKey || e.ctrlKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); g.redo(); }
+    else if (e.key === "n" && !e.metaKey && !e.ctrlKey) { e.preventDefault(); g.addNode(); }
+    else if (e.key === "Escape") modal.classList.remove("open");
+  });
+</script>
+</body>
+</html>
