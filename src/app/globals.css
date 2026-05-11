@@ -892,6 +892,38 @@ p.lede strong { color: var(--fg); font-weight: 500; }
 .forecast-head .resolves .sep { color: var(--line-2); padding: 0 8px; }
 .forecast-head .criteria { font-style: italic; color: var(--muted); font-size: 14px; line-height: 1.55; margin: 0; }
 
+.ensemble-head {
+  padding: 18px 22px 14px; border-bottom: 1px dashed var(--line);
+  display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap;
+}
+.ensemble-head .big-num {
+  font-family: var(--mono); font-size: 30px; color: var(--fg); font-weight: 500;
+}
+.ensemble-head .big-num .eq {
+  font-size: 13px; color: var(--muted-2); margin-right: 6px;
+}
+.ensemble-head .aux {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  letter-spacing: 0.04em; display: flex; gap: 8px; flex-wrap: wrap;
+}
+.ensemble-head .aux .dot { color: var(--muted-2); }
+.ensemble-details > summary,
+.single-details > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  padding: 12px 22px; font-family: var(--mono); font-size: 11px;
+  color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
+  border-bottom: 1px dashed var(--line);
+}
+.ensemble-details > summary::-webkit-details-marker,
+.single-details > summary::-webkit-details-marker { display: none; }
+.ensemble-details > summary::after,
+.single-details > summary::after {
+  content: " ▾"; color: var(--muted-2); font-size: 10px;
+}
+.ensemble-details[open] > summary::after,
+.single-details[open] > summary::after { content: " ▴"; }
+.single-details > summary { display: none; }
+
 .prediction { padding: 20px 22px; display: grid; grid-template-columns: 160px 1fr; gap: 28px; align-items: start; }
 .prediction + .prediction { border-top: 1px dashed var(--line); }
 .prediction .p-num { font-family: var(--mono); font-size: 38px; color: var(--mech-fg); line-height: 1; letter-spacing: -0.02em; margin-bottom: 8px; }

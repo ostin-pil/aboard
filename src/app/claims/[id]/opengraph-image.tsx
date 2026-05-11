@@ -4,6 +4,7 @@ import {
   getDossierForClaim,
   getForecastsForClaim,
 } from "@/lib/graph";
+import { aggregate } from "@/lib/forecast";
 
 export const alt =
   // PLACEHOLDER: revise after audience decision in research/vision.md
@@ -38,10 +39,15 @@ export default async function Image({
   facts.push(
     `${claim.sources.length} source${claim.sources.length === 1 ? "" : "s"}`
   );
-  if (forecasts.length > 0) {
-    facts.push(
-      `${forecasts.length} forecast${forecasts.length === 1 ? "" : "s"}`
-    );
+  for (const f of forecasts) {
+    const stats = aggregate(f.predictions);
+    if (stats.count > 1) {
+      facts.push(`forecast P=${stats.median.toFixed(2)} (ensemble of ${stats.count})`);
+    } else if (stats.count === 1) {
+      facts.push(`forecast P=${stats.median.toFixed(2)}`);
+    } else {
+      facts.push("forecast attached");
+    }
   }
   if (dossier) {
     facts.push("dossier");

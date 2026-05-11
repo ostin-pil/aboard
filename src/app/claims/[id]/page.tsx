@@ -6,6 +6,7 @@ import {
   graph,
 } from "@/lib/graph";
 import { fullClaimLD } from "@/lib/jsonld";
+import { aggregate } from "@/lib/forecast";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -243,36 +244,70 @@ export default async function ClaimPage({
       {forecasts.length > 0 && (
         <section className="block">
           <h2 className="section-label">Attached forecasts</h2>
-          {forecasts.map((f) => (
-            <div className="forecast" key={f.id}>
-              <div className="forecast-head">
-                <h3 className="question">{f.question}</h3>
-                <div className="resolves">
-                  <span className="id">{f.id}</span>
-                  <span className="sep">·</span>
-                  <span>resolves {f.resolutionDate}</span>
+          {forecasts.map((f) => {
+            const stats = aggregate(f.predictions);
+            const isEnsemble = stats.count > 1;
+            return (
+              <div className="forecast" key={f.id}>
+                <div className="forecast-head">
+                  <h3 className="question">{f.question}</h3>
+                  <div className="resolves">
+                    <span className="id">{f.id}</span>
+                    <span className="sep">·</span>
+                    <span>resolves {f.resolutionDate}</span>
+                    {isEnsemble && (
+                      <>
+                        <span className="sep">·</span>
+                        <span>ensemble of {stats.count}</span>
+                      </>
+                    )}
+                  </div>
+                  <p className="criteria">{f.resolutionCriteria}</p>
                 </div>
-                <p className="criteria">{f.resolutionCriteria}</p>
-              </div>
-              {f.predictions.map((p, i) => (
-                <div className="prediction" key={i}>
-                  <div>
-                    <div className="p-num">
+
+                {isEnsemble && (
+                  <div className="ensemble-head">
+                    <div className="big-num">
                       <span className="eq">P =</span>
-                      {p.probability.toFixed(2)}
+                      {stats.median.toFixed(2)}
                     </div>
-                    <div className="agent">
-                      filed by <span className="name">{p.agent.agent}</span>
+                    <div className="aux">
+                      <span>{stats.count} agents</span>
+                      <span className="dot">·</span>
+                      <span>spread {stats.spread.toFixed(2)}</span>
+                      <span className="dot">·</span>
+                      <span>range {stats.min.toFixed(2)}–{stats.max.toFixed(2)}</span>
                     </div>
                   </div>
-                  <div>
-                    <div className="reasoning-label">Reasoning</div>
-                    <p className="reasoning">{p.reasoning}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
+                )}
+
+                <details className={isEnsemble ? "ensemble-details" : "single-details"} open={!isEnsemble}>
+                  <summary>
+                    {isEnsemble
+                      ? `Individual predictions (${stats.count})`
+                      : "Prediction"}
+                  </summary>
+                  {f.predictions.map((p, i) => (
+                    <div className="prediction" key={i}>
+                      <div>
+                        <div className="p-num">
+                          <span className="eq">P =</span>
+                          {p.probability.toFixed(2)}
+                        </div>
+                        <div className="agent">
+                          filed by <span className="name">{p.agent.agent}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="reasoning-label">Reasoning</div>
+                        <p className="reasoning">{p.reasoning}</p>
+                      </div>
+                    </div>
+                  ))}
+                </details>
+              </div>
+            );
+          })}
         </section>
       )}
 
