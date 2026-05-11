@@ -3,10 +3,45 @@ import {
   getEdgesForClaim,
   getForecastsForClaim,
   getDossierForClaim,
+  graph,
 } from "@/lib/graph";
+import { fullClaimLD } from "@/lib/jsonld";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { Claim } from "@/lib/types";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const claim = getClaim(id);
+  if (!claim) {
+    return { title: "claim not found" };
+  }
+  // PLACEHOLDER: revise after audience decision in research/vision.md
+  const description = `${kindLabel[claim.kind]} · ${claim.id} — confidence ${claim.confidence.toFixed(
+    2
+  )} · domain ${claim.domain}.`;
+  const title = `${claim.id} · ${claim.title}`;
+  return {
+    title,
+    description,
+    openGraph: {
+      type: "article",
+      siteName: "aboard",
+      title,
+      description,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
 
 const kindLabel: Record<Claim["kind"], string> = {
   symptom: "SYMPTOM",
@@ -32,9 +67,14 @@ export default async function ClaimPage({
   const { incoming, outgoing } = getEdgesForClaim(id);
   const forecasts = getForecastsForClaim(id);
   const dossier = getDossierForClaim(id);
+  const ldJson = JSON.stringify(fullClaimLD(claim, graph, ""));
 
   return (
     <main className="page">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: ldJson }}
+      />
       <Link className="breadcrumb" href="/graph">
         ← graph
       </Link>
@@ -90,15 +130,26 @@ export default async function ClaimPage({
       <section className="block">
         <h2 className="section-label">Sources</h2>
         <ul className="sources">
-          {claim.sources.map((s, i) => (
-            <li key={i}>
-              <a className="src-title" href={s.url} target="_blank" rel="noopener noreferrer">
-                {s.label}
-              </a>
-              <div className="src-url">{s.url}</div>
-              {s.excerpt && <div className="src-excerpt">{s.excerpt}</div>}
-            </li>
-          ))}
+          {claim.sources.map((s, i) => {
+            const metaParts = [
+              s.kind,
+              s.year ? String(s.year) : null,
+              s.authors,
+            ].filter(Boolean);
+            return (
+              <li key={i}>
+                <a className="src-title" href={s.url} target="_blank" rel="noopener noreferrer">
+                  {s.label}
+                </a>
+                {metaParts.length > 0 && (
+                  <div className="src-meta">{metaParts.join(" · ")}</div>
+                )}
+                <div className="src-url">{s.url}</div>
+                {s.finding && <div className="src-finding">{s.finding}</div>}
+                {s.excerpt && <div className="src-excerpt">{s.excerpt}</div>}
+              </li>
+            );
+          })}
         </ul>
       </section>
 
@@ -125,6 +176,9 @@ export default async function ClaimPage({
                       <span className="strength">
                         strength <span className="v">{e.strength.toFixed(2)}</span>
                       </span>
+                      {e.rationale && (
+                        <p className="link-rationale">{e.rationale}</p>
+                      )}
                     </div>
                   );
                 })
@@ -149,6 +203,9 @@ export default async function ClaimPage({
                       <span className="strength">
                         strength <span className="v">{e.strength.toFixed(2)}</span>
                       </span>
+                      {e.rationale && (
+                        <p className="link-rationale">{e.rationale}</p>
+                      )}
                     </div>
                   );
                 })

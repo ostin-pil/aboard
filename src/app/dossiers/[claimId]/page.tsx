@@ -1,8 +1,43 @@
 import { getClaim, getDossierForClaim } from "@/lib/graph";
+import { dossierLD } from "@/lib/jsonld";
 import { cruxRank, type Argument, type Crux } from "@/lib/types";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Fragment } from "react";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ claimId: string }>;
+}): Promise<Metadata> {
+  const { claimId } = await params;
+  const claim = getClaim(claimId);
+  const dossier = getDossierForClaim(claimId);
+  if (!claim || !dossier) {
+    return { title: "dossier not found" };
+  }
+  // PLACEHOLDER: revise after audience decision in research/vision.md
+  const description = `Steel-manned, non-convergent dossier on ${claim.id}: ${dossier.cruxes.length} crux${
+    dossier.cruxes.length === 1 ? "" : "es"
+  } ranked by impact × uncertainty.`;
+  const title = `Dossier · ${claim.id} ${claim.title}`;
+  return {
+    title,
+    description,
+    openGraph: {
+      type: "article",
+      siteName: "aboard",
+      title,
+      description,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+    },
+  };
+}
 
 export default async function DossierPage({
   params,
@@ -18,9 +53,14 @@ export default async function DossierPage({
     (a, b) => cruxRank(b) - cruxRank(a)
   );
   const total = sortedCruxes.length;
+  const ldJson = JSON.stringify(dossierLD(dossier, ""));
 
   return (
     <main className="dossier-page">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: ldJson }}
+      />
       <Link className="breadcrumb" href={`/claims/${claim.id}`}>
         ← <span className="id-mech">{claim.id}</span> · {claim.title}
       </Link>
@@ -85,14 +125,25 @@ function DossierColumn({
 
       <div className="src-label">key sources</div>
       <ul className="src-list">
-        {arg.keySources.map((s, i) => (
-          <li key={i}>
-            <a href={s.url} target="_blank" rel="noopener noreferrer">
-              {s.label}
-            </a>
-            <span className="url">{s.url}</span>
-          </li>
-        ))}
+        {arg.keySources.map((s, i) => {
+          const metaParts = [
+            s.kind,
+            s.year ? String(s.year) : null,
+            s.authors,
+          ].filter(Boolean);
+          return (
+            <li key={i}>
+              <a href={s.url} target="_blank" rel="noopener noreferrer">
+                {s.label}
+              </a>
+              {metaParts.length > 0 && (
+                <span className="meta">{metaParts.join(" · ")}</span>
+              )}
+              <span className="url">{s.url}</span>
+              {s.finding && <span className="finding">{s.finding}</span>}
+            </li>
+          );
+        })}
       </ul>
 
       <div className="agent-line">
