@@ -44,6 +44,7 @@ declare global {
     col: number;
     dossier?: boolean;
     forecast?: number;
+    domain?: string;
   }
 
   interface EngineEdge {
@@ -51,10 +52,13 @@ declare global {
     to: string;
     kind: "causes" | "moderates" | "reduces";
     author?: string;
+    rationale?: string;
+    crossDomain?: boolean;
   }
 
   interface EngineGraphData {
     domain?: string;
+    domains?: string[];
     nodes: EngineNode[];
     edges: EngineEdge[];
   }

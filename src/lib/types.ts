@@ -8,9 +8,26 @@ export const AgentAttribution = z.object({
 });
 export type AgentAttribution = z.infer<typeof AgentAttribution>;
 
+export const SourceKind = z.enum([
+  "dataset",
+  "paper",
+  "news",
+  "policy",
+  "book",
+  "report",
+  "court",
+  "blog",
+  "statute",
+]);
+export type SourceKind = z.infer<typeof SourceKind>;
+
 export const Source = z.object({
   label: z.string(),
   url: z.string().url(),
+  kind: SourceKind.optional(),
+  year: z.number().int().min(1900).max(2100).optional(),
+  authors: z.string().optional(),
+  finding: z.string().optional(),
   excerpt: z.string().optional(),
 });
 export type Source = z.infer<typeof Source>;
@@ -41,6 +58,7 @@ export const Edge = z.object({
   kind: EdgeKind,
   strength: z.number().min(0).max(1),
   rationale: z.string().optional(),
+  sources: z.array(Source).default([]),
 });
 export type Edge = z.infer<typeof Edge>;
 

@@ -34,9 +34,11 @@ export function toEngineData(graph: ClaimGraph): EngineGraphData {
   }
 
   const nodes: EngineNode[] = [];
+  const domainOf = new Map<string, string>();
   for (const kind of ["symptom", "mechanism", "leverage_point"] as const) {
     const row = ROW_BY_KIND[kind];
     claimsByKind[kind].forEach((claim, col) => {
+      domainOf.set(claim.id, claim.domain);
       const node: EngineNode = {
         id: claim.id,
         kind: ENGINE_KIND[kind],
@@ -48,6 +50,7 @@ export function toEngineData(graph: ClaimGraph): EngineGraphData {
         filed: claim.createdAt.slice(0, 10),
         row,
         col,
+        domain: claim.domain,
       };
       const fc = forecastCounts.get(claim.id);
       if (fc) node.forecast = fc;
@@ -58,14 +61,25 @@ export function toEngineData(graph: ClaimGraph): EngineGraphData {
 
   const edges: EngineEdge[] = graph.edges
     .filter((e) => SUPPORTED_EDGE_KINDS.has(e.kind))
-    .map((e) => ({
-      from: e.fromId,
-      to: e.toId,
-      kind: e.kind as EngineEdge["kind"],
-    }));
+    .map((e) => {
+      const fromDomain = domainOf.get(e.fromId);
+      const toDomain = domainOf.get(e.toId);
+      const edge: EngineEdge = {
+        from: e.fromId,
+        to: e.toId,
+        kind: e.kind as EngineEdge["kind"],
+      };
+      if (e.rationale) edge.rationale = e.rationale;
+      if (fromDomain && toDomain && fromDomain !== toDomain) {
+        edge.crossDomain = true;
+      }
+      return edge;
+    });
 
+  const domains = Array.from(new Set(graph.claims.map((c) => c.domain))).sort();
   return {
-    domain: graph.claims[0]?.domain,
+    domain: domains[0],
+    domains,
     nodes,
     edges,
   };

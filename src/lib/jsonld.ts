@@ -1,4 +1,5 @@
 import type {
+  AgentAttribution,
   Claim,
   ClaimGraph,
   Dossier,
@@ -17,7 +18,21 @@ function sourceLD(s: Source) {
     "@type": "schema:CreativeWork",
     "schema:name": s.label,
     "schema:url": s.url,
+    ...(s.kind ? { "aboard:sourceKind": s.kind } : {}),
+    ...(s.year ? { "schema:datePublished": String(s.year) } : {}),
+    ...(s.authors ? { "schema:author": s.authors } : {}),
+    ...(s.finding ? { "schema:description": s.finding } : {}),
     ...(s.excerpt ? { "schema:abstract": s.excerpt } : {}),
+  };
+}
+
+function agentLD(agent: AgentAttribution) {
+  return {
+    "@type": "schema:SoftwareApplication",
+    "schema:name": agent.agent,
+    ...(agent.promptTitle ? { "aboard:promptTitle": agent.promptTitle } : {}),
+    ...(agent.promptHash ? { "aboard:promptHash": agent.promptHash } : {}),
+    "schema:dateCreated": agent.generatedAt,
   };
 }
 
@@ -25,20 +40,15 @@ export function claimLD(claim: Claim, base: string) {
   return {
     "@type": "schema:Claim",
     "@id": `${base}/claims/${claim.id}`,
+    "aboard:id": claim.id,
     "schema:name": claim.title,
     "schema:text": claim.statement,
     "aboard:kind": claim.kind,
     "aboard:domain": claim.domain,
     "aboard:confidence": claim.confidence,
+    "aboard:createdAt": claim.createdAt,
     "schema:citation": claim.sources.map(sourceLD),
-    "schema:author": {
-      "@type": "schema:SoftwareApplication",
-      "schema:name": claim.authoredBy.agent,
-      ...(claim.authoredBy.promptTitle
-        ? { "aboard:promptTitle": claim.authoredBy.promptTitle }
-        : {}),
-      "schema:dateCreated": claim.authoredBy.generatedAt,
-    },
+    "schema:author": agentLD(claim.authoredBy),
   };
 }
 
@@ -46,11 +56,15 @@ export function edgeLD(edge: Edge, base: string) {
   return {
     "@type": "aboard:CausalEdge",
     "@id": `${base}/edges/${edge.id}`,
+    "aboard:id": edge.id,
     "aboard:from": { "@id": `${base}/claims/${edge.fromId}` },
     "aboard:to": { "@id": `${base}/claims/${edge.toId}` },
     "aboard:relation": edge.kind,
     "aboard:strength": edge.strength,
     ...(edge.rationale ? { "aboard:rationale": edge.rationale } : {}),
+    ...(edge.sources.length > 0
+      ? { "schema:citation": edge.sources.map(sourceLD) }
+      : {}),
   };
 }
 
@@ -58,6 +72,7 @@ export function forecastLD(forecast: Forecast, base: string) {
   return {
     "@type": "aboard:Forecast",
     "@id": `${base}/forecasts/${forecast.id}`,
+    "aboard:id": forecast.id,
     "aboard:attachedTo": { "@id": `${base}/claims/${forecast.attachedToClaimId}` },
     "schema:name": forecast.question,
     "aboard:resolutionDate": forecast.resolutionDate,
@@ -66,11 +81,8 @@ export function forecastLD(forecast: Forecast, base: string) {
       "@type": "aboard:Prediction",
       "aboard:probability": p.probability,
       "aboard:reasoning": p.reasoning,
-      "schema:author": {
-        "@type": "schema:SoftwareApplication",
-        "schema:name": p.agent.agent,
-        "schema:dateCreated": p.agent.generatedAt,
-      },
+      "aboard:createdAt": p.createdAt,
+      "schema:author": agentLD(p.agent),
     })),
   };
 }
@@ -87,20 +99,14 @@ export function dossierLD(dossier: Dossier, base: string) {
       "aboard:thesis": dossier.pro.thesis,
       "schema:text": dossier.pro.steelmannedSummary,
       "schema:citation": dossier.pro.keySources.map(sourceLD),
-      "schema:author": {
-        "@type": "schema:SoftwareApplication",
-        "schema:name": dossier.pro.authoredBy.agent,
-      },
+      "schema:author": agentLD(dossier.pro.authoredBy),
     },
     "aboard:con": {
       "@type": "aboard:Argument",
       "aboard:thesis": dossier.con.thesis,
       "schema:text": dossier.con.steelmannedSummary,
       "schema:citation": dossier.con.keySources.map(sourceLD),
-      "schema:author": {
-        "@type": "schema:SoftwareApplication",
-        "schema:name": dossier.con.authoredBy.agent,
-      },
+      "schema:author": agentLD(dossier.con.authoredBy),
     },
     "aboard:cruxes": dossier.cruxes.map((c) => ({
       "@type": "aboard:Crux",
@@ -136,11 +142,12 @@ export function fullClaimLD(
 }
 
 export function graphLD(graph: ClaimGraph, base: string) {
+  const domains = Array.from(new Set(graph.claims.map((c) => c.domain))).sort();
   return {
     "@context": CONTEXT,
     "@type": "aboard:ClaimGraph",
     "@id": `${base}/graph`,
-    "aboard:domain": graph.claims[0]?.domain ?? null,
+    "aboard:domains": domains,
     "aboard:claims": graph.claims.map((c) => claimLD(c, base)),
     "aboard:edges": graph.edges.map((e) => edgeLD(e, base)),
     "aboard:forecasts": graph.forecasts.map((f) => forecastLD(f, base)),
