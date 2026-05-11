@@ -132,7 +132,7 @@ function findClaim(graph: ClaimGraphResponse, iri: string): Claim | undefined {
 function renderBriefing(graph: ClaimGraphResponse): string {
   const out: string[] = [];
   const domains = graph["aboard:domains"] ?? [];
-  const domain = domains.length === 0 ? "(no domain)" : domains.join(", ");
+  const domainTitle = domains.length === 0 ? "(no domain)" : domains.join(", ");
   const claims = graph["aboard:claims"];
   const edges = graph["aboard:edges"];
   const forecasts = graph["aboard:forecasts"];
@@ -155,7 +155,7 @@ function renderBriefing(graph: ClaimGraphResponse): string {
   }
 
   // --- header ---
-  out.push(`# aboard briefing — ${domain}`);
+  out.push(`# aboard briefing — ${domainTitle}`);
   out.push("");
   out.push(`Generated from \`${graph["@id"]}\` against the v0 JSON-LD schema.`);
   out.push("");
@@ -166,49 +166,94 @@ function renderBriefing(graph: ClaimGraphResponse): string {
       `${leverage.length} leverage point${leverage.length === 1 ? "" : "s"}) · ` +
       `${edges.length} edge${edges.length === 1 ? "" : "s"} · ` +
       `${forecasts.length} forecast${forecasts.length === 1 ? "" : "s"} · ` +
-      `${dossiers.length} dossier${dossiers.length === 1 ? "" : "s"}.`
+      `${dossiers.length} dossier${dossiers.length === 1 ? "" : "s"} · ` +
+      `${domains.length} domain${domains.length === 1 ? "" : "s"}.`
   );
   out.push("");
 
-  // --- symptoms ---
-  out.push("## Symptoms");
-  out.push("");
-  for (const c of symptoms) {
-    const id = shortId(c["@id"]);
-    const sources = c["schema:citation"].length;
-    out.push(
-      `- **${id}** · ${c["schema:name"]} — confidence ${c["aboard:confidence"].toFixed(2)} · ${sources} source${sources === 1 ? "" : "s"}`
-    );
-  }
-  out.push("");
+  // --- per-domain sections ---
+  for (const domain of domains) {
+    const domainClaims = claims.filter((c) => c["aboard:domain"] === domain);
+    const dSymptoms = domainClaims.filter((c) => c["aboard:kind"] === "symptom");
+    const dMechanisms = domainClaims.filter((c) => c["aboard:kind"] === "mechanism");
+    const dLeverage = domainClaims.filter((c) => c["aboard:kind"] === "leverage_point");
 
-  // --- mechanisms ---
-  out.push("## Mechanisms");
-  out.push("");
-  for (const c of mechanisms) {
-    const id = shortId(c["@id"]);
-    const fcCount = forecastsByClaim.get(c["@id"])?.length ?? 0;
-    const hasDossier = dossierByClaim.has(c["@id"]);
-    const flags: string[] = [];
-    if (fcCount > 0) flags.push(`${fcCount} forecast${fcCount === 1 ? "" : "s"}`);
-    if (hasDossier) flags.push("dossier");
-    const flagStr = flags.length ? ` — ${flags.join(", ")}` : "";
+    out.push(`## Domain: ${domain}`);
+    out.push("");
     out.push(
-      `- **${id}** · ${c["schema:name"]} — confidence ${c["aboard:confidence"].toFixed(2)}${flagStr}`
+      `${domainClaims.length} claim${domainClaims.length === 1 ? "" : "s"} ` +
+        `(${dSymptoms.length}/${dMechanisms.length}/${dLeverage.length} symptom/mechanism/leverage).`
     );
-  }
-  out.push("");
+    out.push("");
 
-  // --- leverage ---
-  out.push("## Leverage points");
-  out.push("");
-  for (const c of leverage) {
-    const id = shortId(c["@id"]);
-    out.push(
-      `- **${id}** · ${c["schema:name"]} — confidence ${c["aboard:confidence"].toFixed(2)}`
-    );
+    if (dSymptoms.length > 0) {
+      out.push("### Symptoms");
+      out.push("");
+      for (const c of dSymptoms) {
+        const id = shortId(c["@id"]);
+        const sources = c["schema:citation"].length;
+        out.push(
+          `- **${id}** · ${c["schema:name"]} — confidence ${c["aboard:confidence"].toFixed(2)} · ${sources} source${sources === 1 ? "" : "s"}`
+        );
+      }
+      out.push("");
+    }
+
+    if (dMechanisms.length > 0) {
+      out.push("### Mechanisms");
+      out.push("");
+      for (const c of dMechanisms) {
+        const id = shortId(c["@id"]);
+        const fcCount = forecastsByClaim.get(c["@id"])?.length ?? 0;
+        const hasDossier = dossierByClaim.has(c["@id"]);
+        const flags: string[] = [];
+        if (fcCount > 0) flags.push(`${fcCount} forecast${fcCount === 1 ? "" : "s"}`);
+        if (hasDossier) flags.push("dossier");
+        const flagStr = flags.length ? ` — ${flags.join(", ")}` : "";
+        out.push(
+          `- **${id}** · ${c["schema:name"]} — confidence ${c["aboard:confidence"].toFixed(2)}${flagStr}`
+        );
+      }
+      out.push("");
+    }
+
+    if (dLeverage.length > 0) {
+      out.push("### Leverage points");
+      out.push("");
+      for (const c of dLeverage) {
+        const id = shortId(c["@id"]);
+        out.push(
+          `- **${id}** · ${c["schema:name"]} — confidence ${c["aboard:confidence"].toFixed(2)}`
+        );
+      }
+      out.push("");
+    }
   }
-  out.push("");
+
+  // --- cross-domain edges ---
+  const claimDomain = new Map<string, string>();
+  for (const c of claims) claimDomain.set(c["@id"], c["aboard:domain"]);
+  const crossEdges = edges.filter((e) => {
+    const fd = claimDomain.get(e["aboard:from"]["@id"]);
+    const td = claimDomain.get(e["aboard:to"]["@id"]);
+    return fd && td && fd !== td;
+  });
+  if (crossEdges.length > 0) {
+    out.push("## Cross-domain edges");
+    out.push("");
+    for (const e of crossEdges) {
+      const fromId = shortId(e["aboard:from"]["@id"]);
+      const toId = shortId(e["aboard:to"]["@id"]);
+      const fd = claimDomain.get(e["aboard:from"]["@id"]) ?? "?";
+      const td = claimDomain.get(e["aboard:to"]["@id"]) ?? "?";
+      const id = shortId(e["@id"]);
+      const rationale = e["aboard:rationale"] ? ` — ${e["aboard:rationale"]}` : "";
+      out.push(
+        `- **${id}** · ${fromId} (${fd}) ${e["aboard:relation"]} → ${toId} (${td}) · strength ${e["aboard:strength"].toFixed(2)}${rationale}`
+      );
+    }
+    out.push("");
+  }
 
   // --- forecasts ---
   if (forecasts.length > 0) {
