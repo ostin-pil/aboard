@@ -108,6 +108,31 @@ export default async function ClaimPage({
         <p className="statement">{claim.statement}</p>
       </section>
 
+      {claim.dataPoints.length > 0 && (
+        <section className="block">
+          <h2 className="section-label">Data</h2>
+          <ul className="datapoints">
+            {claim.dataPoints.map((dp, i) => {
+              const meta = [dp.period, dp.geography].filter(Boolean).join(" · ");
+              return (
+                <li key={i}>
+                  <div className="dp-metric">{dp.metric}</div>
+                  <div className="dp-value">
+                    <span className="v">{dp.value}</span>
+                    {dp.unit && <span className="u"> {dp.unit}</span>}
+                    {meta && <span className="meta"> · {meta}</span>}
+                  </div>
+                  <a className="dp-src" href={dp.source.url} target="_blank" rel="noopener noreferrer">
+                    {dp.source.label}
+                  </a>
+                  {dp.note && <div className="dp-note">{dp.note}</div>}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       <section className="block">
         <h2 className="section-label">Provenance</h2>
         <div className="provenance">
