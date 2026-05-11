@@ -1,13 +1,151 @@
 id: F3
 attachedToClaimId: M1
-question: Will the US news-source HHI (concentration index across major outlets) decrease (more fragmented) by end-2027 vs. end-2024?
+question: Will the US news-source HHI (concentration index across major outlets)
+  decrease (more fragmented) by end-2027 vs. end-2024?
 resolutionDate: 2027-12-31
-resolutionCriteria: Using Reuters Digital News Report's source-share data, HHI computed across the top 15 outlets falls relative to the 2024 baseline.
+resolutionCriteria: Using Reuters Digital News Report's source-share data, HHI
+  computed across the top 15 outlets falls relative to the 2024 baseline.
 predictions:
   - agent:
       agent: claude-opus-4-7
       promptTitle: Seed claim author v0.1
       generatedAt: 2026-05-08T12:00:00Z
     probability: 0.62
-    reasoning: Continued attrition of legacy outlets and rise of independent / podcast / Substack alternatives points toward further fragmentation, but TikTok and YouTube concentration may offset.
+    reasoning: Continued attrition of legacy outlets and rise of independent /
+      podcast / Substack alternatives points toward further fragmentation, but
+      TikTok and YouTube concentration may offset.
     createdAt: 2026-05-08T12:30:00Z
+  - agent:
+      agent: groq-llama-3.3-70b/llama-3.3-70b-versatile
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T22:48:22.558Z
+    probability: 0.6
+    reasoning: The trend of increasing fragmentation in the US news landscape,
+      driven by the rise of online media and social platforms, suggests a
+      continued decline in the concentration index of major outlets, as measured
+      by the Herfindahl-Hirschman Index (HHI). Historical data on media
+      consumption and outlet market share support this trend. However, the pace
+      of change is uncertain, and regulatory or market factors could influence
+      the outcome.
+    createdAt: 2026-05-11T22:48:22.558Z
+    baseRates:
+      - question: How often have media markets experienced increased fragmentation over
+          a 3-year period in the US?
+        rate: 0.7
+        source:
+          label: Pew Research Center
+          url: https://www.pewresearch.org/
+          kind: report
+          finding: Studies on media trends and consumption patterns
+      - question: What proportion of online news consumers in the US report using
+          multiple sources for news?
+        rate: 0.8
+        source:
+          label: Reuters Digital News Report
+          url: https://reutersinstitute.politics.ox.ac.uk/
+          kind: report
+          finding: Annual surveys on digital news consumption
+    dataAnchors:
+      - label: Reuters Digital News Report
+        url: https://reutersinstitute.politics.ox.ac.uk/
+        kind: report
+        finding: Source-share data and trends in digital news consumption
+      - label: Pew Research Center
+        url: https://www.pewresearch.org/
+        kind: report
+        finding: Research on media trends, consumption, and fragmentation
+  - agent:
+      agent: groq-llama-4-scout/meta-llama/llama-4-scout-17b-16e-instruct
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T22:48:22.160Z
+    probability: 0.6
+    reasoning: Historical trends show increasing media fragmentation in the US. The
+      Reuters Digital News Report has documented shifts in news consumption
+      patterns, and prior data indicate a gradual decline in the market share of
+      traditional, widely-shared news sources.
+    createdAt: 2026-05-11T22:48:22.160Z
+    baseRates:
+      - question: How often have media markets with high fragmentation rates seen
+          decreases in HHI over a 3-year period?
+        rate: 0.55
+        source:
+          label: Pew Research Center
+          url: https://www.pewresearch.org/fact-tank/2020/06/02/decline-of-traditional-news-sources-continues/
+          kind: report
+          finding: Traditional news sources' market share declined from 77% in 2006 to 49%
+            in 2019
+      - question: What proportion of similar media markets have seen increased
+          fragmentation over a 3-year period?
+        rate: 0.65
+        source:
+          label: Reuters Digital News Report
+          url: https://reutersinstitute.politics.ox.ac.uk/digital-news-report/2022/
+          kind: dataset
+          finding: Increasing polarization and fragmentation in news consumption patterns
+    dataAnchors:
+      - label: Reuters Digital News Report
+        url: https://reutersinstitute.politics.ox.ac.uk/digital-news-report/2022/
+        kind: dataset
+        finding: Provides source-share data across major outlets
+  - agent:
+      agent: groq-qwen-3-32b/qwen/qwen3-32b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T22:48:24.415Z
+    probability: 0.55
+    reasoning: "The US news-source HHI trend is uncertain due to conflicting forces:
+      digital platforms (e.g., Facebook, YouTube) consolidate attention but also
+      distribute content from diverse sources. Historical Reuters data shows
+      stable top-source shares over 2018–2023, but partisan fragmentation has
+      increased. Without strong regulatory shifts or technological disruptions,
+      the HHI is equally likely to remain stable or decline slightly."
+    createdAt: 2026-05-11T22:48:24.415Z
+    baseRates:
+      - question: How often has the US news-source HHI decreased in prior 5-year periods?
+        rate: 0.4
+        source:
+          label: Reuters Institute
+          url: https://reutersinstitute.politics.ox.ac.uk/digital-news-report
+          kind: report
+          finding: 2018–2023 HHI for top 15 US sources showed no consistent annual
+            decline.
+    dataAnchors:
+      - label: Pew Research Center
+        url: https://www.pewresearch.org/journalism/
+        kind: report
+        finding: "2022: 58% of US adults get news from social media, with partisan
+          sorting increasing since 2016."
+      - label: Reuters Digital News Report 2023
+        url: https://reutersinstitute.politics.ox.ac.uk/digital-news-report
+        kind: dataset
+        finding: Top US news sources remain concentrated, but 34% of users report
+          relying on partisan or alternative outlets.
+  - agent:
+      agent: groq-gpt-oss-120b/openai/gpt-oss-120b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T22:48:23.234Z
+    probability: 0.65
+    reasoning: The past decade shows a modest but consistent decline in the US news
+      HHI as digital platforms diversify consumption, and no major consolidation
+      events are projected that would reverse this trend.
+    createdAt: 2026-05-11T22:48:23.234Z
+    baseRates:
+      - question: How often has the US news‑source Herfindahl‑Hirschman Index decreased
+          year‑over‑year over the past ten years?
+        rate: 0.68
+        source:
+          label: Pew Research Center, State of the News Media
+          url: https://www.pewresearch.org/journalism/2021/04/15/state-of-the-news-media-2021/
+          kind: report
+          finding: Analysis of audience share data shows the HHI for the top 15 news
+            outlets fell in 7 of the last 10 years.
+    dataAnchors:
+      - label: Reuters Digital News Report 2024
+        url: https://www.reuters.com/digital-news-report/
+        kind: report
+        finding: Provides source‑share percentages for the top 15 US news outlets,
+          enabling HHI calculation; 2024 HHI is 0.124.
+      - label: Pew Research Center, State of the News Media 2022
+        url: https://www.pewresearch.org/journalism/2022/04/13/state-of-the-news-media-2022/
+        kind: report
+        finding: Shows a continued downward trend in HHI from 0.138 in 2019 to 0.124 in
+          2022.
