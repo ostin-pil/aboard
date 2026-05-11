@@ -14,6 +14,9 @@ export function GraphFullbleed({ data }: Props) {
   const [jsonldOpen, setJsonldOpen] = useState(false);
   const [jsonldText, setJsonldText] = useState("");
   const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
+  const [activeDomain, setActiveDomain] = useState<string | "all">("all");
+  const domains = data.domains ?? (data.domain ? [data.domain] : []);
+  const showDomainFilter = domains.length > 1;
 
   const onPersist = (instance: AboardGraphInstance) => {
     setCounts({ n: instance.state.nodes.length, e: instance.state.edges.length });
@@ -24,6 +27,12 @@ export function GraphFullbleed({ data }: Props) {
   const onReady = (instance: AboardGraphInstance) => {
     instanceRef.current = instance;
     setCounts({ n: instance.state.nodes.length, e: instance.state.edges.length });
+    instance.setActiveDomain(activeDomain);
+  };
+
+  const chooseDomain = (d: string | "all") => {
+    setActiveDomain(d);
+    instanceRef.current?.setActiveDomain(d);
   };
 
   useEffect(() => {
@@ -77,7 +86,8 @@ export function GraphFullbleed({ data }: Props) {
     const blob = new Blob([jsonldText], { type: "application/ld+json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "democratic_backsliding.jsonld";
+    const fname = activeDomain !== "all" ? `${activeDomain}.jsonld` : "aboard-graph.jsonld";
+    a.download = fname;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -86,9 +96,31 @@ export function GraphFullbleed({ data }: Props) {
     <>
       <div className="meta-strip">
         <div className="l">
-          <span>
-            <span className="k">domain</span> <span className="v">democratic_backsliding</span>
-          </span>
+          {showDomainFilter ? (
+            <span className="domain-chips">
+              <span className="k">domain</span>
+              <button
+                className={`chip${activeDomain === "all" ? " active" : ""}`}
+                onClick={() => chooseDomain("all")}
+              >
+                all
+              </button>
+              {domains.map((d) => (
+                <button
+                  key={d}
+                  className={`chip${activeDomain === d ? " active" : ""}`}
+                  onClick={() => chooseDomain(d)}
+                >
+                  {d}
+                </button>
+              ))}
+            </span>
+          ) : (
+            <span>
+              <span className="k">domain</span>{" "}
+              <span className="v">{domains[0] ?? "(no domain)"}</span>
+            </span>
+          )}
           <span>
             <span className="k">graph</span>{" "}
             <span className="v">

@@ -269,6 +269,7 @@
       el.className = "ag-node";
       el.dataset.kind = n.kind;
       el.dataset.id = n.id;
+      if (n.domain) el.dataset.domain = n.domain;
       el.href = "/claims/" + n.id;
       el.draggable = false;
       el.addEventListener("dragstart", (ev) => ev.preventDefault());
@@ -372,10 +373,12 @@
       }
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.setAttribute("d", d);
-      path.setAttribute("class", `ag-edge ag-${e.kind}`);
+      const crossClass = e.crossDomain ? " ag-cross-domain" : "";
+      path.setAttribute("class", `ag-edge ag-${e.kind}${crossClass}`);
       path.dataset.from = e.from;
       path.dataset.to = e.to;
       path.dataset.kind = e.kind;
+      if (e.crossDomain) path.dataset.crossDomain = "true";
       if (e.kind === "causes")  path.setAttribute("marker-end", "url(#ag-ah-causes)");
       if (e.kind === "reduces") path.setAttribute("marker-end", "url(#ag-ah-reduces)");
       if (editable) {
@@ -389,7 +392,8 @@
         const mx = (ax + bx)/2;
         const my = sides.sameRow ? (ay + by)/2 - 18 : (ay + by)/2;
         const label = document.createElement("div");
-        label.className = `ag-edge-label ag-${e.kind}`;
+        const crossClass = e.crossDomain ? " ag-cross-domain" : "";
+        label.className = `ag-edge-label ag-${e.kind}${crossClass}`;
         label.textContent = e.kind;
         label.dataset.from = e.from;
         label.dataset.to = e.to;
@@ -843,6 +847,31 @@
     render();
     requestAnimationFrame(fitView);
 
+    function setActiveDomain(domain) {
+      if (!domain || domain === "all") {
+        canvasEl.classList.remove("ag-domain-filter");
+        nodesHost.querySelectorAll(".ag-node").forEach((n) => n.classList.remove("ag-out-of-domain"));
+        edgesSvg.querySelectorAll(".ag-edge").forEach((p) => p.classList.remove("ag-out-of-domain"));
+        labelsHost.querySelectorAll(".ag-edge-label").forEach((l) => l.classList.remove("ag-out-of-domain"));
+        return;
+      }
+      canvasEl.classList.add("ag-domain-filter");
+      const inDomainIds = new Set(
+        state.nodes.filter((n) => n.domain === domain).map((n) => n.id)
+      );
+      nodesHost.querySelectorAll(".ag-node").forEach((n) => {
+        n.classList.toggle("ag-out-of-domain", !inDomainIds.has(n.dataset.id));
+      });
+      edgesSvg.querySelectorAll(".ag-edge").forEach((p) => {
+        const inDomain = inDomainIds.has(p.dataset.from) && inDomainIds.has(p.dataset.to);
+        p.classList.toggle("ag-out-of-domain", !inDomain);
+      });
+      labelsHost.querySelectorAll(".ag-edge-label").forEach((l) => {
+        const inDomain = inDomainIds.has(l.dataset.from) && inDomainIds.has(l.dataset.to);
+        l.classList.toggle("ag-out-of-domain", !inDomain);
+      });
+    }
+
     return {
       state,
       render: () => persistAndRender(false),
@@ -854,6 +883,7 @@
       zoom: () => scale,
       reset: () => { clearState(); state.nodes = JSON.parse(JSON.stringify(SEED.nodes)); state.edges = JSON.parse(JSON.stringify(SEED.edges)); state.nodes.forEach(n=>{delete n._x; delete n._y;}); snapshot(); persistAndRender(false); },
       exportJSONLD,
+      setActiveDomain,
     };
   }
 

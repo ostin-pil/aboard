@@ -29,6 +29,7 @@ declare global {
     zoom: () => number;
     reset: () => void;
     exportJSONLD: () => string;
+    setActiveDomain: (domain: string | "all") => void;
   }
 
   interface EngineNode {
