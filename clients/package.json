@@ -1,0 +1,20 @@
+{
+  "name": "aboard-clients",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reference adapters for the aboard JSON-LD API. Independent of the Next.js app.",
+  "type": "module",
+  "scripts": {
+    "validate": "tsx validate.ts",
+    "briefing": "tsx briefing.ts"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.5.0"
+  }
+}
