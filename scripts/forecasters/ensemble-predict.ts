@@ -176,6 +176,12 @@ type EnsembleResult = {
   agent: { agent: string; promptTitle: string; generatedAt: string };
   probability: number;
   reasoning: string;
+  baseRates?: Array<{
+    question: string;
+    rate: number;
+    source: { label: string; url: string; kind?: string; finding?: string };
+  }>;
+  dataAnchors?: Array<{ label: string; url: string; kind?: string; finding?: string }>;
   createdAt: string;
 };
 
@@ -201,7 +207,7 @@ async function runProvider(
   const text = await provider.complete({ system, user });
   const parsed = parseRawPrediction(text);
   const now = new Date().toISOString();
-  return {
+  const result: EnsembleResult = {
     agent: {
       agent: provider.name,
       promptTitle: "ensemble-forecaster-v0.1",
@@ -211,6 +217,9 @@ async function runProvider(
     reasoning: parsed.reasoning,
     createdAt: now,
   };
+  if (parsed.baseRates.length > 0) result.baseRates = parsed.baseRates;
+  if (parsed.dataAnchors.length > 0) result.dataAnchors = parsed.dataAnchors;
+  return result;
 }
 
 async function main() {
