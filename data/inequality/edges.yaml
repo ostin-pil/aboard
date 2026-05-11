@@ -1,0 +1,42 @@
+- id: IE1
+  fromId: IM1
+  toId: IS1
+  kind: causes
+  strength: 0.65
+  rationale: When the after-tax return on capital exceeds aggregate growth, capital income compounds faster than the wage bill, raising top income shares mechanically.
+- id: IE2
+  fromId: IM2
+  toId: IS1
+  kind: causes
+  strength: 0.5
+  rationale: Supply-constrained housing markets transfer wealth to existing owners and elevate the imputed-rent component of top incomes, raising the top share.
+- id: IE3
+  fromId: IM2
+  toId: IS2
+  kind: causes
+  strength: 0.6
+  rationale: Housing-price growth in high-wage metros prices younger and lower-income households out of mobility-enabling labor markets, reducing intergenerational income mobility.
+- id: IE4
+  fromId: IM3
+  toId: IS1
+  kind: causes
+  strength: 0.5
+  rationale: Tax-policy capture by concentrated wealth lowers effective rates on capital and inheritance, accelerating top-share growth beyond the r > g baseline.
+- id: IE5
+  fromId: IL1
+  toId: IM1
+  kind: reduces
+  strength: 0.45
+  rationale: A periodic wealth tax above a high threshold lowers the after-tax return on capital for top holders, slowing the r > g compounding channel.
+- id: IE6
+  fromId: IL2
+  toId: IM2
+  kind: reduces
+  strength: 0.55
+  rationale: By-right multifamily and zoning liberalization restore supply elasticity, slowing housing-mediated wealth divergence at the metro level.
+- id: IE7
+  fromId: IL3
+  toId: IM1
+  kind: reduces
+  strength: 0.4
+  rationale: Restoring estate taxation and eliminating step-up-in-basis cuts the intergenerational compounding of capital, directly addressing one dimension of r > g dynamics.

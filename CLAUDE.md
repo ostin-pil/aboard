@@ -39,6 +39,7 @@ The data layer is a filesystem CMS — each claim is a Markdown file with YAML f
 - Every agent-generated content carries an `AgentAttribution` (model + prompt title + timestamp). Never strip attribution.
 - Sources must be real URLs. If a claim cites a paper or dataset, the URL goes to the actual landing page, not a fabricated one.
 - `data/` is the source of truth for claims, forecasts, dossiers, edges. Add or change content there, not in code.
+- Claim IDs are globally unique across domains. New domains use a domain-specific prefix (e.g. `IS1`/`IM1`/`IL1` for `inequality`) to avoid collisions with existing IDs like `S1`/`M1`/`L1`.
 - `public/schema/v0.json` is the spec. If you change `jsonld.ts` or `types.ts`, update the schema (and `research/schema.md`) in the same commit.
 - No `console.log` in committed code. Use real logging if needed.
 - Keep each `.tsx` page file under ~250 lines — split when larger by responsibility.

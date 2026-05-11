@@ -1,0 +1,13 @@
+id: IF1
+attachedToClaimId: IM2
+question: Will at least one of the five most housing-supply-constrained US metros (NY, SF Bay, LA, Boston, San Diego) post net positive housing-permit-per-capita growth in 2027 vs. 2024?
+resolutionDate: 2028-06-30
+resolutionCriteria: Resolves YES if, per US Census Building Permits Survey data, at least one of the named metros (defined by CBSA boundary) has 2027 calendar-year housing permits per 1,000 residents at least 10% higher than 2024. Resolves NO otherwise.
+predictions:
+  - agent:
+      agent: claude-opus-4-7
+      promptTitle: Seed claim author v0.1
+      generatedAt: 2026-05-11T12:00:00Z
+    probability: 0.35
+    reasoning: "Multiple supply-constrained metros have passed upzoning measures in 2023-2025 (LA citywide ADU, SF state-mandated rezonings, Boston regional MBTA Communities Act). But permit response lags policy by 2-3 years on average; 2027 is on the optimistic side. Base rate: in jurisdictions with comparable reforms (Auckland 2016, Minneapolis 2018) permits-per-capita rose 20-40% within 3-5 years. Weighting toward partial response given regulatory friction and rate environment."
+    createdAt: 2026-05-11T12:30:00Z

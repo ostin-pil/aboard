@@ -1,1 +1,51 @@
-[]
+- id: CE1
+  fromId: IM3
+  toId: S2
+  kind: causes
+  strength: 0.45
+  rationale: Concentrated wealth captures regulatory and political capacity, weakening horizontal accountability institutions and enabling executive aggrandizement.
+  sources:
+    - label: Gilens & Page — Testing Theories of American Politics
+      url: 'https://www.cambridge.org/core/journals/perspectives-on-politics/article/testing-theories-of-american-politics-elites-interest-groups-and-average-citizens/62327F513959D0A304D4893B382B992B'
+      kind: paper
+      year: 2014
+      authors: Gilens, Page
+      finding: Elite preferences and business-group positions predict US policy outcomes; median-voter preferences have near-zero independent effect after controls.
+    - label: Hacker & Pierson — American Amnesia
+      url: 'https://us.macmillan.com/books/9781451667837/americanamnesia'
+      kind: book
+      year: 2016
+      authors: Hacker, Pierson
+      finding: Argues that the erosion of mixed-economy institutions in the US tracks the rising political influence of concentrated wealth, with downstream effects on regulatory capacity.
+- id: CE2
+  fromId: IM2
+  toId: M3
+  kind: causes
+  strength: 0.55
+  rationale: Housing-mediated wealth divergence locks younger and lower-income households out of high-wage labor markets, intensifying economic insecurity that fuels demand for strongman politics.
+  sources:
+    - label: Hsieh & Moretti — Housing Constraints and Spatial Misallocation
+      url: 'https://www.aeaweb.org/articles?id=10.1257/mac.20170388'
+      kind: paper
+      year: 2019
+      authors: Hsieh, Moretti
+      finding: Restrictive zoning suppressed aggregate US wages and labor mobility by 36% over 1964-2009 — a direct economic-insecurity channel.
+    - label: Rodrik — Why Populism?
+      url: 'https://drodrik.scholar.harvard.edu/files/dani-rodrik/files/populism_and_the_economics_of_globalization.pdf'
+      kind: paper
+      year: 2018
+      authors: Rodrik
+      finding: Cross-country evidence linking the geographic distribution of economic insecurity to right-populist vote shares.
+- id: CE3
+  fromId: IS1
+  toId: M2
+  kind: causes
+  strength: 0.35
+  rationale: Visible concentration of top incomes fuels resentment-based political identities that map onto partisan lines, contributing to affective polarization.
+  sources:
+    - label: Norris & Inglehart — Cultural Backlash
+      url: 'https://www.cambridge.org/core/books/cultural-backlash/3C7CB32722C7BB8B19A0FC005CAFD02B'
+      kind: book
+      year: 2019
+      authors: Norris, Inglehart
+      finding: Empirical synthesis attributing right-authoritarian vote growth in OECD countries to a combination of economic-insecurity and cultural-backlash channels, with inequality as a partial driver.
