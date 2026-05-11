@@ -1,7 +1,12 @@
-import { seed } from "@/data/seed";
+import { getGraph } from "@/lib/data/loader";
 import type { Claim, ClaimGraph, Dossier, Edge, Forecast } from "./types";
 
-export const graph: ClaimGraph = seed;
+/**
+ * Backwards-compatible `graph` export. Many call sites still reference this
+ * as a top-level constant; resolving it via the loader keeps them working
+ * while the data layer is filesystem-backed.
+ */
+export const graph: ClaimGraph = getGraph();
 
 export function getClaims(): Claim[] {
   return graph.claims;

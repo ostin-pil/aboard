@@ -4,9 +4,9 @@
  * Usage:
  *   ANTHROPIC_API_KEY=... npx tsx scripts/generate-prediction.ts F1
  *
- * Prints a Prediction object that can be appended to the seed forecast's
- * predictions array. Does not write to seed.ts automatically — review
- * before committing the prediction to the graph.
+ * Prints a Prediction object as JSON. To commit it: paste into the relevant
+ * forecast file under data/<domain>/forecasts/{id}.yaml, appended to that
+ * forecast's `predictions:` list. Review before committing.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
