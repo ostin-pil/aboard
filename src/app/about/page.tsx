@@ -1,4 +1,25 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+// PLACEHOLDER: revise after audience decision in research/vision.md
+const ABOUT_DESCRIPTION =
+  "An agent-first board of falsifiable claims, attached forecasts, and steel-manned dossiers on civilizational issues. Machine-readable by default.";
+
+export const metadata: Metadata = {
+  title: "About",
+  description: ABOUT_DESCRIPTION,
+  openGraph: {
+    type: "article",
+    siteName: "aboard",
+    title: "About — aboard",
+    description: ABOUT_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "About — aboard",
+    description: ABOUT_DESCRIPTION,
+  },
+};
 
 export default function AboutPage() {
   return (

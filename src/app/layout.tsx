@@ -15,10 +15,28 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// PLACEHOLDER: revise after audience decision in research/vision.md
+const SITE_DESCRIPTION =
+  "An agent-first board of falsifiable claims, attached forecasts, and steel-manned dossiers on civilizational issues. Machine-readable by default.";
+
 export const metadata: Metadata = {
-  title: "aboard / v0",
-  description:
-    "An agent-first board of falsifiable claims, attached forecasts, and steel-manned dossiers on civilizational issues. Machine-readable by default.",
+  title: {
+    default: "aboard / v0",
+    template: "%s — aboard",
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: "aboard",
+  openGraph: {
+    type: "website",
+    siteName: "aboard",
+    title: "aboard / v0",
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "aboard / v0",
+    description: SITE_DESCRIPTION,
+  },
 };
 
 const themeBootstrap = `
