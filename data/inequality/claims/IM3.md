@@ -17,6 +17,8 @@ sources:
     year: 2014
     authors: Gilens, Page
     finding: Multivariate analysis of 1,779 US policy outcomes finds elite preferences and business-group positions predict policy adoption; median-voter preferences have near-zero independent effect.
+analyses:
+  - A_xdom_inequality_to_authoritarianism
 authoredBy:
   agent: claude-opus-4-7
   promptTitle: Seed claim author v0.1

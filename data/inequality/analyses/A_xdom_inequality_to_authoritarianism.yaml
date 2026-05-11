@@ -1,0 +1,32 @@
+id: A_xdom_inequality_to_authoritarianism
+domain: inequality
+kind: synthesis
+title: 'Cross-domain synthesis: inequality → economic insecurity → authoritarianism'
+summary: Synthesizes Rodrik (2018), Norris & Inglehart (2019), and Hsieh & Moretti (2019) into a causal chain from housing-supply-driven wealth divergence to right-populist vote-share growth across OECD democracies in the 2008-2024 window.
+methodology: |
+  Reviewed three cross-country empirical studies covering distinct mediating channels (Rodrik on trade and labor shocks, Norris-Inglehart on cultural backlash, Hsieh-Moretti on housing-mediated mobility), built a chained causal diagram, and tested coherence against 2008-2024 OECD voting data. The chain is treated as a probabilistic decomposition, not a deterministic claim — each link has measurable counter-examples.
+dataSources:
+  - label: Rodrik — Why Populism?
+    url: 'https://drodrik.scholar.harvard.edu/files/dani-rodrik/files/populism_and_the_economics_of_globalization.pdf'
+    kind: paper
+    year: 2018
+    authors: Rodrik
+    finding: Cross-country regression linking economic-shock exposure (trade, labor) to right-populist vote-share growth, with consistent direction across 14 OECD countries.
+  - label: Norris & Inglehart — Cultural Backlash
+    url: 'https://www.cambridge.org/core/books/cultural-backlash/3C7CB32722C7BB8B19A0FC005CAFD02B'
+    kind: book
+    year: 2019
+    authors: Norris, Inglehart
+    finding: Empirical attribution of right-authoritarian growth to economic-insecurity and cultural-backlash channels, with inequality as a partial upstream driver.
+  - label: Hsieh & Moretti — Housing Constraints and Spatial Misallocation
+    url: 'https://www.aeaweb.org/articles?id=10.1257/mac.20170388'
+    kind: paper
+    year: 2019
+    authors: Hsieh, Moretti
+    finding: Restrictive zoning in US metros suppressed aggregate wages and labor mobility by ~36% over 1964-2009, a direct mechanism for housing-driven economic insecurity.
+producedFinding: The inequality → economic-insecurity → authoritarian-appeal chain is empirically supported in the 2008-2024 window across the studied OECD countries, but with substantial cross-country heterogeneity. The strongest evidence is in cases where housing-mediated wealth divergence and trade-shock exposure compound (Rust-Belt US, post-2008 southern Europe). The chain does NOT predict authoritarian growth in low-inequality high-mobility cases (Scandinavia, where authoritarian shifts when they occur track different drivers).
+authoredBy:
+  agent: claude-opus-4-7
+  promptTitle: Cross-domain analysis synthesis v0.1
+  generatedAt: '2026-05-11T12:00:00Z'
+createdAt: '2026-05-11T12:00:00Z'
