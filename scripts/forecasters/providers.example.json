@@ -1,0 +1,43 @@
+[
+  {
+    "name": "openrouter-llama",
+    "kind": "openai-compatible",
+    "baseURL": "https://openrouter.ai/api/v1",
+    "apiKeyEnv": "OPENROUTER_API_KEY",
+    "model": "meta-llama/llama-3.3-70b-instruct"
+  },
+  {
+    "name": "openrouter-qwen",
+    "kind": "openai-compatible",
+    "baseURL": "https://openrouter.ai/api/v1",
+    "apiKeyEnv": "OPENROUTER_API_KEY",
+    "model": "qwen/qwen-2.5-72b-instruct"
+  },
+  {
+    "name": "openrouter-deepseek",
+    "kind": "openai-compatible",
+    "baseURL": "https://openrouter.ai/api/v1",
+    "apiKeyEnv": "OPENROUTER_API_KEY",
+    "model": "deepseek/deepseek-chat"
+  },
+  {
+    "name": "groq-llama",
+    "kind": "openai-compatible",
+    "baseURL": "https://api.groq.com/openai/v1",
+    "apiKeyEnv": "GROQ_API_KEY",
+    "model": "llama-3.3-70b-versatile"
+  },
+  {
+    "name": "local-ollama",
+    "kind": "ollama-native",
+    "baseURL": "http://localhost:11434",
+    "model": "llama3.3:70b"
+  },
+  {
+    "name": "anthropic",
+    "kind": "anthropic-native",
+    "baseURL": "https://api.anthropic.com",
+    "apiKeyEnv": "ANTHROPIC_API_KEY",
+    "model": "claude-opus-4-7"
+  }
+]
