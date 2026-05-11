@@ -3,6 +3,7 @@ import {
   getEdgesForClaim,
   getForecastsForClaim,
   getDossierForClaim,
+  getAnalysesForClaim,
   graph,
 } from "@/lib/graph";
 import { fullClaimLD } from "@/lib/jsonld";
@@ -68,6 +69,7 @@ export default async function ClaimPage({
   const { incoming, outgoing } = getEdgesForClaim(id);
   const forecasts = getForecastsForClaim(id);
   const dossier = getDossierForClaim(id);
+  const analyses = getAnalysesForClaim(claim);
   const ldJson = JSON.stringify(fullClaimLD(claim, graph, ""));
 
   return (
@@ -301,6 +303,37 @@ export default async function ClaimPage({
                       <div>
                         <div className="reasoning-label">Reasoning</div>
                         <p className="reasoning">{p.reasoning}</p>
+                        {p.baseRates.length > 0 && (
+                          <div className="prediction-anchors">
+                            <div className="anchor-label">Base rates</div>
+                            <ul className="anchor-list">
+                              {p.baseRates.map((b, j) => (
+                                <li key={j}>
+                                  <span className="rate">{b.rate.toFixed(2)}</span>
+                                  <span className="q">{b.question}</span>
+                                  <a className="src" href={b.source.url} target="_blank" rel="noopener noreferrer">
+                                    {b.source.label}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {p.dataAnchors.length > 0 && (
+                          <div className="prediction-anchors">
+                            <div className="anchor-label">Data anchors</div>
+                            <ul className="anchor-list">
+                              {p.dataAnchors.map((s, j) => (
+                                <li key={j}>
+                                  <a className="src" href={s.url} target="_blank" rel="noopener noreferrer">
+                                    {s.label}
+                                  </a>
+                                  {s.finding && <span className="finding">{s.finding}</span>}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -308,6 +341,38 @@ export default async function ClaimPage({
               </div>
             );
           })}
+        </section>
+      )}
+
+      {analyses.length > 0 && (
+        <section className="block">
+          <h2 className="section-label">Analyses</h2>
+          <ul className="analyses">
+            {analyses.map((a) => (
+              <li key={a.id} className="analysis">
+                <div className="ana-head">
+                  <span className="ana-kind">{a.kind}</span>
+                  <span className="ana-id">{a.id}</span>
+                </div>
+                <h3 className="ana-title">{a.title}</h3>
+                <p className="ana-summary">{a.summary}</p>
+                <div className="ana-finding">
+                  <span className="lbl">Finding</span>
+                  <span>{a.producedFinding}</span>
+                </div>
+                <div className="ana-src-label">Data sources ({a.dataSources.length})</div>
+                <ul className="ana-src-list">
+                  {a.dataSources.map((s, j) => (
+                    <li key={j}>
+                      <a href={s.url} target="_blank" rel="noopener noreferrer">{s.label}</a>
+                      {s.year && <span className="year"> · {s.year}</span>}
+                      {s.finding && <span className="finding"> — {s.finding}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

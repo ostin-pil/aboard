@@ -925,6 +925,55 @@ p.lede strong { color: var(--fg); font-weight: 500; }
 .single-details > summary { display: none; }
 
 .prediction { padding: 20px 22px; display: grid; grid-template-columns: 160px 1fr; gap: 28px; align-items: start; }
+
+.prediction-anchors { margin-top: 14px; }
+.prediction-anchors .anchor-label {
+  font-family: var(--mono); font-size: 10px; color: var(--muted-2);
+  letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px;
+}
+.prediction-anchors .anchor-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.prediction-anchors .anchor-list li { font-size: 13px; color: var(--muted); line-height: 1.45; }
+.prediction-anchors .anchor-list .rate {
+  font-family: var(--mono); color: var(--fg); margin-right: 8px;
+}
+.prediction-anchors .anchor-list .q { margin-right: 10px; }
+.prediction-anchors .anchor-list .src { color: var(--fg); text-decoration: underline; text-decoration-color: var(--line-2); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.prediction-anchors .anchor-list .src:hover { text-decoration-color: var(--fg); }
+.prediction-anchors .anchor-list .finding { color: var(--muted-2); margin-left: 8px; }
+
+.analyses { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 18px; }
+.analysis {
+  border: 1px solid var(--line-2); border-radius: 4px; background: var(--paper);
+  padding: 18px 22px;
+}
+.analysis .ana-head {
+  font-family: var(--mono); font-size: 10.5px; color: var(--muted-2);
+  letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px;
+  display: flex; gap: 10px; align-items: baseline;
+}
+.analysis .ana-head .ana-kind { color: var(--mech-fg); }
+.analysis .ana-title { font-size: 17px; margin: 0 0 8px; font-weight: 500; line-height: 1.3; }
+.analysis .ana-summary { color: var(--muted); font-size: 14.5px; line-height: 1.55; margin: 0 0 12px; }
+.analysis .ana-finding {
+  background: color-mix(in oklab, var(--lev-bg) 70%, transparent);
+  padding: 10px 14px; border-left: 2px solid var(--lev-fg);
+  font-size: 14px; line-height: 1.5; color: var(--fg); margin-bottom: 14px;
+}
+.analysis .ana-finding .lbl {
+  display: inline-block; font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--lev-fg);
+  margin-right: 10px;
+}
+.analysis .ana-src-label {
+  font-family: var(--mono); font-size: 10.5px; color: var(--muted-2);
+  letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px;
+}
+.analysis .ana-src-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.analysis .ana-src-list li { font-size: 13px; line-height: 1.5; color: var(--muted); }
+.analysis .ana-src-list a { color: var(--fg); text-decoration: underline; text-decoration-color: var(--line-2); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.analysis .ana-src-list a:hover { text-decoration-color: var(--fg); }
+.analysis .ana-src-list .year { color: var(--muted-2); font-family: var(--mono); font-size: 10.5px; }
+.analysis .ana-src-list .finding { color: var(--muted-2); }
 .prediction + .prediction { border-top: 1px dashed var(--line); }
 .prediction .p-num { font-family: var(--mono); font-size: 38px; color: var(--mech-fg); line-height: 1; letter-spacing: -0.02em; margin-bottom: 8px; }
 .prediction .p-num .eq { opacity: .55; padding-right: 4px; font-weight: 400; }
