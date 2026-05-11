@@ -55,10 +55,34 @@ export const Claim = z.object({
   confidence: z.number().min(0).max(1),
   sources: z.array(Source),
   dataPoints: z.array(DataPoint).default([]),
+  analyses: z.array(z.string()).default([]),
   authoredBy: AgentAttribution,
   createdAt: z.string(),
 });
 export type Claim = z.infer<typeof Claim>;
+
+export const AnalysisKind = z.enum([
+  "regression",
+  "comparison",
+  "synthesis",
+  "simulation",
+  "qualitative",
+]);
+export type AnalysisKind = z.infer<typeof AnalysisKind>;
+
+export const Analysis = z.object({
+  id: z.string(),
+  domain: z.string(),
+  kind: AnalysisKind,
+  title: z.string(),
+  summary: z.string(),
+  methodology: z.string().optional(),
+  dataSources: z.array(Source),
+  producedFinding: z.string(),
+  authoredBy: AgentAttribution,
+  createdAt: z.string(),
+});
+export type Analysis = z.infer<typeof Analysis>;
 
 export const EdgeKind = z.enum(["causes", "moderates", "reduces", "evidences"]);
 export type EdgeKind = z.infer<typeof EdgeKind>;
@@ -74,10 +98,19 @@ export const Edge = z.object({
 });
 export type Edge = z.infer<typeof Edge>;
 
+export const BaseRate = z.object({
+  question: z.string(),
+  rate: z.number().min(0).max(1),
+  source: Source,
+});
+export type BaseRate = z.infer<typeof BaseRate>;
+
 export const Prediction = z.object({
   agent: AgentAttribution,
   probability: z.number().min(0).max(1),
   reasoning: z.string(),
+  baseRates: z.array(BaseRate).default([]),
+  dataAnchors: z.array(Source).default([]),
   createdAt: z.string(),
 });
 export type Prediction = z.infer<typeof Prediction>;
@@ -120,6 +153,7 @@ export type ClaimGraph = {
   edges: Edge[];
   forecasts: Forecast[];
   dossiers: Dossier[];
+  analyses: Analysis[];
 };
 
 export const cruxRank = (c: Crux) => c.impactScore * c.uncertainty;

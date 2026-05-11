@@ -1,5 +1,5 @@
 import { getGraph } from "@/lib/data/loader";
-import type { Claim, ClaimGraph, Dossier, Edge, Forecast } from "./types";
+import type { Analysis, Claim, ClaimGraph, Dossier, Edge, Forecast } from "./types";
 
 /**
  * Backwards-compatible `graph` export. Many call sites still reference this
@@ -41,4 +41,15 @@ export function getDossierForClaim(id: string): Dossier | undefined {
 export function getClaimsWithDossiers(): Claim[] {
   const ids = new Set(graph.dossiers.map((d) => d.attachedToClaimId));
   return graph.claims.filter((c) => ids.has(c.id));
+}
+
+export function getAnalysis(id: string): Analysis | undefined {
+  return graph.analyses.find((a) => a.id === id);
+}
+
+export function getAnalysesForClaim(claim: Claim): Analysis[] {
+  if (!claim.analyses || claim.analyses.length === 0) return [];
+  return claim.analyses
+    .map((id) => graph.analyses.find((a) => a.id === id))
+    .filter((a): a is Analysis => Boolean(a));
 }

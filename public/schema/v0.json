@@ -119,6 +119,7 @@
         "aboard:createdAt": { "$ref": "#/$defs/Iso8601" },
         "schema:citation": { "type": "array", "items": { "$ref": "#/$defs/Source" } },
         "aboard:observations": { "type": "array", "items": { "$ref": "#/$defs/DataPoint" }, "description": "Quantitative data anchors backing this claim. Optional." },
+        "aboard:analyses": { "type": "array", "items": { "$ref": "#/$defs/IriRef" }, "description": "References to Analysis resources that ground this claim." },
         "schema:author": { "$ref": "#/$defs/Author" }
       },
       "additionalProperties": false
@@ -150,14 +151,65 @@
       },
       "additionalProperties": false
     },
+    "BaseRate": {
+      "type": "object",
+      "description": "A reference base rate that anchors a prediction. Captures the historical question, the empirical rate, and the source citation.",
+      "required": ["@type", "schema:question", "aboard:rate", "schema:citation"],
+      "properties": {
+        "@type": { "const": "aboard:BaseRate" },
+        "schema:question": { "type": "string", "description": "The historical question — 'how often has X happened in similar setups?'" },
+        "aboard:rate": { "$ref": "#/$defs/Probability" },
+        "schema:citation": { "$ref": "#/$defs/Source" }
+      },
+      "additionalProperties": false
+    },
     "Prediction": {
       "type": "object",
-      "description": "A single dated probability estimate by an agent for a Forecast.",
+      "description": "A single dated probability estimate by an agent for a Forecast. May carry base rates and data anchors for auditable provenance.",
       "required": ["@type", "aboard:probability", "aboard:reasoning", "aboard:createdAt", "schema:author"],
       "properties": {
         "@type": { "const": "aboard:Prediction" },
         "aboard:probability": { "$ref": "#/$defs/Probability" },
         "aboard:reasoning": { "type": "string" },
+        "aboard:createdAt": { "$ref": "#/$defs/Iso8601" },
+        "aboard:baseRates": { "type": "array", "items": { "$ref": "#/$defs/BaseRate" } },
+        "aboard:dataAnchors": { "type": "array", "items": { "$ref": "#/$defs/Source" } },
+        "schema:author": { "$ref": "#/$defs/Author" }
+      },
+      "additionalProperties": false
+    },
+    "AnalysisKind": {
+      "type": "string",
+      "enum": ["regression", "comparison", "synthesis", "simulation", "qualitative"],
+      "description": "Coarse category of the analysis."
+    },
+    "Analysis": {
+      "type": "object",
+      "description": "An analysis trail attached to one or more claims. Records the methodology, data sources, and finding behind a non-trivial claim — the 'how do we know' artifact.",
+      "required": [
+        "@type",
+        "@id",
+        "aboard:id",
+        "aboard:domain",
+        "aboard:analysisKind",
+        "schema:name",
+        "schema:abstract",
+        "schema:citation",
+        "aboard:producedFinding",
+        "aboard:createdAt",
+        "schema:author"
+      ],
+      "properties": {
+        "@type": { "const": "aboard:Analysis" },
+        "@id": { "type": "string", "format": "uri" },
+        "aboard:id": { "type": "string" },
+        "aboard:domain": { "type": "string" },
+        "aboard:analysisKind": { "$ref": "#/$defs/AnalysisKind" },
+        "schema:name": { "type": "string" },
+        "schema:abstract": { "type": "string", "description": "Short prose summary of what the analysis did and concluded." },
+        "aboard:methodology": { "type": "string", "description": "Optional longer description of how the analysis was conducted." },
+        "schema:citation": { "type": "array", "items": { "$ref": "#/$defs/Source" } },
+        "aboard:producedFinding": { "type": "string" },
         "aboard:createdAt": { "$ref": "#/$defs/Iso8601" },
         "schema:author": { "$ref": "#/$defs/Author" }
       },
@@ -252,7 +304,8 @@
         "aboard:claims": { "type": "array", "items": { "$ref": "#/$defs/Claim" } },
         "aboard:edges": { "type": "array", "items": { "$ref": "#/$defs/Edge" } },
         "aboard:forecasts": { "type": "array", "items": { "$ref": "#/$defs/Forecast" } },
-        "aboard:dossiers": { "type": "array", "items": { "$ref": "#/$defs/Dossier" } }
+        "aboard:dossiers": { "type": "array", "items": { "$ref": "#/$defs/Dossier" } },
+        "aboard:analyses": { "type": "array", "items": { "$ref": "#/$defs/Analysis" } }
       },
       "additionalProperties": false
     },
@@ -289,6 +342,7 @@
         "aboard:createdAt": { "$ref": "#/$defs/Iso8601" },
         "schema:citation": { "type": "array", "items": { "$ref": "#/$defs/Source" } },
         "aboard:observations": { "type": "array", "items": { "$ref": "#/$defs/DataPoint" } },
+        "aboard:analyses": { "type": "array", "items": { "$ref": "#/$defs/IriRef" } },
         "schema:author": { "$ref": "#/$defs/Author" },
         "aboard:incomingEdges": { "type": "array", "items": { "$ref": "#/$defs/Edge" } },
         "aboard:outgoingEdges": { "type": "array", "items": { "$ref": "#/$defs/Edge" } },

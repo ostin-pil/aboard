@@ -8,6 +8,7 @@ import {
   Edge,
   Forecast,
   Dossier,
+  Analysis,
   type ClaimGraph,
 } from "@/lib/types";
 
@@ -52,6 +53,7 @@ function loadDomain(domain: string): {
   edges: Edge[];
   forecasts: Forecast[];
   dossiers: Dossier[];
+  analyses: Analysis[];
 } {
   const dir = join(DATA_ROOT, domain);
 
@@ -69,7 +71,11 @@ function loadDomain(domain: string): {
     .filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"))
     .map((f) => loadYaml(join(dir, "dossiers", f), Dossier));
 
-  return { claims, edges, forecasts, dossiers };
+  const analyses = readDirIfExists(join(dir, "analyses"))
+    .filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"))
+    .map((f) => loadYaml(join(dir, "analyses", f), Analysis));
+
+  return { claims, edges, forecasts, dossiers, analyses };
 }
 
 function listDomains(): string[] {
@@ -85,6 +91,7 @@ function loadAll(): ClaimGraph {
   const edges: Edge[] = [];
   const forecasts: Forecast[] = [];
   const dossiers: Dossier[] = [];
+  const analyses: Analysis[] = [];
 
   for (const domain of listDomains()) {
     const d = loadDomain(domain);
@@ -92,13 +99,14 @@ function loadAll(): ClaimGraph {
     edges.push(...d.edges);
     forecasts.push(...d.forecasts);
     dossiers.push(...d.dossiers);
+    analyses.push(...d.analyses);
   }
 
   // cross-domain edges
   const crossPath = join(DATA_ROOT, "cross_domain_edges.yaml");
   edges.push(...loadEdges(crossPath));
 
-  return { claims, edges, forecasts, dossiers };
+  return { claims, edges, forecasts, dossiers, analyses };
 }
 
 let cached: ClaimGraph | null = null;

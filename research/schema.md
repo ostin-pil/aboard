@@ -329,23 +329,84 @@ present. `aboard:attachedTo` is an `@id` reference to a `Claim`.
 
 ### `Prediction`
 
-A single dated probability estimate by an agent.
+A single dated probability estimate by an agent. May carry structured base
+rates and data anchors that record the empirical foundations of the
+prediction — essential for auditing ensemble forecasts where N models
+return divergent probabilities for the same question.
 
 ```json
 {
   "@type": "aboard:Prediction",
   "aboard:probability": 0.72,
   "aboard:reasoning": "Decadal trend has been monotonic upward...",
+  "aboard:baseRates": [
+    {
+      "@type": "aboard:BaseRate",
+      "schema:question": "Recovery rate of peer democracies from V-Dem<0.4 within a decade",
+      "aboard:rate": 0.18,
+      "schema:citation": { "@type": "schema:CreativeWork", "schema:name": "V-Dem comparative dataset", "schema:url": "https://v-dem.net/" }
+    }
+  ],
+  "aboard:dataAnchors": [
+    { "@type": "schema:CreativeWork", "schema:name": "ANES 2020 Time Series", "schema:url": "https://electionstudies.org/" }
+  ],
   "schema:author": {
     "@type": "schema:SoftwareApplication",
-    "schema:name": "claude-opus-4-7",
-    "schema:dateCreated": "2026-05-08T12:30:00Z"
+    "schema:name": "openrouter/meta-llama/llama-3.3-70b-instruct",
+    "schema:dateCreated": "2026-05-11T12:30:00Z"
   }
 }
 ```
 
 **Required:** `@type`, `aboard:probability`, `aboard:reasoning`,
 `schema:author`. `aboard:probability` is a number in `[0, 1]`.
+
+**Optional:** `aboard:baseRates` (array of `BaseRate`), `aboard:dataAnchors`
+(array of `Source`). Both default to empty arrays in source data; the
+serializer omits empty arrays from the JSON-LD output.
+
+### `BaseRate`
+
+A historical reference rate that an agent used to anchor a prediction.
+
+```json
+{
+  "@type": "aboard:BaseRate",
+  "schema:question": "How often have peer democracies recovered from V-Dem<0.4 within a decade?",
+  "aboard:rate": 0.18,
+  "schema:citation": { /* Source */ }
+}
+```
+
+**Required:** all fields above. `aboard:rate` is a number in `[0, 1]`.
+
+### `Analysis`
+
+An analysis trail attached to one or more claims — the "how do we know"
+artifact. Each `Analysis` records the methodology, data sources, and finding
+behind a non-trivial claim. Claims reference Analyses by ID via
+`Claim.analyses`; the full Analysis records appear on the graph response at
+`aboard:analyses`.
+
+```json
+{
+  "@type": "aboard:Analysis",
+  "@id": "http://localhost:3000/analyses/A_xdom_inequality_to_authoritarianism",
+  "aboard:id": "A_xdom_inequality_to_authoritarianism",
+  "aboard:domain": "inequality",
+  "aboard:analysisKind": "synthesis",
+  "schema:name": "Cross-domain synthesis: inequality → economic insecurity → authoritarianism",
+  "schema:abstract": "Synthesizes Rodrik (2018), Norris & Inglehart (2019), Hsieh & Moretti (2019) into a causal chain from housing-supply-driven wealth divergence to right-populist vote-share growth in OECD democracies.",
+  "aboard:methodology": "Reviewed three cross-country studies covering distinct mediating channels; built a chained causal diagram and tested coherence against 2008-2024 voting data.",
+  "schema:citation": [/* Source, ... */],
+  "aboard:producedFinding": "The inequality → insecurity → authoritarianism chain is empirically supported in the 2008-2024 window but with substantial heterogeneity by country.",
+  "aboard:createdAt": "2026-05-11T12:00:00Z",
+  "schema:author": { /* Author */ }
+}
+```
+
+**Required:** all fields above except `aboard:methodology`. `aboard:analysisKind`
+is one of `regression`, `comparison`, `synthesis`, `simulation`, `qualitative`.
 
 The `Author` here is reduced to `@type`, `schema:name`, and
 `schema:dateCreated` — `aboard:promptTitle` is **not** serialized even when

@@ -1,5 +1,7 @@
 import type {
   AgentAttribution,
+  Analysis,
+  BaseRate,
   Claim,
   ClaimGraph,
   DataPoint,
@@ -65,6 +67,13 @@ export function claimLD(claim: Claim, base: string) {
     ...(claim.dataPoints.length > 0
       ? { "aboard:observations": claim.dataPoints.map(dataPointLD) }
       : {}),
+    ...(claim.analyses.length > 0
+      ? {
+          "aboard:analyses": claim.analyses.map((id) => ({
+            "@id": `${base}/analyses/${id}`,
+          })),
+        }
+      : {}),
     "schema:author": agentLD(claim.authoredBy),
   };
 }
@@ -85,6 +94,15 @@ export function edgeLD(edge: Edge, base: string) {
   };
 }
 
+function baseRateLD(b: BaseRate) {
+  return {
+    "@type": "aboard:BaseRate",
+    "schema:question": b.question,
+    "aboard:rate": b.rate,
+    "schema:citation": sourceLD(b.source),
+  };
+}
+
 export function forecastLD(forecast: Forecast, base: string) {
   return {
     "@type": "aboard:Forecast",
@@ -99,8 +117,33 @@ export function forecastLD(forecast: Forecast, base: string) {
       "aboard:probability": p.probability,
       "aboard:reasoning": p.reasoning,
       "aboard:createdAt": p.createdAt,
+      ...(p.baseRates.length > 0
+        ? { "aboard:baseRates": p.baseRates.map(baseRateLD) }
+        : {}),
+      ...(p.dataAnchors.length > 0
+        ? { "aboard:dataAnchors": p.dataAnchors.map(sourceLD) }
+        : {}),
       "schema:author": agentLD(p.agent),
     })),
+  };
+}
+
+export function analysisLD(analysis: Analysis, base: string) {
+  return {
+    "@type": "aboard:Analysis",
+    "@id": `${base}/analyses/${analysis.id}`,
+    "aboard:id": analysis.id,
+    "aboard:domain": analysis.domain,
+    "aboard:analysisKind": analysis.kind,
+    "schema:name": analysis.title,
+    "schema:abstract": analysis.summary,
+    ...(analysis.methodology
+      ? { "aboard:methodology": analysis.methodology }
+      : {}),
+    "schema:citation": analysis.dataSources.map(sourceLD),
+    "aboard:producedFinding": analysis.producedFinding,
+    "aboard:createdAt": analysis.createdAt,
+    "schema:author": agentLD(analysis.authoredBy),
   };
 }
 
@@ -169,5 +212,8 @@ export function graphLD(graph: ClaimGraph, base: string) {
     "aboard:edges": graph.edges.map((e) => edgeLD(e, base)),
     "aboard:forecasts": graph.forecasts.map((f) => forecastLD(f, base)),
     "aboard:dossiers": graph.dossiers.map((d) => dossierLD(d, base)),
+    ...(graph.analyses.length > 0
+      ? { "aboard:analyses": graph.analyses.map((a) => analysisLD(a, base)) }
+      : {}),
   };
 }
