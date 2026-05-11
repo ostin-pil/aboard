@@ -16,20 +16,30 @@ npm run lint         # eslint
 
 ## Architecture
 
-- `src/data/seed.ts` is the source of truth for the claim graph (no DB yet — JSON-as-data).
-- `src/lib/types.ts` defines Zod schemas + derived TS types. Schema is in flux; pragmatic JSON shape that will become the published JSON-LD context.
-- `src/lib/graph.ts` exposes read accessors over the seed.
-- `src/lib/jsonld.ts` serializes the graph to JSON-LD with a `schema.org` + `aboard:` context.
-- `src/components/ClaimGraphView.tsx` renders the graph with `@xyflow/react`. Nodes laid out manually in three rows by claim kind.
-- `src/app/` follows Next.js 16 App Router conventions. Each detail page (`claims/[id]`, `dossiers/[claimId]`) is a server component reading from `graph`.
-- `src/app/api/` exposes JSON-LD endpoints — every claim and the full graph at stable URLs.
+The data layer is a filesystem CMS — each claim is a Markdown file with YAML frontmatter; forecasts, dossiers, and edges are YAML. The runtime reads `data/` at module load and validates everything against the Zod types.
+
+- `data/<domain>/claims/<id>.md` — frontmatter is the metadata, body is the statement.
+- `data/<domain>/forecasts/<id>.yaml` — full forecast with predictions.
+- `data/<domain>/dossiers/<claim-id>.yaml` — dual-dossier debate.
+- `data/<domain>/edges.yaml` — intra-domain edges.
+- `data/cross_domain_edges.yaml` — edges spanning domains (cross-domain by design — see `research/vision.md`).
+- `public/schema/v0.json` — JSON Schema describing the JSON-LD output. Authoritative.
+- `research/schema.md` — human-readable spec.
+- `src/lib/data/loader.ts` walks `data/`, parses, validates, returns a `ClaimGraph`. Module-level memoized.
+- `src/lib/types.ts` — Zod schemas + derived TS types. Validates incoming data at load time.
+- `src/lib/graph.ts` — thin accessor layer over the loader's `ClaimGraph`.
+- `src/lib/jsonld.ts` — serializes a `ClaimGraph` to JSON-LD with `schema.org` + `aboard:` context.
+- `public/graph-engine.js` — vanilla JS interactive graph engine, mounted via `ClaimGraphCanvas.tsx`.
+- `src/app/api/` — JSON-LD endpoints (`/api/graph`, `/api/claims/[id]`). Output validates against `public/schema/v0.json`.
+- `clients/` — independent npm package with a TypeScript reference adapter (`validate.ts`, `briefing.ts`) consuming the JSON-LD endpoints.
 
 ## Rules
 
 - No `any`. Strict TS only. If a type is unclear, model it explicitly with Zod.
 - Every agent-generated content carries an `AgentAttribution` (model + prompt title + timestamp). Never strip attribution.
 - Sources must be real URLs. If a claim cites a paper or dataset, the URL goes to the actual landing page, not a fabricated one.
-- Don't add a database, ORM, or backing store until the schema stabilizes. JSON-as-source-of-truth is intentional.
+- `data/` is the source of truth for claims, forecasts, dossiers, edges. Add or change content there, not in code.
+- `public/schema/v0.json` is the spec. If you change `jsonld.ts` or `types.ts`, update the schema (and `research/schema.md`) in the same commit.
 - No `console.log` in committed code. Use real logging if needed.
 - Keep each `.tsx` page file under ~250 lines — split when larger by responsibility.
 - Server components by default. Add `"use client"` only when interactivity demands it.
@@ -37,29 +47,51 @@ npm run lint         # eslint
 ## File Layout
 
 ```
+data/                                   source of truth for claims (filesystem CMS)
+  <domain>/
+    claims/<id>.md                      frontmatter + body (statement)
+    forecasts/<id>.yaml
+    dossiers/<claim-id>.yaml
+    edges.yaml
+  cross_domain_edges.yaml               (empty in v0; reserved for cross-domain)
+
+public/schema/v0.json                   JSON Schema validating the JSON-LD API
+public/graph-engine.js                  client-side interactive graph
+
 src/
   app/
-    page.tsx                       graph view (server component)
-    claims/[id]/page.tsx           claim detail
-    dossiers/[claimId]/page.tsx    dual-dossier debate
-    about/page.tsx                 explainer
-    api/claims/[id]/route.ts       single-claim JSON-LD
-    api/graph/route.ts             full-graph JSON-LD
-    layout.tsx                     header, footer, fonts
-    globals.css                    Tailwind v4 + design tokens
+    page.tsx                            landing (inline graph)
+    graph/page.tsx                      fullbleed graph + editor toolbar
+    claims/[id]/page.tsx                claim detail
+    dossiers/[claimId]/page.tsx         dual-dossier debate
+    about/page.tsx                      explainer
+    api/claims/[id]/route.ts            single-claim JSON-LD
+    api/graph/route.ts                  full-graph JSON-LD
+    opengraph-image.tsx                 site OG card
+    claims/[id]/opengraph-image.tsx     per-claim OG
+    dossiers/[claimId]/opengraph-image.tsx  per-dossier OG
+    layout.tsx                          header, footer, fonts
+    globals.css                         Tailwind v4 + design tokens
   components/
-    ClaimGraphView.tsx             React Flow integration ("use client")
-    ClaimNode.tsx                  custom claim node
-  data/seed.ts                     the seed claim graph
+    ClaimGraphCanvas.tsx                React wrapper around graph-engine
+    GraphFullbleed.tsx                  fullbleed page chrome + toolbar
+    ThemeToggle.tsx                     system/light/dark
   lib/
-    types.ts                       Zod schemas + TS types
-    graph.ts                       read accessors
-    jsonld.ts                      JSON-LD serializers
+    data/loader.ts                      walks data/, validates with Zod
+    graph.ts                            accessor layer
+    types.ts                            Zod schemas + TS types
+    jsonld.ts                           JSON-LD serializers
+    engine-adapter.ts                   ClaimGraph → engine data shape
+
+clients/                                independent npm package
+  validate.ts                           validates /api/graph against v0 schema
+  briefing.ts                           renders Markdown briefing from API
+  package.json, tsconfig.json
 scripts/
-  generate-prediction.ts           live agent forecast generator
-research/                          landscape + gap analysis (the why)
-sessions/                          per-session work logs (created by /session-end)
-knowledge/                         issues.md and other long-lived notes
+  generate-prediction.ts                live agent forecast generator
+research/                               landscape, vision, schema docs
+sessions/                               per-session work logs (created by /session-end)
+knowledge/                              issues.md and other long-lived notes
 ```
 
 ## Sessions

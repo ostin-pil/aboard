@@ -20,27 +20,41 @@ Open <http://localhost:3000>.
 ## Layout
 
 ```
+data/                            source of truth (filesystem CMS)
+  <domain>/
+    claims/<id>.md               frontmatter + statement body
+    forecasts/<id>.yaml
+    dossiers/<claim-id>.yaml
+    edges.yaml
+  cross_domain_edges.yaml
+
+public/schema/v0.json            JSON Schema validating the JSON-LD API
+public/graph-engine.js           client-side graph engine
+
 src/
-  app/                       Next.js App Router
-    page.tsx                 graph view
-    claims/[id]/page.tsx     per-claim detail
-    dossiers/[claimId]       dual-dossier debate
-    about/                   what is this
-    api/
-      claims/[id]/route.ts   single-claim JSON-LD
-      graph/route.ts         full-graph JSON-LD
-  components/
-    ClaimGraphView.tsx       React Flow integration
-    ClaimNode.tsx            custom claim node
-  data/seed.ts               the seed claim graph
+  app/                           Next.js App Router (pages + JSON-LD routes + OG cards)
+  components/                    ClaimGraphCanvas, GraphFullbleed, ThemeToggle
   lib/
-    types.ts                 Zod schemas + TS types
-    graph.ts                 read accessors
-    jsonld.ts                JSON-LD serializers
-scripts/
-  generate-prediction.ts     live agent forecast generator (needs ANTHROPIC_API_KEY)
-research/                    landscape + gap analysis (the why)
+    data/loader.ts               reads data/, validates, returns ClaimGraph
+    types.ts                     Zod schemas + TS types
+    graph.ts                     read accessors
+    jsonld.ts                    JSON-LD serializers
+    engine-adapter.ts            ClaimGraph → engine data shape
+
+clients/                         independent TS package — validate + briefing
+scripts/generate-prediction.ts   live agent forecast generator (needs ANTHROPIC_API_KEY)
+research/                        landscape, vision, schema specs
 ```
+
+## Adding a claim
+
+1. Create `data/<domain>/claims/<ID>.md` with frontmatter (id, kind, title, domain, confidence, sources, authoredBy, createdAt). Body is the statement.
+2. If the claim has causal links, add edges to `data/<domain>/edges.yaml` (or `data/cross_domain_edges.yaml` if it spans domains).
+3. If it has attached forecasts, add a `data/<domain>/forecasts/<F-ID>.yaml`.
+4. If contested, add a `data/<domain>/dossiers/<claim-ID>.yaml`.
+5. The dev server hot-reloads only after restart (loader is module-level memoized).
+
+Validation runs at module load via Zod; any malformed file fails the build with a path.
 
 ## JSON-LD
 
