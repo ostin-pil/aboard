@@ -1,0 +1,72 @@
+- id: E1
+  fromId: M1
+  toId: S1
+  kind: causes
+  strength: 0.6
+  rationale: Fragmented information environments erode the shared-fact basis required for democratic accountability, accelerating decline of the Liberal Democracy Index.
+- id: E2
+  fromId: M1
+  toId: S3
+  kind: causes
+  strength: 0.55
+  rationale: Diverging news sources reduce common scrutiny of press freedom, normalizing its erosion as a partisan rather than universal concern.
+- id: E3
+  fromId: M2
+  toId: S1
+  kind: causes
+  strength: 0.65
+  rationale: Affective polarization raises voter tolerance for co-partisan norm violations, enabling aggrandizement that registers in the V-Dem index.
+- id: E4
+  fromId: M2
+  toId: S2
+  kind: causes
+  strength: 0.7
+  rationale: Affective polarization lowers cross-party resistance to executive overreach, weakening legislative and judicial constraints on the executive.
+- id: E5
+  fromId: M3
+  toId: S2
+  kind: causes
+  strength: 0.5
+  rationale: Economically insecure electorates accept executive consolidation framed as decisive action, eroding horizontal accountability institutions.
+- id: E6
+  fromId: M4
+  toId: M1
+  kind: moderates
+  strength: 0.55
+  rationale: Engagement-ranked feeds accelerate partisan information sorting, deepening fragmentation of the news-source mix.
+- id: E7
+  fromId: M4
+  toId: M2
+  kind: moderates
+  strength: 0.5
+  rationale: Outrage amplification compounds out-group hostility through repeated platform exposure, raising affective polarization at scale.
+- id: E8
+  fromId: M5
+  toId: M2
+  kind: moderates
+  strength: 0.55
+  rationale: Without cross-class civic venues, partisan identity becomes the dominant social category, raising affective polarization.
+- id: E9
+  fromId: L1
+  toId: M2
+  kind: reduces
+  strength: 0.45
+  rationale: Proportional representation and ranked-choice voting reduce the strategic value of negative-partisan campaigning, lowering affective polarization at equilibrium.
+- id: E10
+  fromId: L2
+  toId: M1
+  kind: reduces
+  strength: 0.4
+  rationale: Publicly funded local journalism rebuilds shared informational substrate, partially reversing news-source fragmentation.
+- id: E11
+  fromId: L3
+  toId: M4
+  kind: reduces
+  strength: 0.4
+  rationale: Mandatory audits and antitrust enforcement reduce the dominance of any single engagement-ranking system over public discourse.
+- id: E12
+  fromId: L4
+  toId: M5
+  kind: reduces
+  strength: 0.35
+  rationale: Sustained civic education raises baseline pluralist-norm knowledge and slows erosion of intermediary civic life.

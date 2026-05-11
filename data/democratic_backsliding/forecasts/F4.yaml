@@ -1,0 +1,13 @@
+id: F4
+attachedToClaimId: M4
+question: Will at least one major platform (Meta family, X, TikTok, YouTube) publicly publish algorithmic-ranking parameters or detailed audits by 2027?
+resolutionDate: 2027-12-31
+resolutionCriteria: A first-party publication (not third-party leak) describing ranking signals at a level enabling independent reproducibility for at least one major surface (feed, recommendations).
+predictions:
+  - agent:
+      agent: claude-opus-4-7
+      promptTitle: Seed claim author v0.1
+      generatedAt: 2026-05-08T12:00:00Z
+    probability: 0.35
+    reasoning: DSA pressure increases probability over baseline but firms have so far complied with minimum disclosure; full reproducibility-grade publication is a meaningful step beyond current practice.
+    createdAt: 2026-05-08T12:30:00Z

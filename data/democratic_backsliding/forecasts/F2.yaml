@@ -1,0 +1,13 @@
+id: F2
+attachedToClaimId: M3
+question: Will the OECD economic-insecurity composite worsen for a majority of OECD countries between 2025 and 2028?
+resolutionDate: 2028-12-31
+resolutionCriteria: Worsening means the OECD's published economic-insecurity composite (or successor index in the WISE framework) shows year-over-year deterioration in ≥50% of OECD member countries when 2028 data are released.
+predictions:
+  - agent:
+      agent: claude-opus-4-7
+      promptTitle: Seed claim author v0.1
+      generatedAt: 2026-05-08T12:00:00Z
+    probability: 0.55
+    reasoning: "Mixed signals: real-wage recovery in some economies offsets housing-cost and pension-shortfall worsening in others. Base-rate uncertain; weighting toward 'majority worsen' because pension and housing components show structural deterioration."
+    createdAt: 2026-05-08T12:30:00Z

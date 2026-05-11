@@ -1,0 +1,13 @@
+id: F1
+attachedToClaimId: M2
+question: Will the US ANES out-party feeling-thermometer gap widen relative to the most recent prior wave by the next ANES wave (≤2028)?
+resolutionDate: 2028-12-31
+resolutionCriteria: Widening means the absolute difference between in-party and out-party mean feeling-thermometer scores increases by ≥2 points relative to the most recent ANES Time Series Study.
+predictions:
+  - agent:
+      agent: claude-opus-4-7
+      promptTitle: Seed claim author v0.1
+      generatedAt: 2026-05-08T12:00:00Z
+    probability: 0.72
+    reasoning: "Decadal trend has been monotonic upward since the 1990s; absent a major shock to the party system or a sustained electoral-reform rollout (none currently active at scale), continuation is base-rate. Downside risk: measurement-mode effects in next wave."
+    createdAt: 2026-05-08T12:30:00Z

@@ -1,0 +1,49 @@
+attachedToClaimId: M4
+pro:
+  thesis: Platform algorithmic amplification of outrage is a primary causal driver of contemporary affective polarization and information fragmentation, not a marginal contributor.
+  steelmannedSummary: "Engagement-ranked feeds systematically over-represent content that produces strong emotional response, and out-group anger is the most reliable producer of such response. Repeated exposure across hundreds of millions of users compounds: behavioral-economics and habit-formation evidence indicates that ranking effects are persistent rather than transient. Internal Meta research (Facebook Files) and audit studies (Bakshy, Bail) show measurable shifts in attitudes after feed-level interventions. Cross-country variance in polarization tracks platform-usage variance with a temporal lag consistent with causation rather than mere selection. The counterfactual where engagement ranking is replaced with chronological or quality-weighted ranking would, on these models, produce measurably less affective polarization within an electoral cycle."
+  keySources:
+    - label: Bail — Breaking the Social Media Prism
+      url: https://www.chrisbail.net/
+      kind: book
+      year: 2021
+      authors: Bail
+      finding: Field experiments and survey evidence showing that exposure to opposing partisan content on platforms increases, not decreases, affective polarization.
+    - label: Stanford Cyber Policy Center — platform research
+      url: https://cyber.fsi.stanford.edu/cpc
+      kind: report
+      finding: Audit studies of ranking-system behavior and platform-internal-research synthesis on engagement-driven content distribution.
+  authoredBy:
+    agent: claude-opus-4-7
+    promptTitle: Steelman pro-thesis dossier v0.1
+    generatedAt: 2026-05-08T12:30:00Z
+con:
+  thesis: Platform algorithmic amplification is at most a marginal contributor to democratic backsliding; the dominant mechanisms (economic insecurity, civic-institution erosion, party-system dynamics) are upstream of and largely independent from platform design.
+  steelmannedSummary: Affective polarization rose for at least two decades before engagement ranking became dominant; cross-country comparison shows substantial polarization in countries with low platform penetration. Field experiments deactivating Facebook (Allcott et al. 2020) found small or null effects on issue-attitude polarization despite large effects on news consumption. Pre-platform mechanisms — partisan sorting, media deregulation, residential clustering, occupational segregation — produced measurable polarization gains attributable to non-platform causes. Treating platforms as the lever risks overestimating the policy ROI of platform reform and underweighting structural interventions in housing, labor, and electoral institutions whose evidence base for democratic effects is stronger.
+  keySources:
+    - label: Allcott et al. — Welfare Effects of Social Media (NBER)
+      url: https://www.nber.org/papers/w25514
+      kind: paper
+      year: 2020
+      authors: Allcott, Braghieri, Eichmeyer, Gentzkow
+      finding: RCT deactivating Facebook for one month found small or null effects on issue-attitude polarization despite large effects on news consumption.
+    - label: Boxell, Gentzkow, Shapiro — Cross-country polarization
+      url: https://www.brown.edu/Research/Shapiro/
+      kind: paper
+      year: 2020
+      authors: Boxell, Gentzkow, Shapiro
+      finding: Cross-country comparison showing that affective-polarization growth is unrelated to internet/social-media penetration and predates platform dominance.
+  authoredBy:
+    agent: claude-opus-4-7
+    promptTitle: Steelman con-thesis dossier v0.1
+    generatedAt: 2026-05-08T12:30:00Z
+cruxes:
+  - statement: If platform-level interventions (e.g., chronological ranking, quality-weighted ranking) produce measurable reductions in aggregate affective-polarization metrics within one electoral cycle in a randomized rollout, the pro thesis is supported; if they do not, the con thesis is supported.
+    impactScore: 0.85
+    uncertainty: 0.7
+  - statement: If pre-platform polarization growth rates (1980–2005) are statistically indistinguishable from post-platform rates (2010–2025) after controlling for party-system and economic covariates, the con thesis is supported.
+    impactScore: 0.7
+    uncertainty: 0.5
+  - statement: If cross-country variance in affective polarization is better explained by platform-usage intensity than by economic insecurity, civic-institution density, or electoral system, the pro thesis is supported.
+    impactScore: 0.65
+    uncertainty: 0.6

@@ -1,0 +1,13 @@
+id: F5
+attachedToClaimId: L3
+question: Will any G7 country pass binding algorithmic-transparency legislation by end-2027 (beyond DSA scope)?
+resolutionDate: 2027-12-31
+resolutionCriteria: Binding statute requiring documented algorithmic auditing or ranking disclosure, distinct from DSA requirements (which apply to EU members already).
+predictions:
+  - agent:
+      agent: claude-opus-4-7
+      promptTitle: Seed claim author v0.1
+      generatedAt: 2026-05-08T12:00:00Z
+    probability: 0.3
+    reasoning: UK Online Safety Act and Canadian C-27 are partial precedents but stop short of mandatory ranking disclosure; political appetite is uneven.
+    createdAt: 2026-05-08T12:30:00Z

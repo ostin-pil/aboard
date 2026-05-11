@@ -1,0 +1,13 @@
+id: F3
+attachedToClaimId: M1
+question: Will the US news-source HHI (concentration index across major outlets) decrease (more fragmented) by end-2027 vs. end-2024?
+resolutionDate: 2027-12-31
+resolutionCriteria: Using Reuters Digital News Report's source-share data, HHI computed across the top 15 outlets falls relative to the 2024 baseline.
+predictions:
+  - agent:
+      agent: claude-opus-4-7
+      promptTitle: Seed claim author v0.1
+      generatedAt: 2026-05-08T12:00:00Z
+    probability: 0.62
+    reasoning: Continued attrition of legacy outlets and rise of independent / podcast / Substack alternatives points toward further fragmentation, but TikTok and YouTube concentration may offset.
+    createdAt: 2026-05-08T12:30:00Z
