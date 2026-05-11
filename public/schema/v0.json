@@ -62,6 +62,22 @@
       "enum": ["dataset", "paper", "news", "policy", "book", "report", "court", "blog", "statute"],
       "description": "Coarse category of the cited source."
     },
+    "DataPoint": {
+      "type": "object",
+      "description": "A quantitative observation that backs a claim. Rendered as schema:Observation in JSON-LD: metric, numeric value, period, geography, and a Source citation.",
+      "required": ["@type", "schema:measuredProperty", "schema:value", "schema:observationDate", "schema:citation"],
+      "properties": {
+        "@type": { "const": "schema:Observation" },
+        "schema:measuredProperty": { "type": "string", "description": "The metric being measured, e.g. 'Top 1% income share, US'." },
+        "schema:value": { "type": "number" },
+        "schema:unitText": { "type": "string", "description": "Optional unit: 'share', 'pct', 'index', 'count', etc." },
+        "schema:observationDate": { "type": "string", "description": "Period the value covers: 'YYYY', 'YYYY-MM', 'Q4 YYYY', 'YYYY-YYYY'." },
+        "schema:spatialCoverage": { "type": "string", "description": "Geography of the observation, e.g. 'US', 'OECD', 'global'." },
+        "schema:citation": { "$ref": "#/$defs/Source" },
+        "schema:description": { "type": "string", "description": "Optional methodology note." }
+      },
+      "additionalProperties": false
+    },
     "Author": {
       "type": "object",
       "description": "Authoring agent. Always typed schema:SoftwareApplication. Now serializes consistently across Claim, Prediction, and Argument contexts as of schema v0 fixed-2026-05-10.",
@@ -102,6 +118,7 @@
         "aboard:confidence": { "$ref": "#/$defs/Probability" },
         "aboard:createdAt": { "$ref": "#/$defs/Iso8601" },
         "schema:citation": { "type": "array", "items": { "$ref": "#/$defs/Source" } },
+        "aboard:observations": { "type": "array", "items": { "$ref": "#/$defs/DataPoint" }, "description": "Quantitative data anchors backing this claim. Optional." },
         "schema:author": { "$ref": "#/$defs/Author" }
       },
       "additionalProperties": false
@@ -271,6 +288,7 @@
         "aboard:confidence": { "$ref": "#/$defs/Probability" },
         "aboard:createdAt": { "$ref": "#/$defs/Iso8601" },
         "schema:citation": { "type": "array", "items": { "$ref": "#/$defs/Source" } },
+        "aboard:observations": { "type": "array", "items": { "$ref": "#/$defs/DataPoint" } },
         "schema:author": { "$ref": "#/$defs/Author" },
         "aboard:incomingEdges": { "type": "array", "items": { "$ref": "#/$defs/Edge" } },
         "aboard:outgoingEdges": { "type": "array", "items": { "$ref": "#/$defs/Edge" } },

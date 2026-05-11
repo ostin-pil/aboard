@@ -179,6 +179,41 @@ present as a separate field — it must be parsed from the URL path if needed.
 `aboard:confidence` is a number in `[0, 1]`, interpretable as the authoring
 agent's posterior probability that the claim is materially correct.
 
+### `DataPoint`
+
+A quantitative observation that backs a claim — the project's mechanism for
+making "we say X is rising" auditable as "metric Y had value Z in period W,
+geography G, per source S." DataPoints serialize as `schema:Observation`.
+
+```json
+{
+  "@type": "schema:Observation",
+  "schema:measuredProperty": "Liberal Democracy Index — global mean",
+  "schema:value": 0.45,
+  "schema:unitText": "index",
+  "schema:observationDate": "2024",
+  "schema:spatialCoverage": "global",
+  "schema:citation": {
+    "@type": "schema:CreativeWork",
+    "schema:name": "V-Dem Democracy Report",
+    "schema:url": "https://v-dem.net/publications/democracy-reports/",
+    "aboard:sourceKind": "dataset"
+  }
+}
+```
+
+**Required:** `@type`, `schema:measuredProperty`, `schema:value`,
+`schema:observationDate`, `schema:citation`. **Optional:** `schema:unitText`
+(unit string — `"share"`, `"pct"`, `"index"`, `"count"`, …),
+`schema:spatialCoverage` (geography — `"US"`, `"OECD"`, `"global"`),
+`schema:description` (free-form methodology note).
+
+DataPoints attach to a `Claim` via the `aboard:observations` array. Empty
+arrays are omitted from the output. They are intended for *empirical*
+claims (symptoms with measurable trends; mechanisms whose magnitude can be
+quantified) — leverage-point claims often don't carry DataPoints because
+they describe an intervention rather than an observation.
+
 ### `Source`
 
 A cited source.

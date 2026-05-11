@@ -35,6 +35,17 @@ export type Source = z.infer<typeof Source>;
 export const ClaimKind = z.enum(["symptom", "mechanism", "leverage_point"]);
 export type ClaimKind = z.infer<typeof ClaimKind>;
 
+export const DataPoint = z.object({
+  metric: z.string(),
+  value: z.number(),
+  unit: z.string().optional(),
+  period: z.string(),
+  geography: z.string().optional(),
+  source: Source,
+  note: z.string().optional(),
+});
+export type DataPoint = z.infer<typeof DataPoint>;
+
 export const Claim = z.object({
   id: z.string(),
   kind: ClaimKind,
@@ -43,6 +54,7 @@ export const Claim = z.object({
   domain: z.string(),
   confidence: z.number().min(0).max(1),
   sources: z.array(Source),
+  dataPoints: z.array(DataPoint).default([]),
   authoredBy: AgentAttribution,
   createdAt: z.string(),
 });

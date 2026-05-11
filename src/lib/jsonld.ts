@@ -2,6 +2,7 @@ import type {
   AgentAttribution,
   Claim,
   ClaimGraph,
+  DataPoint,
   Dossier,
   Edge,
   Forecast,
@@ -23,6 +24,19 @@ function sourceLD(s: Source) {
     ...(s.authors ? { "schema:author": s.authors } : {}),
     ...(s.finding ? { "schema:description": s.finding } : {}),
     ...(s.excerpt ? { "schema:abstract": s.excerpt } : {}),
+  };
+}
+
+function dataPointLD(dp: DataPoint) {
+  return {
+    "@type": "schema:Observation",
+    "schema:measuredProperty": dp.metric,
+    "schema:value": dp.value,
+    ...(dp.unit ? { "schema:unitText": dp.unit } : {}),
+    "schema:observationDate": dp.period,
+    ...(dp.geography ? { "schema:spatialCoverage": dp.geography } : {}),
+    "schema:citation": sourceLD(dp.source),
+    ...(dp.note ? { "schema:description": dp.note } : {}),
   };
 }
 
@@ -48,6 +62,9 @@ export function claimLD(claim: Claim, base: string) {
     "aboard:confidence": claim.confidence,
     "aboard:createdAt": claim.createdAt,
     "schema:citation": claim.sources.map(sourceLD),
+    ...(claim.dataPoints.length > 0
+      ? { "aboard:observations": claim.dataPoints.map(dataPointLD) }
+      : {}),
     "schema:author": agentLD(claim.authoredBy),
   };
 }
