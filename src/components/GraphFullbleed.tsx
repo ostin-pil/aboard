@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ClaimGraphCanvas } from "./ClaimGraphCanvas";
+import { engineToPRPack } from "@/lib/data/exporter";
 
 type Props = { data: EngineGraphData };
 
@@ -92,6 +93,24 @@ export function GraphFullbleed({ data }: Props) {
     URL.revokeObjectURL(a.href);
   };
 
+  const downloadPRPack = async () => {
+    const g = instanceRef.current;
+    if (!g) return;
+    const { default: JSZip } = await import("jszip");
+    const pack = engineToPRPack(g.state, {
+      defaultDomain:
+        activeDomain !== "all" ? activeDomain : domains[0] ?? undefined,
+    });
+    const zip = new JSZip();
+    for (const file of pack.files) zip.file(file.path, file.body);
+    const blob = await zip.generateAsync({ type: "blob" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "aboard-pr-pack.zip";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
   return (
     <>
       <div className="meta-strip">
@@ -130,6 +149,9 @@ export function GraphFullbleed({ data }: Props) {
           <span>
             <span className="k">zoom</span> <span className="v">{zoom}%</span>
           </span>
+          <span className="sandbox-pill" title="The editor saves to your browser's localStorage. To file claims into the project graph, export a PR pack and open a pull request. See /about#contributing.">
+            ● local sandbox · not filed
+          </span>
           {savedFlash && <span className="saved">● saved locally</span>}
         </div>
         <div className="r">
@@ -145,7 +167,11 @@ export function GraphFullbleed({ data }: Props) {
       <main className="canvas-host" style={{ paddingTop: 90, height: "calc(100vh - 52px)" }}>
         <div className="ag-toolbar">
           <div className="ag-tool-group">
-            <button className="ag-tool-btn primary" onClick={() => instanceRef.current?.addNode()}>
+            <button
+              className="ag-tool-btn primary"
+              onClick={() => instanceRef.current?.addNode()}
+              title="Sandbox claim — drafts a new node locally. To file it for real, export a PR pack and open a pull request."
+            >
               + new claim
             </button>
             <button className="ag-tool-btn" onClick={() => setEditable((v) => !v)}>
@@ -218,8 +244,15 @@ export function GraphFullbleed({ data }: Props) {
               <button className="btn-mono" onClick={copy}>
                 {copyState === "copied" ? "copied ✓" : "copy to clipboard"}
               </button>
-              <button className="btn-mono primary" onClick={download}>
+              <button className="btn-mono" onClick={download}>
                 download .jsonld
+              </button>
+              <button
+                className="btn-mono primary"
+                onClick={downloadPRPack}
+                title="Emits a zip of skeletal Markdown + YAML files matching the data/ structure, ready to drop into a PR."
+              >
+                download PR pack
               </button>
             </div>
           </div>

@@ -177,7 +177,12 @@
     // build DOM
     root.classList.add("ag-root");
     root.classList.add("ag-" + mode);
-    if (editable) root.classList.add("ag-editable");
+    if (editable) {
+      root.classList.add("ag-editable");
+      // Sandbox marker: editor mode is real, but edits persist only to
+      // localStorage. Source of truth is data/<domain>/ in the repo.
+      root.dataset.sandbox = "true";
+    }
 
     root.innerHTML = `
       <div class="ag-viewport" data-ag-viewport>

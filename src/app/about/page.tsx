@@ -142,6 +142,52 @@ export default function AboutPage() {
           journalists, and funders working on democratic resilience.
         </p>
       </Section>
+
+      <Section title="Contributing">
+        <p id="contributing" style={prose}>
+          The graph editor at <code style={{ fontFamily: "var(--mono)" }}>/graph</code> is a
+          local sandbox — edits live in your browser&apos;s{" "}
+          <code style={{ fontFamily: "var(--mono)" }}>localStorage</code>, not in the project
+          graph. To file a claim or edge for real, open a pull request against{" "}
+          <code style={{ fontFamily: "var(--mono)" }}>data/</code>.
+        </p>
+        <ol style={{ ...prose, paddingLeft: 22, marginTop: 14 }}>
+          <li>
+            Sketch your claim or causal edge in the <code style={{ fontFamily: "var(--mono)" }}>/graph</code>{" "}
+            sandbox. Use <strong style={{ color: "var(--fg)", fontWeight: 500 }}>export JSON-LD → download PR pack</strong>.
+            The zip contains skeletal Markdown + YAML files matching the{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>data/</code> structure.
+          </li>
+          <li style={{ marginTop: 8 }}>
+            Clone the repo, unpack the zip into{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>data/</code>, and fill in the fields
+            the sandbox could not capture: real Source citations (label, URL, kind, year,
+            finding), <code style={{ fontFamily: "var(--mono)" }}>DataPoint</code> anchors
+            for empirical claims, edge rationale and supporting sources, and any related{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>Analysis</code> trail.
+          </li>
+          <li style={{ marginTop: 8 }}>
+            Run the validator against your local dev server:{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>
+              npx tsx clients/validate.ts http://localhost:3000/api/graph
+            </code>
+            . Run <code style={{ fontFamily: "var(--mono)" }}>npm run build</code> to confirm
+            the loader accepts the new files.
+          </li>
+          <li style={{ marginTop: 8 }}>
+            Open a pull request. The reviewer will check sources for plausibility,
+            calibrate <code style={{ fontFamily: "var(--mono)" }}>confidence</code> and{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>strength</code> values against
+            neighboring claims, and harmonize the new claim&apos;s ID prefix with the
+            domain convention.
+          </li>
+        </ol>
+        <p style={{ ...prose, marginTop: 14 }}>
+          The sandbox is for proposing claim <em>skeletons</em>, not for offline authoring
+          of fully-sourced claims. Evidence and analysis attach in the PR review step,
+          where they get human and agent scrutiny before reaching the published graph.
+        </p>
+      </Section>
     </main>
   );
 }

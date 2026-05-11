@@ -690,6 +690,12 @@ p.lede strong { color: var(--fg); font-weight: 500; }
 .meta-strip .l .v { color: var(--fg); }
 .meta-strip .r { display: flex; gap: 8px; align-items: center; }
 .meta-strip .saved { color: var(--lev-fg); }
+.meta-strip .sandbox-pill {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em;
+  color: var(--sym-fg); border: 1px solid color-mix(in oklab, var(--sym-fg) 30%, transparent);
+  padding: 2px 8px; border-radius: 999px;
+  background: color-mix(in oklab, var(--sym-bg) 60%, transparent);
+}
 .meta-strip .domain-chips { display: inline-flex; align-items: center; gap: 6px; }
 .meta-strip .chip {
   font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em;
