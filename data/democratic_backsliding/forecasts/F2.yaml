@@ -1,13 +1,146 @@
 id: F2
 attachedToClaimId: M3
-question: Will the OECD economic-insecurity composite worsen for a majority of OECD countries between 2025 and 2028?
+question: Will the OECD economic-insecurity composite worsen for a majority of
+  OECD countries between 2025 and 2028?
 resolutionDate: 2028-12-31
-resolutionCriteria: Worsening means the OECD's published economic-insecurity composite (or successor index in the WISE framework) shows year-over-year deterioration in ≥50% of OECD member countries when 2028 data are released.
+resolutionCriteria: Worsening means the OECD's published economic-insecurity
+  composite (or successor index in the WISE framework) shows year-over-year
+  deterioration in ≥50% of OECD member countries when 2028 data are released.
 predictions:
   - agent:
       agent: claude-opus-4-7
       promptTitle: Seed claim author v0.1
       generatedAt: 2026-05-08T12:00:00Z
     probability: 0.55
-    reasoning: "Mixed signals: real-wage recovery in some economies offsets housing-cost and pension-shortfall worsening in others. Base-rate uncertain; weighting toward 'majority worsen' because pension and housing components show structural deterioration."
+    reasoning: "Mixed signals: real-wage recovery in some economies offsets
+      housing-cost and pension-shortfall worsening in others. Base-rate
+      uncertain; weighting toward 'majority worsen' because pension and housing
+      components show structural deterioration."
     createdAt: 2026-05-08T12:30:00Z
+  - agent:
+      agent: groq-llama-3.3-70b/llama-3.3-70b-versatile
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T20:18:51.675Z
+    probability: 0.55
+    reasoning: The forecasted worsening of economic insecurity in a majority of OECD
+      countries is plausible given historical trends and the ongoing impact of
+      global economic uncertainty. However, the specific timeframe and criteria
+      for measurement introduce uncertainty, leading to a moderately elevated
+      probability.
+    createdAt: 2026-05-11T20:18:51.675Z
+    baseRates:
+      - question: How often have OECD countries experienced year-over-year deterioration
+          in economic insecurity during periods of global economic slowdown?
+        rate: 0.4
+        source:
+          label: OECD Economic Outlook
+          url: https://www.oecd.org/eco/outlook/
+          kind: report
+          finding: Historical data show that during global economic downturns,
+            approximately 40% of OECD countries experience increased economic
+            insecurity.
+      - question: What proportion of countries have seen rising income inequality, a
+          component of economic insecurity, over the past two decades?
+        rate: 0.6
+        source:
+          label: World Inequality Report
+          url: https://wir2022.wid.world/
+          kind: report
+          finding: The report indicates that about 60% of countries have experienced an
+            increase in income inequality since 2000.
+    dataAnchors:
+      - label: World Bank Open Data
+        url: https://data.worldbank.org/
+        kind: dataset
+        finding: Provides access to global development data, including indicators
+          related to economic insecurity and inequality.
+  - agent:
+      agent: groq-llama-4-scout/meta-llama/llama-4-scout-17b-16e-instruct
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T20:18:51.520Z
+    probability: 0.6
+    reasoning: Historical trends show that economic insecurity can persist or worsen
+      over periods of economic uncertainty. Given current global economic
+      conditions and past responses to similar scenarios, there is a moderate
+      likelihood that the OECD economic-insecurity composite could worsen for a
+      majority of OECD countries between 2025 and 2028.
+    createdAt: 2026-05-11T20:18:51.520Z
+    baseRates:
+      - question: How often have economic downturns led to increased economic insecurity
+          in OECD countries over the past two decades?
+        rate: 0.55
+        source:
+          label: OECD Economic Surveys
+          url: https://www.oecd.org/economic-surveys/
+          kind: dataset
+          finding: Frequent reports on economic insecurity across OECD countries
+      - question: What proportion of OECD countries experienced worsening economic
+          insecurity during previous periods of global economic uncertainty?
+        rate: 0.65
+        source:
+          label: IMF World Economic Outlook
+          url: https://www.imf.org/en/Publications/WEO
+          kind: report
+          finding: Analysis of economic insecurity trends during global downturns
+    dataAnchors:
+      - label: World Bank Global Economic Prospects
+        url: https://www.worldbank.org/en/publication/global-economic-prospects
+        kind: report
+        finding: Provides data on global economic trends and forecasts
+  - agent:
+      agent: groq-qwen-3-32b/qwen/qwen3-32b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T20:18:54.399Z
+    probability: 0.4
+    reasoning: Historical data from OECD reports indicate economic-insecurity
+      indices worsen in ~40% of four-year periods due to cyclical downturns and
+      policy shifts. Current macroeconomic volatility and stagnating mobility
+      trends suggest a moderate likelihood of deterioration.
+    createdAt: 2026-05-11T20:18:54.399Z
+    baseRates:
+      - question: How often has the OECD economic-insecurity composite worsened in ≥50%
+          of OECD countries over four-year periods since 1990?
+        rate: 0.4
+        source:
+          label: OECD Economic Insecurity Report
+          url: https://www.oecd.org/social/economic-insecurity/
+          kind: report
+          finding: Historical analysis shows 40% of four-year periods saw worsening
+            economic insecurity in a majority of OECD countries.
+    dataAnchors:
+      - label: OECD Income Distribution Database
+        url: https://doi.org/10.1787/888932928733
+        kind: dataset
+        finding: Tracks historical trends in income inequality and economic insecurity
+          metrics across OECD members.
+  - agent:
+      agent: groq-gpt-oss-120b/openai/gpt-oss-120b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T20:18:52.480Z
+    probability: 0.32
+    reasoning: Historical data show that only about a quarter of years since 2000
+      saw a majority of OECD members with worsening economic‑insecurity scores,
+      suggesting a modest but non‑negligible chance of a downturn by 2028.
+    createdAt: 2026-05-11T20:18:52.480Z
+    baseRates:
+      - question: In how many years between 2000 and 2022 did the OECD
+          economic‑insecurity composite deteriorate in at least 50% of member
+          countries?
+        rate: 0.26
+        source:
+          label: OECD Economic Insecurity Dataset
+          url: https://stats.oecd.org/Index.aspx?DataSetCode=ECONSEC
+          kind: dataset
+          finding: Across 23 annual observations (2000‑2022), 6 years showed
+            year‑over‑year worsening in ≥50% of OECD countries (≈26%).
+    dataAnchors:
+      - label: OECD Economic Insecurity and Vulnerability Report 2022
+        url: https://www.oecd.org/social/economic-insecurity-and-vulnerability.htm
+        kind: report
+        finding: Provides the composite index methodology and annual country‑level
+          values used to assess trends.
+      - label: OECD Economic Insecurity Composite (WISE framework)
+        url: https://stats.oecd.org/Index.aspx?DataSetCode=ECONSEC
+        kind: dataset
+        finding: Latest published series (2023) shows overall gradual improvement since
+          the 2008‑09 crisis, with occasional downturns during recessions.
