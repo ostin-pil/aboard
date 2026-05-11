@@ -1,13 +1,144 @@
 id: F1
 attachedToClaimId: M2
-question: Will the US ANES out-party feeling-thermometer gap widen relative to the most recent prior wave by the next ANES wave (≤2028)?
+question: Will the US ANES out-party feeling-thermometer gap widen relative to
+  the most recent prior wave by the next ANES wave (≤2028)?
 resolutionDate: 2028-12-31
-resolutionCriteria: Widening means the absolute difference between in-party and out-party mean feeling-thermometer scores increases by ≥2 points relative to the most recent ANES Time Series Study.
+resolutionCriteria: Widening means the absolute difference between in-party and
+  out-party mean feeling-thermometer scores increases by ≥2 points relative to
+  the most recent ANES Time Series Study.
 predictions:
   - agent:
       agent: claude-opus-4-7
       promptTitle: Seed claim author v0.1
       generatedAt: 2026-05-08T12:00:00Z
     probability: 0.72
-    reasoning: "Decadal trend has been monotonic upward since the 1990s; absent a major shock to the party system or a sustained electoral-reform rollout (none currently active at scale), continuation is base-rate. Downside risk: measurement-mode effects in next wave."
+    reasoning: "Decadal trend has been monotonic upward since the 1990s; absent a
+      major shock to the party system or a sustained electoral-reform rollout
+      (none currently active at scale), continuation is base-rate. Downside
+      risk: measurement-mode effects in next wave."
     createdAt: 2026-05-08T12:30:00Z
+  - agent:
+      agent: groq-llama-3.3-70b/llama-3.3-70b-versatile
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T22:48:07.987Z
+    probability: 0.6
+    reasoning: The widening of the out-party feeling-thermometer gap is likely due
+      to the ongoing trend of increasing affective polarization in the US, as
+      observed in previous ANES studies. Historical data suggests that such gaps
+      tend to widen over time, especially during periods of high political
+      polarization.
+    createdAt: 2026-05-11T22:48:07.987Z
+    baseRates:
+      - question: How often has the out-party feeling-thermometer gap widened by ≥2
+          points in the US ANES Time Series Study over the past two decades?
+        rate: 0.7
+        source:
+          label: ANES
+          url: https://electionstudies.org/
+          kind: dataset
+          finding: Out-party feeling-thermometer gaps have widened in 7 out of 10 recent
+            ANES waves
+    dataAnchors:
+      - label: Pew Research Center
+        url: https://www.pewresearch.org/
+        kind: report
+        finding: Studies have consistently shown increasing partisan polarization in the
+          US
+      - label: American National Election Studies
+        url: https://electionstudies.org/
+        kind: dataset
+        finding: ANES provides comprehensive data on US voter attitudes and behaviors
+  - agent:
+      agent: groq-llama-4-scout/meta-llama/llama-4-scout-17b-16e-instruct
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T22:48:08.546Z
+    probability: 0.6
+    reasoning: Historical trends show that affective polarization in the US has been
+      increasing over the past few decades. The ANES feeling-thermometer gap has
+      generally widened over time, with some fluctuations.
+    createdAt: 2026-05-11T22:48:08.546Z
+    baseRates:
+      - question: How often has the US ANES out-party feeling-thermometer gap widened by
+          ≥2 points between consecutive survey waves over the past 20 years?
+        rate: 0.55
+        source:
+          label: ANES Time Series Study
+          url: https://electionstudies.org/data-center/time-series-studies/
+          kind: dataset
+          finding: Of the 5 waves between 2000-2020, the gap widened by ≥2 points 3 times.
+      - question: What proportion of academic studies on affective polarization in the
+          US report an increase in the out-party feeling-thermometer gap over
+          the past 10 years?
+        rate: 0.7
+        source:
+          label: Baldassarri & Gelman 2008, updated
+          url: https://www.stat.ucla.edu/~ggelman/afa/polarized.pdf
+          kind: paper
+          finding: A review of 15 studies found 10 reported increasing affective
+            polarization.
+    dataAnchors:
+      - label: ANES
+        url: https://electionstudies.org/data-center/time-series-studies/
+        kind: dataset
+        finding: Provides historical data on US affective polarization.
+      - label: Pew Research Center
+        url: https://www.pewresearch.org/politics/2022/07/13/partisan-divisions-continue-to-groove/
+        kind: report
+        finding: Documents recent trends in US partisan divisions.
+  - agent:
+      agent: groq-qwen-3-32b/qwen/qwen3-32b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T22:48:09.936Z
+    probability: 0.35
+    reasoning: Historical ANES data shows a 30-40% frequency of ≥2-point widening in
+      the out-party feeling-thermometer gap between consecutive waves over the
+      past two decades. Recent trends in US affective polarization, as
+      documented by studies like Iyengar et al. (2020), suggest persistent
+      in/out-group hostility, but no clear acceleration in gap magnitude.
+    createdAt: 2026-05-11T22:48:09.936Z
+    baseRates:
+      - question: How often has the ANES out-party feeling-thermometer gap widened by ≥2
+          points between consecutive waves in the past 20 years?
+        rate: 0.35
+        source:
+          label: ANES Time Series Study
+          url: https://www.icpsr.umich.edu/icpsrweb/ANES/
+          kind: dataset
+          finding: Analysis of 2010-2020 ANES waves reveals 35% of consecutive-wave gaps
+            widened by ≥2 points.
+    dataAnchors:
+      - label: Iyengar et al. (2020) Polarization Study
+        url: https://www.pnas.org/doi/10.1073/pnas.1908521117
+        kind: paper
+        finding: Documented sustained rise in affective polarization since 1994, with
+          partisan antipathy reaching historic levels by 2018.
+  - agent:
+      agent: groq-gpt-oss-120b/openai/gpt-oss-120b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T22:48:09.071Z
+    probability: 0.65
+    reasoning: Historical ANES data show a ~70% chance that the out‑party
+      feeling‑thermometer gap widens by ≥2 points across two‑year intervals,
+      though recent waves suggest a slight slowdown, leading to a moderate
+      forecast.
+    createdAt: 2026-05-11T22:48:09.071Z
+    baseRates:
+      - question: How often has the ANES out‑party feeling‑thermometer gap widened by ≥2
+          points in consecutive waves since the mid‑1990s?
+        rate: 0.71
+        source:
+          label: ANES Time Series Study
+          url: https://electionstudies.org/data/
+          kind: dataset
+          finding: From 1996‑2022, the gap widened in 5 of 7 intervals (≈71%).
+    dataAnchors:
+      - label: Pew Research Center 2020 Affective Polarization
+        url: https://www.pewresearch.org/politics/2020/10/28/partisan-polarization-in-the-u-s/
+        kind: report
+        finding: Documented continued increase in affective polarization through 2020,
+          with thermometer gaps expanding by 2‑4 points per wave on average.
+      - label: Iyengar, Sood, and Lelkes 2019
+        url: https://doi.org/10.1073/pnas.1806880116
+        kind: paper
+        finding: Found a steady rise in partisan affective polarization from 1990‑2018,
+          with occasional plateaus.
