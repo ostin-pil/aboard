@@ -17,7 +17,7 @@ export function ollamaNative(config: ProviderConfig): Provider {
     throw new Error(`ollamaNative: expected kind=ollama-native, got ${config.kind}`);
   }
   const name = `${config.name}/${config.model}`;
-  const maxTokens = config.maxTokens ?? 800;
+  const maxTokens = config.maxTokens ?? 1600;
   const temperature = config.temperature ?? 0.4;
   const url = `${config.baseURL.replace(/\/$/, "")}/api/generate`;
 

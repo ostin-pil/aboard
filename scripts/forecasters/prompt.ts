@@ -79,6 +79,67 @@ export type RawPrediction = {
 };
 
 /**
+ * Find the first JSON object in `text` and parse it. Tolerates trailing
+ * tokens after the object's closing brace and truncated tails — if the full
+ * object fails to parse, walks back to the last balanced `}` and retries.
+ *
+ * Models that finish mid-array (e.g. when max_tokens cuts them off) often
+ * leave a parseable prefix containing probability + reasoning; the optional
+ * baseRates/dataAnchors fields get dropped if their array is incomplete.
+ */
+function extractJsonObject(text: string): Record<string, unknown> | null {
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+
+  // Walk the string tracking brace depth (ignoring braces inside strings).
+  // Collect every position where depth returns to 0 — those are candidate
+  // closes for the top-level object. Try the latest first, then walk back.
+  const closes: number[] = [];
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === "\\" && inString) {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) closes.push(i);
+    }
+  }
+  for (let i = closes.length - 1; i >= 0; i--) {
+    try {
+      return JSON.parse(text.slice(start, closes[i] + 1)) as Record<string, unknown>;
+    } catch {
+      // try the next earlier close
+    }
+  }
+  // No balanced close found (truncated mid-object). Try a heuristic repair:
+  // close any open brackets/braces at end of text and try once.
+  const tail = text.slice(start);
+  for (const closer of ["", "]}", "}]", "}", "]"]) {
+    try {
+      return JSON.parse(tail + closer) as Record<string, unknown>;
+    } catch {
+      // continue
+    }
+  }
+  return null;
+}
+
+/**
  * Parses raw model output as JSON. Tolerates a leading code-fence the model
  * might emit despite the instruction; tolerates trailing whitespace. Throws
  * with a snippet on malformed output so the orchestrator can report which
@@ -86,12 +147,16 @@ export type RawPrediction = {
  */
 export function parseRawPrediction(text: string): RawPrediction {
   let body = text.trim();
+  // Strip <think>...</think> reasoning prefixes (Qwen/DeepSeek/etc).
+  body = body.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  // Strip optional ```json fence.
   if (body.startsWith("\`\`\`")) {
     body = body.replace(/^\`\`\`(?:json)?/i, "").replace(/\`\`\`$/, "").trim();
   }
-  const match = body.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error(`forecaster output is not JSON: ${text.slice(0, 200)}`);
-  const obj = JSON.parse(match[0]) as Record<string, unknown>;
+  const obj = extractJsonObject(body);
+  if (!obj) {
+    throw new Error(`forecaster output is not JSON: ${text.slice(0, 200)}`);
+  }
   if (typeof obj.probability !== "number" || obj.probability < 0 || obj.probability > 1) {
     throw new Error(`forecaster probability out of range: ${JSON.stringify(obj)}`);
   }

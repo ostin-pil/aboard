@@ -31,7 +31,7 @@ export function openAICompat(config: ProviderConfig): Provider {
   });
 
   const name = `${config.name}/${config.model}`;
-  const maxTokens = config.maxTokens ?? 800;
+  const maxTokens = config.maxTokens ?? 1600;
   const temperature = config.temperature ?? 0.4;
 
   return {
