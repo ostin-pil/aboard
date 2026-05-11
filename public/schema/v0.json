@@ -1,0 +1,283 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aboard.example/schema/v0.json",
+  "title": "aboard claim-graph schema",
+  "description": "Validates the JSON-LD responses served by the aboard API at /api/graph and /api/claims/{id}. Version v0 — pre-stable. See research/schema.md for the human-readable spec.",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/$defs/ClaimGraphResponse" },
+    { "$ref": "#/$defs/FullClaimResponse" }
+  ],
+  "$defs": {
+    "ContextObject": {
+      "type": "object",
+      "description": "JSON-LD @context object used by every aboard response. Maps the two short prefixes 'schema' and 'aboard' to their full vocabularies.",
+      "required": ["schema", "aboard"],
+      "properties": {
+        "schema": { "type": "string", "format": "uri" },
+        "aboard": { "type": "string", "format": "uri" }
+      },
+      "additionalProperties": false
+    },
+    "IriRef": {
+      "type": "object",
+      "description": "JSON-LD @id-only reference; used to point at another node by URL without inlining it.",
+      "required": ["@id"],
+      "properties": { "@id": { "type": "string", "format": "uri" } },
+      "additionalProperties": false
+    },
+    "Iso8601": {
+      "type": "string",
+      "description": "ISO-8601 date-time string.",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})?)?$"
+    },
+    "ResolutionDate": {
+      "type": "string",
+      "description": "Forecast resolution date — usually a YYYY-MM-DD calendar date.",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})?)?$"
+    },
+    "Probability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "Source": {
+      "type": "object",
+      "description": "A cited source. Rendered with @type schema:CreativeWork. Carries optional kind (dataset/paper/news/policy/...), year, authors, and a one-line 'finding' describing what is cited from this source.",
+      "required": ["@type", "schema:name", "schema:url"],
+      "properties": {
+        "@type": { "const": "schema:CreativeWork" },
+        "schema:name": { "type": "string" },
+        "schema:url": { "type": "string", "format": "uri" },
+        "aboard:sourceKind": { "$ref": "#/$defs/SourceKind" },
+        "schema:datePublished": { "type": "string", "description": "Publication year as string (YYYY)." },
+        "schema:author": { "type": "string", "description": "Free-form authors string (not the agent — that's schema:author on Claim/Argument)." },
+        "schema:description": { "type": "string", "description": "One-line summary of what this source is cited for." },
+        "schema:abstract": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "SourceKind": {
+      "type": "string",
+      "enum": ["dataset", "paper", "news", "policy", "book", "report", "court", "blog", "statute"],
+      "description": "Coarse category of the cited source."
+    },
+    "Author": {
+      "type": "object",
+      "description": "Authoring agent. Always typed schema:SoftwareApplication. Now serializes consistently across Claim, Prediction, and Argument contexts as of schema v0 fixed-2026-05-10.",
+      "required": ["@type", "schema:name", "schema:dateCreated"],
+      "properties": {
+        "@type": { "const": "schema:SoftwareApplication" },
+        "schema:name": { "type": "string" },
+        "schema:dateCreated": { "$ref": "#/$defs/Iso8601" },
+        "aboard:promptTitle": { "type": "string" },
+        "aboard:promptHash": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "Claim": {
+      "type": "object",
+      "description": "A single falsifiable claim.",
+      "required": [
+        "@type",
+        "@id",
+        "aboard:id",
+        "schema:name",
+        "schema:text",
+        "aboard:kind",
+        "aboard:domain",
+        "aboard:confidence",
+        "aboard:createdAt",
+        "schema:citation",
+        "schema:author"
+      ],
+      "properties": {
+        "@type": { "const": "schema:Claim" },
+        "@id": { "type": "string", "format": "uri" },
+        "aboard:id": { "type": "string", "description": "Short stable identifier within the domain (e.g. 'M4'). Distinct from @id, which is the IRI." },
+        "schema:name": { "type": "string", "description": "Short human title of the claim." },
+        "schema:text": { "type": "string", "description": "Full statement of the claim." },
+        "aboard:kind": { "$ref": "#/$defs/ClaimKind" },
+        "aboard:domain": { "type": "string", "description": "Domain slug (e.g. 'democratic_backsliding')." },
+        "aboard:confidence": { "$ref": "#/$defs/Probability" },
+        "aboard:createdAt": { "$ref": "#/$defs/Iso8601" },
+        "schema:citation": { "type": "array", "items": { "$ref": "#/$defs/Source" } },
+        "schema:author": { "$ref": "#/$defs/Author" }
+      },
+      "additionalProperties": false
+    },
+    "ClaimKind": {
+      "type": "string",
+      "enum": ["symptom", "mechanism", "leverage_point"],
+      "description": "Three categories. Symptoms are observed harms; mechanisms are causal pathways; leverage points are interventions."
+    },
+    "EdgeKind": {
+      "type": "string",
+      "enum": ["causes", "moderates", "reduces", "evidences"],
+      "description": "Relation between two claims. 'causes' and 'reduces' are directional; 'moderates' conditions another edge's strength; 'evidences' is reserved."
+    },
+    "Edge": {
+      "type": "object",
+      "description": "A directed relation between two claims. May carry a rationale and citations supporting the claimed relation.",
+      "required": ["@type", "@id", "aboard:id", "aboard:from", "aboard:to", "aboard:relation", "aboard:strength"],
+      "properties": {
+        "@type": { "const": "aboard:CausalEdge" },
+        "@id": { "type": "string", "format": "uri" },
+        "aboard:id": { "type": "string" },
+        "aboard:from": { "$ref": "#/$defs/IriRef" },
+        "aboard:to": { "$ref": "#/$defs/IriRef" },
+        "aboard:relation": { "$ref": "#/$defs/EdgeKind" },
+        "aboard:strength": { "$ref": "#/$defs/Probability" },
+        "aboard:rationale": { "type": "string" },
+        "schema:citation": { "type": "array", "items": { "$ref": "#/$defs/Source" } }
+      },
+      "additionalProperties": false
+    },
+    "Prediction": {
+      "type": "object",
+      "description": "A single dated probability estimate by an agent for a Forecast.",
+      "required": ["@type", "aboard:probability", "aboard:reasoning", "aboard:createdAt", "schema:author"],
+      "properties": {
+        "@type": { "const": "aboard:Prediction" },
+        "aboard:probability": { "$ref": "#/$defs/Probability" },
+        "aboard:reasoning": { "type": "string" },
+        "aboard:createdAt": { "$ref": "#/$defs/Iso8601" },
+        "schema:author": { "$ref": "#/$defs/Author" }
+      },
+      "additionalProperties": false
+    },
+    "Forecast": {
+      "type": "object",
+      "description": "A time-boxed forecast attached to a single claim.",
+      "required": [
+        "@type",
+        "@id",
+        "aboard:id",
+        "aboard:attachedTo",
+        "schema:name",
+        "aboard:resolutionDate",
+        "aboard:resolutionCriteria",
+        "aboard:predictions"
+      ],
+      "properties": {
+        "@type": { "const": "aboard:Forecast" },
+        "@id": { "type": "string", "format": "uri" },
+        "aboard:id": { "type": "string" },
+        "aboard:attachedTo": { "$ref": "#/$defs/IriRef" },
+        "schema:name": { "type": "string", "description": "The forecast question." },
+        "aboard:resolutionDate": { "$ref": "#/$defs/ResolutionDate" },
+        "aboard:resolutionCriteria": { "type": "string" },
+        "aboard:predictions": { "type": "array", "items": { "$ref": "#/$defs/Prediction" } }
+      },
+      "additionalProperties": false
+    },
+    "Argument": {
+      "type": "object",
+      "description": "One side of a Dossier (pro or con).",
+      "required": ["@type", "aboard:thesis", "schema:text", "schema:citation", "schema:author"],
+      "properties": {
+        "@type": { "const": "aboard:Argument" },
+        "aboard:thesis": { "type": "string" },
+        "schema:text": { "type": "string", "description": "Steelmanned summary." },
+        "schema:citation": { "type": "array", "items": { "$ref": "#/$defs/Source" } },
+        "schema:author": { "$ref": "#/$defs/Author" }
+      },
+      "additionalProperties": false
+    },
+    "Crux": {
+      "type": "object",
+      "description": "A pivot claim within a Dossier whose resolution would settle the debate.",
+      "required": ["@type", "schema:text", "aboard:impactScore", "aboard:uncertainty"],
+      "properties": {
+        "@type": { "const": "aboard:Crux" },
+        "schema:text": { "type": "string" },
+        "aboard:impactScore": { "$ref": "#/$defs/Probability" },
+        "aboard:uncertainty": { "$ref": "#/$defs/Probability" }
+      },
+      "additionalProperties": false
+    },
+    "Dossier": {
+      "type": "object",
+      "description": "A non-convergent dual-thesis debate attached to a contested claim.",
+      "required": ["@type", "@id", "aboard:attachedTo", "aboard:pro", "aboard:con", "aboard:cruxes"],
+      "properties": {
+        "@type": { "const": "aboard:Dossier" },
+        "@id": { "type": "string", "format": "uri" },
+        "aboard:attachedTo": { "$ref": "#/$defs/IriRef" },
+        "aboard:pro": { "$ref": "#/$defs/Argument" },
+        "aboard:con": { "$ref": "#/$defs/Argument" },
+        "aboard:cruxes": { "type": "array", "items": { "$ref": "#/$defs/Crux" } }
+      },
+      "additionalProperties": false
+    },
+    "ClaimGraphResponse": {
+      "type": "object",
+      "description": "The full-graph response served at GET /api/graph.",
+      "required": [
+        "@context",
+        "@type",
+        "@id",
+        "aboard:domains",
+        "aboard:claims",
+        "aboard:edges",
+        "aboard:forecasts",
+        "aboard:dossiers"
+      ],
+      "properties": {
+        "@context": { "$ref": "#/$defs/ContextObject" },
+        "@type": { "const": "aboard:ClaimGraph" },
+        "@id": { "type": "string", "format": "uri" },
+        "aboard:domains": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Sorted list of distinct domain slugs present in the graph. Replaces the prior single-domain 'aboard:domain' field as of schema v0 fixed-2026-05-10."
+        },
+        "aboard:claims": { "type": "array", "items": { "$ref": "#/$defs/Claim" } },
+        "aboard:edges": { "type": "array", "items": { "$ref": "#/$defs/Edge" } },
+        "aboard:forecasts": { "type": "array", "items": { "$ref": "#/$defs/Forecast" } },
+        "aboard:dossiers": { "type": "array", "items": { "$ref": "#/$defs/Dossier" } }
+      },
+      "additionalProperties": false
+    },
+    "FullClaimResponse": {
+      "type": "object",
+      "description": "The single-claim response served at GET /api/claims/{id}.",
+      "required": [
+        "@context",
+        "@type",
+        "@id",
+        "aboard:id",
+        "schema:name",
+        "schema:text",
+        "aboard:kind",
+        "aboard:domain",
+        "aboard:confidence",
+        "aboard:createdAt",
+        "schema:citation",
+        "schema:author",
+        "aboard:incomingEdges",
+        "aboard:outgoingEdges",
+        "aboard:forecasts"
+      ],
+      "properties": {
+        "@context": { "$ref": "#/$defs/ContextObject" },
+        "@type": { "const": "schema:Claim" },
+        "@id": { "type": "string", "format": "uri" },
+        "aboard:id": { "type": "string" },
+        "schema:name": { "type": "string" },
+        "schema:text": { "type": "string" },
+        "aboard:kind": { "$ref": "#/$defs/ClaimKind" },
+        "aboard:domain": { "type": "string" },
+        "aboard:confidence": { "$ref": "#/$defs/Probability" },
+        "aboard:createdAt": { "$ref": "#/$defs/Iso8601" },
+        "schema:citation": { "type": "array", "items": { "$ref": "#/$defs/Source" } },
+        "schema:author": { "$ref": "#/$defs/Author" },
+        "aboard:incomingEdges": { "type": "array", "items": { "$ref": "#/$defs/Edge" } },
+        "aboard:outgoingEdges": { "type": "array", "items": { "$ref": "#/$defs/Edge" } },
+        "aboard:forecasts": { "type": "array", "items": { "$ref": "#/$defs/Forecast" } },
+        "aboard:dossier": { "$ref": "#/$defs/Dossier" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

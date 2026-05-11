@@ -1,0 +1,481 @@
+# aboard schema — v0
+
+> **Status:** v0, pre-stable. Reflects what the API serves today, not what it
+> ought to serve tomorrow. The schema will break before reaching v1; consumers
+> should pin to `v0` and read the [versioning](#versioning) section.
+
+## Why this document exists
+
+The user-facing aboard application renders a claim graph in HTML; the
+machine-facing aboard application *is* the JSON-LD response served at stable
+URLs. This document specifies that JSON-LD response. Two formats describe the
+same shapes:
+
+- **`research/schema.md`** (this file) — human-readable spec with examples.
+- **`public/schema/v0.json`** — JSON Schema 2020-12 document; programmatic
+  validation; served at `/schema/v0.json` from the running app.
+
+If they disagree, the JSON Schema is the binding artifact and this Markdown
+should be updated to match. Both should reflect the **current code**; if the
+code changes, both update together.
+
+## Endpoints
+
+| Endpoint | Returns | Top-level `@type` |
+| --- | --- | --- |
+| `GET /api/graph` | The full claim graph for the active domain. | `aboard:ClaimGraph` |
+| `GET /api/claims/{id}` | A single claim, plus its incoming and outgoing edges, attached forecasts, and (if any) attached dossier. | `schema:Claim` |
+| `GET /schema/v0.json` | This schema document. | _not aboard data_ |
+
+Both data endpoints serve `Content-Type: application/ld+json` and set
+`Access-Control-Allow-Origin: *` so unauthenticated agents can consume them
+from any origin.
+
+## Namespaces
+
+The `@context` block on every aboard response binds two short prefixes:
+
+```json
+"@context": {
+  "schema": "https://schema.org/",
+  "aboard": "https://aboard.example/vocab/"
+}
+```
+
+Wherever possible, aboard reuses **schema.org** vocabulary —
+`schema:Claim`, `schema:CreativeWork`, `schema:SoftwareApplication`,
+`schema:name`, `schema:text`, `schema:url`, `schema:author`,
+`schema:citation`, `schema:abstract`, `schema:dateCreated`. Anything genuinely
+specific to aboard's three-module design (kind taxonomy, causal edges,
+forecasts, dossiers, cruxes) lives under the `aboard:` namespace.
+
+The `aboard:` IRI is currently a placeholder (`https://aboard.example/`); when
+the project lands on a final hostname, the IRI moves with it and a v1 will be
+cut. v0 consumers should treat `aboard:` as opaque and key off the prefix
+literal, not the IRI.
+
+## Versioning
+
+This is **v0**. Compatibility guarantees are minimal:
+
+- v0 may add fields without breaking consumers.
+- v0 may rename or remove fields; consumers must pin and accept breakage.
+- All `@id` URLs and the namespace IRIs may change before v1.
+
+A v1 will exist when:
+
+1. The audience question (humans? agents? both?) is settled and the schema
+   reflects the answer.
+2. The remaining open shape decisions land — agent identity model for
+   ensemble forecasting (`AgentAttribution` is currently thin), claim-unit
+   distinction (resolvable ticket vs. standing dossier).
+3. The remaining [reservations](#known-inconsistencies) become actual data
+   patterns (`promptHash`, `Edge.rationale`, `EdgeKind.evidences`).
+
+When v1 ships, both `/schema/v0.json` and `/schema/v1.json` will be served in
+parallel; `/api/graph` will support a `?schema=v1` query parameter, defaulting
+to v0 until at least one external consumer has migrated.
+
+## Top-level shapes
+
+### `ClaimGraphResponse` — `GET /api/graph`
+
+```json
+{
+  "@context": { "schema": "https://schema.org/", "aboard": "https://aboard.example/vocab/" },
+  "@type": "aboard:ClaimGraph",
+  "@id": "http://localhost:3000/graph",
+  "aboard:domains": ["democratic_backsliding"],
+  "aboard:claims":   [/* Claim, ... */],
+  "aboard:edges":    [/* Edge, ... */],
+  "aboard:forecasts":[/* Forecast, ... */],
+  "aboard:dossiers": [/* Dossier, ... */]
+}
+```
+
+**Required fields:** all of the above. `aboard:domain` may be `null` if the
+graph contains zero claims.
+
+`@id` is the request origin plus `/graph` (e.g. `https://aboard.dev/graph`).
+It identifies the response, not a hosted artifact — there is no static
+`/graph.jsonld` file at that URL.
+
+### `FullClaimResponse` — `GET /api/claims/{id}`
+
+A `schema:Claim` shape, inlined at the top level alongside `@context` and
+related collections:
+
+```json
+{
+  "@context": { "schema": "...", "aboard": "..." },
+  "@type": "schema:Claim",
+  "@id": "http://localhost:3000/claims/M4",
+  "schema:name": "Platform algorithmic amplification of outrage content",
+  "schema:text": "Major platforms' engagement-optimized ranking systems...",
+  "aboard:kind": "mechanism",
+  "aboard:domain": "democratic_backsliding",
+  "aboard:confidence": 0.55,
+  "schema:citation": [/* Source, ... */],
+  "schema:author":   { /* Author */ },
+  "aboard:incomingEdges": [/* Edge, ... */],
+  "aboard:outgoingEdges": [/* Edge, ... */],
+  "aboard:forecasts":     [/* Forecast, ... */],
+  "aboard:dossier":       { /* Dossier */ }
+}
+```
+
+`aboard:dossier` is **optional**: the field is omitted entirely when no
+dossier is attached to the claim. `aboard:incomingEdges`,
+`aboard:outgoingEdges`, and `aboard:forecasts` are always arrays, possibly
+empty.
+
+A 404 response (`{ "error": "claim not found" }`) is returned for unknown IDs;
+that response shape is intentionally not described by this schema.
+
+## Component shapes
+
+### `Claim`
+
+A single falsifiable claim. Identified by an opaque short ID (`S1`, `M4`,
+`L3`) which is encoded into the `@id` URL. The unencoded ID is **not**
+present as a separate field — it must be parsed from the URL path if needed.
+
+```json
+{
+  "@type": "schema:Claim",
+  "@id": "http://localhost:3000/claims/M4",
+  "schema:name": "Platform algorithmic amplification of outrage content",
+  "schema:text": "Major platforms' engagement-optimized ranking systems disproportionately surface content that triggers anger and out-group hostility...",
+  "aboard:kind": "mechanism",
+  "aboard:domain": "democratic_backsliding",
+  "aboard:confidence": 0.55,
+  "schema:citation": [
+    {
+      "@type": "schema:CreativeWork",
+      "schema:name": "Stanford Internet Observatory",
+      "schema:url": "https://cyber.fsi.stanford.edu/io"
+    }
+  ],
+  "schema:author": {
+    "@type": "schema:SoftwareApplication",
+    "schema:name": "claude-opus-4-7",
+    "aboard:promptTitle": "Seed claim author v0.1",
+    "schema:dateCreated": "2026-05-08T12:00:00Z"
+  }
+}
+```
+
+**Required:** `@type`, `@id`, `schema:name`, `schema:text`, `aboard:kind`,
+`aboard:domain`, `aboard:confidence`, `schema:citation`, `schema:author`.
+
+**Allowed `aboard:kind` values** (the `ClaimKind` enum):
+
+| Value | Meaning |
+| --- | --- |
+| `symptom` | An observed harm or measurable trend. The "what is going wrong." |
+| `mechanism` | A causal pathway between symptoms and underlying conditions. The "why." |
+| `leverage_point` | An intervention or policy lever. The "what would help." |
+
+`aboard:confidence` is a number in `[0, 1]`, interpretable as the authoring
+agent's posterior probability that the claim is materially correct.
+
+### `Source`
+
+A cited source.
+
+```json
+{
+  "@type": "schema:CreativeWork",
+  "schema:name": "V-Dem Democracy Report",
+  "schema:url":  "https://v-dem.net/publications/democracy-reports/",
+  "aboard:sourceKind": "dataset",
+  "schema:datePublished": "2024",
+  "schema:author": "V-Dem Institute",
+  "schema:description": "Country-level Liberal Democracy Index time-series.",
+  "schema:abstract": "Annual report with country-level Liberal Democracy Index time-series."
+}
+```
+
+**Required:** `@type`, `schema:name`, `schema:url`. **Optional:**
+`aboard:sourceKind` (one of `dataset`, `paper`, `news`, `policy`, `book`,
+`report`, `court`, `blog`, `statute`), `schema:datePublished` (publication
+year as a `YYYY` string), `schema:author` (free-form authors string),
+`schema:description` (one-line description of *what we cite from this
+source* — distinct from a generic abstract), `schema:abstract` (longer
+excerpt or quoted passage).
+
+Sources are intended to point at **landing pages** (institutional homepages,
+report indices, dataset directories) rather than transient article URLs. The
+project's working principle is that every cited source URL must resolve to
+real content on a real institution's site.
+
+The `aboard:sourceKind` field expresses the rough type of the source. The
+`schema:description` field is the most important optional addition: it
+captures the one-line summary of *what this source is being cited for*,
+which prior versions of the schema only encoded implicitly in surrounding
+prose.
+
+### `Author`
+
+The authoring agent block. Always typed `schema:SoftwareApplication`.
+
+```json
+{
+  "@type": "schema:SoftwareApplication",
+  "schema:name": "claude-opus-4-7",
+  "aboard:promptTitle": "Seed claim author v0.1",
+  "schema:dateCreated": "2026-05-08T12:00:00Z"
+}
+```
+
+**Required:** `@type`, `schema:name`. **Optional:** `aboard:promptTitle`,
+`schema:dateCreated`.
+
+The presence of optional fields varies by context — see
+[inconsistencies](#known-inconsistencies). On `Claim.schema:author`, both
+optional fields are present. On `Prediction.schema:author`,
+`aboard:promptTitle` is dropped. On `Argument.schema:author` (inside a
+`Dossier`), both optional fields are dropped.
+
+### `Edge`
+
+A directed relation between two claims.
+
+```json
+{
+  "@type": "aboard:CausalEdge",
+  "@id": "http://localhost:3000/edges/E11",
+  "aboard:from":     { "@id": "http://localhost:3000/claims/L3" },
+  "aboard:to":       { "@id": "http://localhost:3000/claims/M4" },
+  "aboard:relation": "reduces",
+  "aboard:strength": 0.4
+}
+```
+
+**Required:** `@type`, `@id`, `aboard:from`, `aboard:to`, `aboard:relation`,
+`aboard:strength`. **Optional:** `aboard:rationale` (free-text explanation of
+the causal claim), `schema:citation` (array of `Source` objects supporting
+the relation — especially valuable on cross-domain edges where the causal
+claim is contestable).
+
+`aboard:from` and `aboard:to` are `@id`-only IRI references — the resolver
+must dereference the URL to retrieve the target claim. They are not inlined.
+
+**Allowed `aboard:relation` values** (the `EdgeKind` enum):
+
+| Value | Meaning |
+| --- | --- |
+| `causes` | Directional causal claim: the source claim is causally upstream of the target. |
+| `moderates` | The source conditions the strength of another causal relationship — typically used between two mechanisms. |
+| `reduces` | A leverage point reduces a mechanism or symptom. The intervention semantics. |
+| `evidences` | Reserved. The enum value exists; no edge in the v0 seed uses it. Consumers should accept it but not depend on its presence. |
+
+`aboard:strength` is a number in `[0, 1]`, interpretable as the authoring
+agent's strength estimate for the relation, not a probability.
+
+### `Forecast`
+
+A time-boxed forecast attached to a single claim.
+
+```json
+{
+  "@type": "aboard:Forecast",
+  "@id": "http://localhost:3000/forecasts/F1",
+  "aboard:attachedTo": { "@id": "http://localhost:3000/claims/M2" },
+  "schema:name": "Will the US ANES out-party feeling-thermometer gap widen relative to the most recent prior wave by the next ANES wave (≤2028)?",
+  "aboard:resolutionDate": "2028-12-31",
+  "aboard:resolutionCriteria": "Widening means the absolute difference between in-party and out-party mean feeling-thermometer scores increases by ≥2 points relative to the most recent ANES Time Series Study.",
+  "aboard:predictions": [/* Prediction, ... */]
+}
+```
+
+**Required:** all fields above. `aboard:predictions` may be empty but must be
+present. `aboard:attachedTo` is an `@id` reference to a `Claim`.
+
+### `Prediction`
+
+A single dated probability estimate by an agent.
+
+```json
+{
+  "@type": "aboard:Prediction",
+  "aboard:probability": 0.72,
+  "aboard:reasoning": "Decadal trend has been monotonic upward...",
+  "schema:author": {
+    "@type": "schema:SoftwareApplication",
+    "schema:name": "claude-opus-4-7",
+    "schema:dateCreated": "2026-05-08T12:30:00Z"
+  }
+}
+```
+
+**Required:** `@type`, `aboard:probability`, `aboard:reasoning`,
+`schema:author`. `aboard:probability` is a number in `[0, 1]`.
+
+The `Author` here is reduced to `@type`, `schema:name`, and
+`schema:dateCreated` — `aboard:promptTitle` is **not** serialized even when
+present in the source data. See [inconsistencies](#known-inconsistencies).
+
+### `Dossier`
+
+A non-convergent dual-thesis debate attached to a contested claim.
+
+```json
+{
+  "@type": "aboard:Dossier",
+  "@id": "http://localhost:3000/dossiers/M4",
+  "aboard:attachedTo": { "@id": "http://localhost:3000/claims/M4" },
+  "aboard:pro":  { /* Argument */ },
+  "aboard:con":  { /* Argument */ },
+  "aboard:cruxes": [/* Crux, ... */]
+}
+```
+
+**Required:** all fields above. `aboard:cruxes` may be empty but must be
+present. The Dossier's `@id` is keyed on the contested claim's ID — a claim
+has at most one dossier.
+
+### `Argument`
+
+One side of a dossier — pro or con.
+
+```json
+{
+  "@type": "aboard:Argument",
+  "aboard:thesis": "Platform algorithmic amplification of outrage is a primary causal driver...",
+  "schema:text": "Engagement-ranked feeds systematically over-represent content...",
+  "schema:citation": [/* Source, ... */],
+  "schema:author": {
+    "@type": "schema:SoftwareApplication",
+    "schema:name": "claude-opus-4-7"
+  }
+}
+```
+
+**Required:** all fields above. `schema:text` carries the full steelmanned
+summary; `aboard:thesis` is the one-sentence headline.
+
+The `Author` here is reduced even further than in `Prediction` — only
+`@type` and `schema:name` are serialized. `schema:dateCreated` and
+`aboard:promptTitle` are dropped. See
+[inconsistencies](#known-inconsistencies).
+
+### `Crux`
+
+A pivot claim within a dossier whose resolution would settle the debate.
+
+```json
+{
+  "@type": "aboard:Crux",
+  "schema:text": "If platform-level interventions produce measurable reductions in aggregate affective-polarization metrics within one electoral cycle in a randomized rollout, the pro thesis is supported; if they do not, the con thesis is supported.",
+  "aboard:impactScore": 0.85,
+  "aboard:uncertainty": 0.7
+}
+```
+
+**Required:** all fields above. Both numeric fields are in `[0, 1]`.
+
+The dossier UI ranks cruxes by `impactScore × uncertainty`; that ordering is
+**not** reflected in the response (the array is in source-data order). A
+consumer that wants ranked cruxes must sort client-side.
+
+## Cross-references
+
+aboard uses two reference styles:
+
+- **Inline:** the full target shape is embedded in place. Used for sources
+  on a claim, predictions inside a forecast, the pro/con/cruxes inside a
+  dossier.
+- **`@id`-only IRI reference:** an object with a single `@id` field whose
+  value is a dereferenceable URL. Used for `Edge.aboard:from`,
+  `Edge.aboard:to`, `Forecast.aboard:attachedTo`, and
+  `Dossier.aboard:attachedTo`.
+
+`@id` values follow these path conventions:
+
+| Resource | URL pattern |
+| --- | --- |
+| ClaimGraph | `{origin}/graph` |
+| Claim | `{origin}/claims/{id}` |
+| Edge | `{origin}/edges/{id}` |
+| Forecast | `{origin}/forecasts/{id}` |
+| Dossier | `{origin}/dossiers/{attachedToClaimId}` |
+
+Only `/graph` and `/claims/{id}` are currently dereferenceable HTTP routes;
+the others are stable identifiers but **404 if you fetch them**. A consumer
+that treats `aboard:from.@id` as a real fetchable URL will get an error. To
+follow an edge, parse the claim ID out of the URL path and use
+`/api/claims/{id}`.
+
+## Multi-domain and cross-domain
+
+The vision decision (2026-05-10) is **cross-domain**: a single graph
+includes claims from any number of domains, and edges may cross domain
+boundaries. The schema reflects this today:
+
+- `aboard:domains` on `ClaimGraph` is a sorted array of every distinct domain
+  present.
+- `aboard:domain` on each `Claim` is a single domain slug.
+- `Edge.aboard:from` and `Edge.aboard:to` may reference claims in different
+  domains. Cross-domain edges live in `data/cross_domain_edges.yaml` rather
+  than any single domain's `edges.yaml`, but in the served graph they appear
+  in the same `aboard:edges` array.
+
+A consumer can filter to one domain by selecting `claims[?domain == X]` and
+intersecting `edges`. There is no `?domain=` query parameter on `/api/graph`
+in v0; the consumer does the filtering. A query parameter may be added in
+v1 once we know the actual access pattern.
+
+## Known inconsistencies
+
+The original v0 audit (2026-05-09) found 9 fields that existed in the source
+type but were dropped from the serialized output. Most have been **resolved**
+in the 2026-05-10 fix; what remains is documented honestly below.
+
+### Resolved (2026-05-10 fix)
+
+| # | Field | Resolution |
+| --- | --- | --- |
+| 1 | `Claim.createdAt` | Now serialized as `aboard:createdAt` on every Claim. |
+| 3 | `Prediction.createdAt` | Now serialized as `aboard:createdAt` on every Prediction. |
+| 4 | `Prediction.agent.promptTitle` | Author block is now consistent across Claim/Prediction/Argument and always includes `aboard:promptTitle` when set. |
+| 5 | `Argument.authoredBy.promptTitle` and `.generatedAt` | Same: Author block on Arguments now serializes the same fields as on Claims. |
+| 8 | `aboard:domain` on `ClaimGraph` | Replaced by `aboard:domains` (sorted array of distinct domain slugs). Single-domain graphs return `["democratic_backsliding"]`. Cross-domain graphs are now legible. |
+| 9 | Short IDs absent | All Claims, Edges, and Forecasts now carry `aboard:id` alongside `@id`, so consumers can index by short ID without URL-path parsing. |
+
+### Remaining
+
+| # | Field | Status |
+| --- | --- | --- |
+| 2 | `AgentAttribution.promptHash` | Optional in type and now in schema; not populated by any seed data. Reserved for future ensemble-forecaster work where prompt fingerprinting matters. |
+| 7 | `EdgeKind` value `"evidences"` | Enum value reserved; no seed edge uses it yet. |
+
+### Resolved (2026-05-11 enrichment)
+
+| # | Field | Resolution |
+| --- | --- | --- |
+| 6 | `Edge.rationale` | Now populated on every edge in the seed. Cross-domain edges additionally carry `schema:citation` (Source array). |
+
+## Validating
+
+Use the JSON Schema at [`/schema/v0.json`](/schema/v0.json):
+
+```bash
+# Run the reference validator (fetches the running app's response and validates):
+cd clients
+npm install
+npx tsx validate.ts http://localhost:3000/api/graph
+```
+
+Expect `OK — N claims, M edges, K forecasts, J dossiers, latest filed YYYY-MM-DD`
+when the response conforms.
+
+A second adapter renders the validated graph as a Markdown briefing for
+human consumption — proving the agent-readable → human-readable round-trip
+works end-to-end:
+
+```bash
+npx tsx briefing.ts http://localhost:3000/api/graph > briefing.md
+```
+
+See `clients/README.md` for full adapter documentation.
