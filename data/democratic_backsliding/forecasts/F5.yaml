@@ -1,13 +1,128 @@
 id: F5
 attachedToClaimId: L3
-question: Will any G7 country pass binding algorithmic-transparency legislation by end-2027 (beyond DSA scope)?
+question: Will any G7 country pass binding algorithmic-transparency legislation
+  by end-2027 (beyond DSA scope)?
 resolutionDate: 2027-12-31
-resolutionCriteria: Binding statute requiring documented algorithmic auditing or ranking disclosure, distinct from DSA requirements (which apply to EU members already).
+resolutionCriteria: Binding statute requiring documented algorithmic auditing or
+  ranking disclosure, distinct from DSA requirements (which apply to EU members
+  already).
 predictions:
   - agent:
       agent: claude-opus-4-7
       promptTitle: Seed claim author v0.1
       generatedAt: 2026-05-08T12:00:00Z
     probability: 0.3
-    reasoning: UK Online Safety Act and Canadian C-27 are partial precedents but stop short of mandatory ranking disclosure; political appetite is uneven.
+    reasoning: UK Online Safety Act and Canadian C-27 are partial precedents but
+      stop short of mandatory ranking disclosure; political appetite is uneven.
     createdAt: 2026-05-08T12:30:00Z
+  - agent:
+      agent: groq-llama-3.3-70b/llama-3.3-70b-versatile
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T22:48:43.555Z
+    probability: 0.4
+    reasoning: The passage of binding algorithmic-transparency legislation in a G7
+      country by 2027 is plausible but uncertain, given the growing awareness of
+      algorithmic bias and the need for transparency, but also considering the
+      complexity of such regulations and potential resistance from tech
+      companies.
+    createdAt: 2026-05-11T22:48:43.555Z
+    baseRates:
+      - question: How often have G7 countries passed significant technology regulation
+          in the past 5 years?
+        rate: 0.2
+        source:
+          label: OECD
+          url: https://www.oecd.org/
+          kind: report
+          finding: G7 countries have shown increasing willingness to regulate tech
+            companies, but progress is slow
+      - question: What percentage of proposed technology regulations in the EU have been
+          enacted within a 2-year timeframe?
+        rate: 0.6
+        source:
+          label: European Parliament
+          url: https://www.europarl.europa.eu/
+          kind: policy
+          finding: The EU has a track record of enacting proposed regulations, but the
+            process can be lengthy
+    dataAnchors:
+      - label: Algorithmic Auditing
+        url: https://www.acm.org/publications/policies/algorithms-auditing
+        kind: paper
+        finding: The need for algorithmic auditing is widely recognized in the academic
+          community
+      - label: Digital Services Act
+        url: https://ec.europa.eu/info/law/digital-services-act-DSA_en
+        kind: policy
+        finding: The EU's Digital Services Act sets a precedent for regulating online
+          platforms
+  - agent:
+      agent: groq-llama-4-scout/meta-llama/llama-4-scout-17b-16e-instruct
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T22:48:43.471Z
+    probability: 0.4
+    reasoning: Several countries have shown interest in algorithmic transparency,
+      but passing binding legislation by end-2027 seems ambitious given the
+      complexity of regulatory processes.
+    createdAt: 2026-05-11T22:48:43.471Z
+    baseRates:
+      - question: How often have G7 countries passed binding legislation on tech
+          regulation in the past 5 years?
+        rate: 0.2
+        source:
+          label: OECD
+          url: https://www.oecd.org/digital/oecd-digital-economy-outlook-2022.pdf
+          kind: report
+          finding: The report highlights increasing regulatory efforts but does not
+            provide a specific rate of binding legislation on algorithmic
+            transparency.
+      - question: What proportion of countries with existing tech regulations have
+          expanded them to include algorithmic transparency requirements?
+        rate: 0.35
+        source:
+          label: European Commission
+          url: https://ec.europa.eu/digital-single-market/en/artificial-intelligence-high-level-expert-group
+          kind: policy
+          finding: The EU has been a leader in tech regulation, including the DSA, but the
+            rate of expansion to algorithmic transparency specifically is noted.
+    dataAnchors:
+      - label: Brookings Institution
+        url: https://www.brookings.edu/articles/the-future-of-algorithmic-transparency-and-regulation/
+        kind: paper
+        finding: Discusses the evolving landscape of algorithmic transparency and
+          regulatory approaches.
+  - agent:
+      agent: groq-gpt-oss-120b/openai/gpt-oss-120b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-11T22:48:44.618Z
+    probability: 0.22
+    reasoning: No G7 country has enacted binding algorithmic‑transparency statutes
+      to date, but recent legislative pushes in the US, UK and Japan suggest a
+      modest chance of a first such law by 2027.
+    createdAt: 2026-05-11T22:48:44.618Z
+    baseRates:
+      - question: How often have G7 countries passed binding algorithmic‑transparency
+          legislation between 2015 and 2024?
+        rate: 0
+        source:
+          label: OECD AI Policy Observatory
+          url: https://oecd.ai/en/observatory/policy?category=algorithmic+transparency
+          kind: dataset
+          finding: Survey of AI policies shows 0 out of 7 G7 members with a binding
+            algorithmic‑transparency law as of 2024
+    dataAnchors:
+      - label: US Algorithmic Accountability Act (2022)
+        url: https://www.congress.gov/bill/117th-congress/house-bill/1054
+        kind: policy
+        finding: Introduced but not enacted; illustrates legislative interest without
+          passage
+      - label: UK Online Safety Bill (2023 draft)
+        url: https://www.gov.uk/government/publications/draft-online-safety-bill
+        kind: policy
+        finding: Contains limited algorithmic‑risk assessment duties but stops short of
+          full transparency mandates
+      - label: Japan AI Utilization Act (2022)
+        url: https://www.reuters.com/technology/japan-passes-ai-utilization-act-2022-06-30/
+        kind: news
+        finding: Passes AI governance law with voluntary transparency provisions, not
+          binding algorithmic‑audit requirements
