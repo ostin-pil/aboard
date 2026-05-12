@@ -15,9 +15,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// PLACEHOLDER: revise after audience decision in research/vision.md
 const SITE_DESCRIPTION =
-  "An agent-first board of falsifiable claims, attached forecasts, and steel-manned dossiers on civilizational issues. Machine-readable by default.";
+  "aboard surfaces interpretive friction across LLM ensembles applied to falsifiable claims about systemic problems. Machine-readable by default; the disagreement between models is the signal.";
 
 export const metadata: Metadata = {
   title: {
