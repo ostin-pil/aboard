@@ -245,8 +245,8 @@
         bounds[n.id] = { x: n._x, y: n._y, w: nodeW, h: el ? el.offsetHeight : (isInline ? 76 : 96) };
       });
 
-      // edges
-      while (edgesSvg.querySelectorAll("path.ag-edge").length) edgesSvg.querySelector("path.ag-edge").remove();
+      // edges (clears both visible paths and the wide hit-zone paths)
+      edgesSvg.querySelectorAll("path.ag-edge, path.ag-edge-hit").forEach((p) => p.remove());
       labelsHost.innerHTML = "";
       const portCounts = {};
       state.edges.forEach(e => {
@@ -404,8 +404,14 @@
         hit.setAttribute("class", "ag-edge-hit");
         hit.dataset.from = e.from;
         hit.dataset.to = e.to;
-        hit.addEventListener("mouseenter", () => openEdgePopover(e, hit));
+        hit.addEventListener("mouseenter", (ev) => openEdgePopover(e, hit, ev));
         hit.addEventListener("mouseleave", scheduleCloseEdgePopover);
+        // In editable mode the hit path sits above the visible path and would
+        // otherwise swallow the edit click. Re-attach the editor handler.
+        if (editable) {
+          hit.style.cursor = "pointer";
+          hit.addEventListener("click", (ev) => { ev.preventDefault(); ev.stopPropagation(); openEdgeEditor(e); });
+        }
         edgesSvg.appendChild(hit);
       }
 
@@ -485,7 +491,7 @@
     });
 
     let edgePopoverCloseTimer = null;
-    function openEdgePopover(e, anchorEl) {
+    function openEdgePopover(e, anchorEl, ev) {
       if (edgePopoverCloseTimer) { clearTimeout(edgePopoverCloseTimer); edgePopoverCloseTimer = null; }
       const sourcesHTML = (e.sources || []).map(s => {
         const meta = [s.kind].filter(Boolean).join(" · ");
@@ -498,13 +504,27 @@
       `;
       edgePopover.hidden = false;
       const wrapRect = viewportEl.getBoundingClientRect();
-      const anchorRect = anchorEl.getBoundingClientRect();
       const popW = 280, popH = edgePopover.offsetHeight || 120;
+      // For path triggers, the bounding box of a long diagonal SVG path is far
+      // from the actual cursor; anchor to the mouse position instead. For the
+      // small edge label, the bounding rect is a fine anchor.
+      const useCursor = ev && anchorEl && anchorEl.tagName && anchorEl.tagName.toLowerCase() === "path";
+      let anchorX, anchorY, anchorRight;
+      if (useCursor) {
+        anchorX = ev.clientX;
+        anchorY = ev.clientY;
+        anchorRight = ev.clientX;
+      } else {
+        const anchorRect = anchorEl.getBoundingClientRect();
+        anchorX = anchorRect.left;
+        anchorY = anchorRect.top + anchorRect.height / 2;
+        anchorRight = anchorRect.right;
+      }
       // Anchor to the right of the trigger; flip left if there's no room.
-      let left = (anchorRect.right - wrapRect.left) + 12;
-      let top  = (anchorRect.top + anchorRect.height / 2 - wrapRect.top) - popH / 2;
+      let left = (anchorRight - wrapRect.left) + 12;
+      let top  = (anchorY - wrapRect.top) - popH / 2;
       if (left + popW > wrapRect.width - 8) {
-        left = (anchorRect.left - wrapRect.left) - popW - 12;
+        left = (anchorX - wrapRect.left) - popW - 12;
       }
       if (top < 8) top = 8;
       if (top + popH > wrapRect.height - 8) top = wrapRect.height - popH - 8;
