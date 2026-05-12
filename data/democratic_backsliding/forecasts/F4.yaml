@@ -139,3 +139,30 @@ predictions:
         kind: statute
         finding: DSA requires VLOPs to publish a description of the functioning of their
           recommendation systems, including main parameters, by March 2025.
+  - agent:
+      agent: groq-qwen-3-32b/qwen/qwen3-32b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-12T07:45:03.892Z
+    probability: 0.65
+    reasoning: The EU's Digital Services Act (DSA) mandates algorithmic transparency
+      for very large platforms, creating a regulatory pathway for compliance.
+      Historical compliance with similar mandates is mixed, but the DSA's
+      enforceable requirements and 2024 implementation timeline increase the
+      likelihood of at least partial disclosure by 2027.
+    createdAt: 2026-05-12T07:45:03.892Z
+    baseRates:
+      - question: How often have platforms complied with transparency mandates like the
+          DSA?
+        rate: 0.6
+        source:
+          label: European Commission
+          url: https://ec.europa.eu/digital-strategy/ai/modernising-eu-rules-digital-services_en
+          kind: policy
+          finding: DSA requires platforms to publish algorithmic impact assessments and
+            allow independent audits for high-risk systems.
+    dataAnchors:
+      - label: European Commission
+        url: https://ec.europa.eu/digital-strategy/ai/modernising-eu-rules-digital-services_en
+        kind: policy
+        finding: DSA mandates transparency for content recommendation systems, including
+          public availability of audit methodologies.
