@@ -169,22 +169,24 @@ export function parseRawPrediction(text: string): RawPrediction {
     throw new Error(`forecaster reasoning missing or empty: ${JSON.stringify(obj)}`);
   }
   const baseRates = Array.isArray(obj.baseRates)
-    ? (obj.baseRates as RawPrediction["baseRates"]).filter(
-        (b) =>
-          b &&
-          typeof b.question === "string" &&
-          typeof b.rate === "number" &&
-          b.rate >= 0 &&
-          b.rate <= 1 &&
-          b.source &&
-          typeof b.source.label === "string" &&
-          typeof b.source.url === "string"
-      )
+    ? (obj.baseRates as RawPrediction["baseRates"])
+        .filter(
+          (b) =>
+            b &&
+            typeof b.question === "string" &&
+            typeof b.rate === "number" &&
+            b.rate >= 0 &&
+            b.rate <= 1 &&
+            b.source &&
+            typeof b.source.label === "string" &&
+            typeof b.source.url === "string"
+        )
+        .map((b) => ({ ...b, source: normalizeSource(b.source) }))
     : [];
   const dataAnchors = Array.isArray(obj.dataAnchors)
-    ? (obj.dataAnchors as RawPrediction["dataAnchors"]).filter(
-        (a) => a && typeof a.label === "string" && typeof a.url === "string"
-      )
+    ? (obj.dataAnchors as RawPrediction["dataAnchors"])
+        .filter((a) => a && typeof a.label === "string" && typeof a.url === "string")
+        .map((a) => normalizeSource(a))
     : [];
   return {
     probability: obj.probability,
@@ -192,4 +194,28 @@ export function parseRawPrediction(text: string): RawPrediction {
     baseRates,
     dataAnchors,
   };
+}
+
+// Mirrors `SourceKind` in src/lib/types.ts. Keep in sync if that enum changes.
+const VALID_SOURCE_KINDS = new Set([
+  "dataset",
+  "paper",
+  "news",
+  "policy",
+  "book",
+  "report",
+  "court",
+  "blog",
+  "statute",
+]);
+
+function normalizeSource<T extends { kind?: string }>(s: T): T {
+  // Strip kind values the model invented outside the enum (e.g. "research
+  // group"), so downstream Zod validation accepts the source. Other fields
+  // pass through untouched.
+  if (s.kind && !VALID_SOURCE_KINDS.has(s.kind)) {
+    const { kind: _drop, ...rest } = s;
+    return rest as T;
+  }
+  return s;
 }
