@@ -28,10 +28,16 @@ The `providers.local.json` file is gitignored. Each entry is a
   "baseURL": "https://openrouter.ai/api/v1",
   "apiKeyEnv": "OPENROUTER_API_KEY",     // env var holding the key
   "model": "meta-llama/llama-3.3-70b-instruct",
-  "maxTokens": 800,                      // optional, default 800
+  "maxTokens": 1600,                     // optional, default 1600
   "temperature": 0.4                     // optional, default 0.4
 }
 ```
+
+Reasoning-mode models (Qwen3, DeepSeek-R1, and similar that emit
+`<think>...</think>` blocks before the JSON) need extra headroom — the
+reasoning trace counts against `max_tokens` before the JSON object is
+produced. Bump `maxTokens` to ~3200 for those, or the trace will be
+truncated mid-thought and no JSON will be emitted.
 
 Then export the relevant API keys:
 

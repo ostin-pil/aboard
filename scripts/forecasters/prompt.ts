@@ -149,6 +149,11 @@ export function parseRawPrediction(text: string): RawPrediction {
   let body = text.trim();
   // Strip <think>...</think> reasoning prefixes (Qwen/DeepSeek/etc).
   body = body.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  // If a <think> is left unclosed (token budget cut off mid-reasoning before
+  // the closing tag and the JSON), drop everything from <think> onward so the
+  // error message surfaces the truncation cleanly instead of dumping reasoning.
+  const unclosed = body.search(/<think>/i);
+  if (unclosed !== -1) body = body.slice(0, unclosed).trim();
   // Strip optional ```json fence.
   if (body.startsWith("\`\`\`")) {
     body = body.replace(/^\`\`\`(?:json)?/i, "").replace(/\`\`\`$/, "").trim();
