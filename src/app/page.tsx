@@ -11,7 +11,8 @@ export default function Home() {
     forecasts: graph.forecasts.length,
     dossiers: graph.dossiers.length,
   };
-  const engineData = toEngineData(graph);
+  const primaryDomain = "democratic_backsliding";
+  const engineData = toEngineData(graph, { domain: primaryDomain });
   const lastUpdate = graph.claims
     .map((c) => c.createdAt)
     .sort()
