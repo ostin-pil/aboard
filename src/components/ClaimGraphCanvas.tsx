@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 type Mode = "inline" | "fullbleed";
 
@@ -27,7 +27,16 @@ export function ClaimGraphCanvas({
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const instanceRef = useRef<AboardGraphInstance | null>(null);
-  const [, setReady] = useState(false);
+
+  // Stash callbacks in refs so changes to their identity (which happens every
+  // parent render for inline arrows) don't retrigger the mount effect. The
+  // engine should only re-mount when mode/editable/data actually change.
+  const onPersistRef = useRef(onPersist);
+  const onZoomRef = useRef(onZoom);
+  const onReadyRef = useRef(onReady);
+  onPersistRef.current = onPersist;
+  onZoomRef.current = onZoom;
+  onReadyRef.current = onReady;
 
   useEffect(() => {
     if (!rootRef.current) return;
@@ -48,13 +57,12 @@ export function ClaimGraphCanvas({
         editable,
         data,
         onPersist: () => {
-          if (instance && onPersist) onPersist(instance);
+          if (instance) onPersistRef.current?.(instance);
         },
-        onZoom,
+        onZoom: (s) => onZoomRef.current?.(s),
       });
       instanceRef.current = instance;
-      setReady(true);
-      onReady?.(instance);
+      onReadyRef.current?.(instance);
     }
 
     tryMount();
@@ -65,7 +73,7 @@ export function ClaimGraphCanvas({
       if (rootRef.current) rootRef.current.innerHTML = "";
       instanceRef.current = null;
     };
-  }, [mode, editable, data, onPersist, onZoom, onReady]);
+  }, [mode, editable, data]);
 
   return (
     <div
