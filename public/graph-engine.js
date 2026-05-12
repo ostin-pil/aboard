@@ -628,13 +628,16 @@
       // only with primary button + on the body of the node, not on its buttons/links inside
       if (e.button !== 0) return;
       if (e.target.closest(".ag-connect-handle") || e.target.closest(".ag-node-edit-btn")) return;
-      const id = e.currentTarget.dataset.id;
+      // Capture the node element now: browsers null event.currentTarget once
+      // dispatch completes, so the later onMove/onUp closures can't read it.
+      const el = e.currentTarget;
+      const id = el.dataset.id;
       const n = nodeById(id);
       editing.dragNode = n;
       editing.dragStart = { x: e.clientX, y: e.clientY };
       editing.dragOrigin = { x: n._x, y: n._y };
       editing.dragging = false;
-      e.currentTarget.setPointerCapture(e.pointerId);
+      el.setPointerCapture(e.pointerId);
       const onMove = (ev) => {
         const dx = (ev.clientX - editing.dragStart.x) / scale;
         const dy = (ev.clientY - editing.dragStart.y) / scale;
@@ -642,21 +645,20 @@
         if (!editing.dragging) return;
         n._x = Math.max(0, editing.dragOrigin.x + dx);
         n._y = Math.max(0, editing.dragOrigin.y + dy);
-        const el = e.currentTarget;
         el.style.left = n._x + "px";
         el.style.top = n._y + "px";
         // soft re-render edges only
         renderEdgesOnly();
       };
-      const onUp = (ev) => {
-        e.currentTarget.removeEventListener("pointermove", onMove);
-        e.currentTarget.removeEventListener("pointerup", onUp);
+      const onUp = () => {
+        el.removeEventListener("pointermove", onMove);
+        el.removeEventListener("pointerup", onUp);
         if (editing.dragging) { snapshot(); persistAndRender(true); }
         setTimeout(() => { editing.dragging = false; }, 0);
         editing.dragNode = null;
       };
-      e.currentTarget.addEventListener("pointermove", onMove);
-      e.currentTarget.addEventListener("pointerup", onUp);
+      el.addEventListener("pointermove", onMove);
+      el.addEventListener("pointerup", onUp);
     }
 
     function renderEdgesOnly() {
