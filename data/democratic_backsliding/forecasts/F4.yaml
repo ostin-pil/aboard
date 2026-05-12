@@ -49,7 +49,6 @@ predictions:
     dataAnchors:
       - label: Algorithmic Auditing Research Group
         url: https://www.algorithmicauditing.org/
-        kind: research group
         finding: Research on algorithmic auditing and transparency
       - label: Social Media Transparency Reports
         url: https://www.socialmediatransparency.org/
