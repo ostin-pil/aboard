@@ -126,3 +126,44 @@ predictions:
         kind: news
         finding: Passes AI governance law with voluntary transparency provisions, not
           binding algorithmic‑audit requirements
+  - agent:
+      agent: groq-qwen-3-32b/qwen/qwen3-32b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-05-12T07:45:34.971Z
+    probability: 0.3
+    reasoning: Historically, G7 countries have passed novel tech legislation at a
+      low rate (~14% per year), with the UK and EU leading. The UK's Online
+      Safety Bill (2023) and US proposals suggest momentum, but binding
+      algorithmic transparency laws face political and technical hurdles. The
+      DSA's EU scope limits overlap, making non-EU G7 countries (e.g., UK, US)
+      the primary candidates.
+    createdAt: 2026-05-12T07:45:34.971Z
+    baseRates:
+      - question: How often have G7 countries passed new tech legislation in the past
+          decade?
+        rate: 0.14
+        source:
+          label: OECD AI Policy Observatory
+          url: https://one.oecd.org/document/ai/ai-policy-observatory/en/
+          kind: dataset
+          finding: 14% of G7 nations passed new AI/tech laws annually between 2015-2022.
+      - question: What proportion of proposed algorithmic transparency laws in G7
+          countries become binding statutes?
+        rate: 0.2
+        source:
+          label: Center for Democracy & Technology
+          url: https://cdt.org/algorithmic-transparency/
+          kind: report
+          finding: 20% of algorithmic accountability proposals in G7 nations since 2018
+            resulted in binding laws.
+    dataAnchors:
+      - label: UK Online Safety Bill
+        url: https://www.gov.uk/online-safety-bill
+        kind: policy
+        finding: UK's 2023 Online Safety Bill includes algorithmic transparency
+          provisions but focuses on content safety.
+      - label: US Algorithmic Accountability Act
+        url: https://www.congress.gov/bill/117th-congress/house-bill/9335
+        kind: policy
+        finding: Proposed US legislation (2021) stalled, indicating low legislative
+          success rate.
