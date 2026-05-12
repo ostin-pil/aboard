@@ -207,6 +207,7 @@
           </div>
         </div>
         <div class="ag-popover" data-ag-popover hidden></div>
+        <div class="ag-edge-popover" data-ag-edge-popover hidden></div>
       </div>
     `;
 
@@ -218,6 +219,7 @@
     const labelsHost = root.querySelector("[data-ag-edge-labels]");
     const dragEdge   = root.querySelector("[data-ag-drag-edge]");
     const popover    = root.querySelector("[data-ag-popover]");
+    const edgePopover = root.querySelector("[data-ag-edge-popover]");
 
     // ============================================================
     // RENDER
@@ -393,6 +395,20 @@
       }
       edgesSvg.appendChild(path);
 
+      // Hit-zone path: invisible wide stroke for reliable hover detection on
+      // thin visible edges. Only attached when the edge carries a rationale
+      // or sources — no signal to surface otherwise.
+      if (e.rationale || (e.sources && e.sources.length > 0)) {
+        const hit = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        hit.setAttribute("d", d);
+        hit.setAttribute("class", "ag-edge-hit");
+        hit.dataset.from = e.from;
+        hit.dataset.to = e.to;
+        hit.addEventListener("mouseenter", () => openEdgePopover(e, hit));
+        hit.addEventListener("mouseleave", scheduleCloseEdgePopover);
+        edgesSvg.appendChild(hit);
+      }
+
       if (!isInline) {
         const mx = (ax + bx)/2;
         const my = sides.sameRow ? (ay + by)/2 - 18 : (ay + by)/2;
@@ -404,6 +420,11 @@
         label.dataset.to = e.to;
         label.style.left = mx + "px";
         label.style.top = my + "px";
+        if (e.rationale || (e.sources && e.sources.length > 0)) {
+          label.classList.add("has-rationale");
+          label.addEventListener("mouseenter", () => openEdgePopover(e, label));
+          label.addEventListener("mouseleave", scheduleCloseEdgePopover);
+        }
         labelsHost.appendChild(label);
       }
     }
@@ -462,6 +483,42 @@
     document.addEventListener("click", (e) => {
       if (!popover.hidden && !popover.contains(e.target) && !e.target.closest(".ag-node")) closePopover();
     });
+
+    let edgePopoverCloseTimer = null;
+    function openEdgePopover(e, anchorEl) {
+      if (edgePopoverCloseTimer) { clearTimeout(edgePopoverCloseTimer); edgePopoverCloseTimer = null; }
+      const sourcesHTML = (e.sources || []).map(s => {
+        const meta = [s.kind].filter(Boolean).join(" · ");
+        return `<li><a href="${escapeHTML(s.url)}" target="_blank" rel="noopener">${escapeHTML(s.label)}</a>${meta ? ` <span class="meta">${escapeHTML(meta)}</span>` : ""}${s.finding ? `<div class="finding">${escapeHTML(s.finding)}</div>` : ""}</li>`;
+      }).join("");
+      edgePopover.innerHTML = `
+        <div class="ag-edge-pop-head">${escapeHTML(e.from)} <span class="arrow">→</span> ${escapeHTML(e.to)} <span class="kind ag-${e.kind}">${e.kind}</span></div>
+        ${e.rationale ? `<div class="ag-edge-pop-rationale">${escapeHTML(e.rationale)}</div>` : ""}
+        ${sourcesHTML ? `<ul class="ag-edge-pop-sources">${sourcesHTML}</ul>` : ""}
+      `;
+      edgePopover.hidden = false;
+      const wrapRect = viewportEl.getBoundingClientRect();
+      const anchorRect = anchorEl.getBoundingClientRect();
+      const popW = 280, popH = edgePopover.offsetHeight || 120;
+      // Anchor to the right of the trigger; flip left if there's no room.
+      let left = (anchorRect.right - wrapRect.left) + 12;
+      let top  = (anchorRect.top + anchorRect.height / 2 - wrapRect.top) - popH / 2;
+      if (left + popW > wrapRect.width - 8) {
+        left = (anchorRect.left - wrapRect.left) - popW - 12;
+      }
+      if (top < 8) top = 8;
+      if (top + popH > wrapRect.height - 8) top = wrapRect.height - popH - 8;
+      edgePopover.style.left = Math.max(8, left) + "px";
+      edgePopover.style.top = top + "px";
+    }
+    function scheduleCloseEdgePopover() {
+      if (edgePopoverCloseTimer) clearTimeout(edgePopoverCloseTimer);
+      edgePopoverCloseTimer = setTimeout(() => { edgePopover.hidden = true; edgePopoverCloseTimer = null; }, 180);
+    }
+    edgePopover.addEventListener("mouseenter", () => {
+      if (edgePopoverCloseTimer) { clearTimeout(edgePopoverCloseTimer); edgePopoverCloseTimer = null; }
+    });
+    edgePopover.addEventListener("mouseleave", scheduleCloseEdgePopover);
 
     function escapeHTML(s) { return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c])); }
 

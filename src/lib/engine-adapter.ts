@@ -70,6 +70,14 @@ export function toEngineData(graph: ClaimGraph): EngineGraphData {
         kind: e.kind as EngineEdge["kind"],
       };
       if (e.rationale) edge.rationale = e.rationale;
+      if (e.sources && e.sources.length > 0) {
+        edge.sources = e.sources.map((s) => {
+          const slim: EngineEdgeSource = { label: s.label, url: s.url };
+          if (s.kind) slim.kind = s.kind;
+          if (s.finding) slim.finding = s.finding;
+          return slim;
+        });
+      }
       if (fromDomain && toDomain && fromDomain !== toDomain) {
         edge.crossDomain = true;
       }
