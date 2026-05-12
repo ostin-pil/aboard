@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
+    "@xyflow/react": "^12.10.2",
     "gray-matter": "^4.0.3",
     "jszip": "^3.10.1",
     "next": "16.2.6",

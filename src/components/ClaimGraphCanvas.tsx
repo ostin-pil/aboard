@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { ClaimGraphRF } from "./graph/ClaimGraphRF";
 
 type Mode = "inline" | "fullbleed";
 
@@ -25,64 +26,22 @@ export function ClaimGraphCanvas({
   className,
   style,
 }: Props) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const instanceRef = useRef<AboardGraphInstance | null>(null);
-
-  // Stash callbacks in refs so changes to their identity (which happens every
-  // parent render for inline arrows) don't retrigger the mount effect. The
-  // engine should only re-mount when mode/editable/data actually change.
-  const onPersistRef = useRef(onPersist);
-  const onZoomRef = useRef(onZoom);
-  const onReadyRef = useRef(onReady);
-  onPersistRef.current = onPersist;
-  onZoomRef.current = onZoom;
-  onReadyRef.current = onReady;
-
-  useEffect(() => {
-    if (!rootRef.current) return;
-    let cancelled = false;
-    let pollHandle: number | undefined;
-
-    function tryMount() {
-      if (cancelled) return;
-      const root = rootRef.current;
-      if (!root) return;
-      if (!window.AboardGraph) {
-        pollHandle = window.setTimeout(tryMount, 50);
-        return;
-      }
-      root.innerHTML = "";
-      const instance = window.AboardGraph.mount(root, {
-        mode,
-        editable,
-        data,
-        onPersist: () => {
-          if (instance) onPersistRef.current?.(instance);
-        },
-        onZoom: (s) => onZoomRef.current?.(s),
-      });
-      instanceRef.current = instance;
-      onReadyRef.current?.(instance);
-    }
-
-    tryMount();
-
-    return () => {
-      cancelled = true;
-      if (pollHandle) window.clearTimeout(pollHandle);
-      if (rootRef.current) rootRef.current.innerHTML = "";
-      instanceRef.current = null;
-    };
-  }, [mode, editable, data]);
-
   return (
     <div
-      ref={rootRef}
       className={`${mode === "fullbleed" ? "ag-fullbleed" : "ag-inline"}${
         className ? " " + className : ""
       }`}
       style={style}
-    />
+    >
+      <ClaimGraphRF
+        data={data}
+        mode={mode}
+        editable={editable}
+        onPersist={onPersist}
+        onZoom={onZoom}
+        onReady={onReady}
+      />
+    </div>
   );
 }
 

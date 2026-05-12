@@ -1,0 +1,101 @@
+"use client";
+
+import { memo, useRef } from "react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { useGraphContext } from "./GraphContext";
+import type { ClaimNode as ClaimNodeT } from "./types";
+
+function ClaimNodeImpl({ id, data }: NodeProps<ClaimNodeT>) {
+  const ctx = useGraphContext();
+  const ref = useRef<HTMLDivElement>(null);
+  const isFocused = ctx.focusId !== null && ctx.isNeighbor(id);
+  const isDimmed = ctx.focusId !== null && !ctx.isNeighbor(id);
+
+  const classes = [
+    "ag-node",
+    "ag-node-rf",
+    isFocused ? "is-active" : "",
+    isDimmed ? "is-dimmed" : "",
+    data.outOfDomain ? "ag-out-of-domain" : "",
+    data.author === "agent:reader/v0" ? "ag-unsigned" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const onClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (ref.current) ctx.openNodePopover({ id, data, position: { x: 0, y: 0 }, type: "claim" } as ClaimNodeT, ref.current);
+  };
+
+  const onMouseEnter = () => ctx.setFocusId(id);
+  const onMouseLeave = () => ctx.setFocusId(null);
+
+  return (
+    <div
+      ref={ref}
+      className={classes}
+      data-kind={data.kind}
+      data-id={id}
+      data-domain={data.domain}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      <Handle type="target" position={Position.Top} className="ag-rf-handle" isConnectable={ctx.editable} />
+      <Handle type="target" position={Position.Left} className="ag-rf-handle" isConnectable={ctx.editable} id="left-target" />
+      <Handle type="target" position={Position.Right} className="ag-rf-handle" isConnectable={ctx.editable} id="right-target" />
+
+      <div className="ag-node-meta">
+        <span className="kind">{data.kind.toUpperCase()}</span>
+        <span className="id-part"> · {id}</span>
+        <span className="conf">c={data.conf.toFixed(2)}</span>
+      </div>
+
+      <div className="ag-node-title">{data.title}</div>
+
+      {(data.dossier || data.forecast > 0 || data.author === "agent:reader/v0") && (
+        <div className="ag-node-badges">
+          {data.forecast > 0 && (
+            <span className="ag-badge">
+              <span className="b-dot" />
+              {data.forecast} forecast
+            </span>
+          )}
+          {data.dossier && (
+            <span className="ag-badge dossier">
+              <span className="b-dot" />
+              dossier
+            </span>
+          )}
+          {data.author === "agent:reader/v0" && (
+            <span className="ag-badge unsigned">
+              <span className="b-dot" />
+              unsigned
+            </span>
+          )}
+        </div>
+      )}
+
+      {ctx.editable && (
+        <button
+          className="ag-node-edit-btn"
+          title="Edit node"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            ctx.openNodeEditor({ id, data, position: { x: 0, y: 0 }, type: "claim" } as ClaimNodeT);
+          }}
+        >
+          ✎
+        </button>
+      )}
+
+      <Handle type="source" position={Position.Bottom} className="ag-rf-handle" isConnectable={ctx.editable} />
+      <Handle type="source" position={Position.Left} className="ag-rf-handle" isConnectable={ctx.editable} id="left-source" />
+      <Handle type="source" position={Position.Right} className="ag-rf-handle" isConnectable={ctx.editable} id="right-source" />
+    </div>
+  );
+}
+
+export const ClaimNode = memo(ClaimNodeImpl);

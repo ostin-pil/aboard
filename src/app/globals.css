@@ -326,74 +326,48 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 /* ============================================================
    GRAPH (engine)
    ============================================================ */
-.ag-root { position: relative; }
 .ag-fullbleed { width: 100%; height: 100%; }
-.ag-inline { width: 100%; }
+.ag-inline { width: 100%; height: 460px; }
 
-.ag-viewport {
-  position: relative;
-  overflow: hidden;
+.ag-rf-root { width: 100%; height: 100%; position: relative; }
+.ag-rf-root .react-flow {
   background-color: var(--bg);
   background-image: radial-gradient(circle, var(--grid-dot) 0.9px, transparent 1px);
   background-size: 32px 32px;
   background-position: 16px 16px;
-  cursor: grab;
 }
-.ag-fullbleed .ag-viewport { width: 100%; height: 100%; }
-.ag-inline .ag-viewport { height: 460px; cursor: default; background-image: none; background-color: transparent; }
-.ag-viewport.ag-panning { cursor: grabbing; }
+.ag-rf-inline .react-flow { background-image: none; background-color: transparent; }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]):not([data-theme="dark"]) .ag-viewport {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) .ag-rf-root .react-flow {
     background-image: radial-gradient(circle, color-mix(in srgb, var(--grid-dot) calc(var(--grid-dot-alpha) * 100%), transparent) 0.9px, transparent 1px);
   }
 }
-:root[data-theme="dark"] .ag-viewport {
+:root[data-theme="dark"] .ag-rf-root .react-flow {
   background-image: radial-gradient(circle, color-mix(in srgb, var(--grid-dot) calc(var(--grid-dot-alpha) * 100%), transparent) 0.9px, transparent 1px);
 }
 
-.ag-stage { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
-.ag-canvas { position: relative; padding: 40px; }
+/* React Flow node wrapper sizes the custom node */
+.react-flow__node-claim { width: 240px; }
+.ag-rf-inline .react-flow__node-claim { width: 188px; }
 
-.ag-row-label {
-  position: absolute;
-  left: -2px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted-2);
-  transform: rotate(-90deg);
-  transform-origin: left top;
-  white-space: nowrap;
+/* React Flow handles — invisible until node hover in editor mode */
+.ag-rf-handle {
+  width: 8px !important; height: 8px !important;
+  background: transparent !important;
+  border: none !important;
+  opacity: 0;
 }
-.ag-row-label .num { color: var(--muted); padding-left: 6px; }
-.ag-fullbleed .ag-r1 { top: 200px; }
-.ag-fullbleed .ag-r2 { top: 410px; }
-.ag-fullbleed .ag-r3 { top: 610px; }
-.ag-inline .ag-r1 { top: 130px; }
-.ag-inline .ag-r2 { top: 270px; }
-.ag-inline .ag-r3 { top: 400px; }
-
-.ag-edges, .ag-drag-edge {
-  position: absolute; top: 0; left: 0;
-  pointer-events: none;
-  overflow: visible;
+.ag-rf-fullbleed .ag-node:hover .ag-rf-handle {
+  opacity: 1;
+  background: var(--fg) !important;
+  border-radius: 50%;
 }
-.ag-drag-edge { z-index: 6; }
 
-.ag-edge { fill: none; transition: opacity .15s, stroke-width .15s; }
-.ag-edge.ag-causes    { stroke: var(--edge-causes); stroke-width: 1.1; }
-.ag-edge.ag-moderates { stroke: var(--edge-moderates); stroke-width: 1; stroke-dasharray: 3 3; opacity: .85; }
-.ag-edge.ag-reduces   { stroke: var(--edge-reduces); stroke-width: 1.1; stroke-dasharray: 4 3; }
-.ag-ah-causes  { fill: var(--edge-causes); }
-.ag-ah-reduces { fill: var(--edge-reduces); }
+.react-flow__attribution { display: none !important; }
 
-.ag-edge-temp { fill: none; stroke: var(--fg); stroke-width: 1.3; stroke-dasharray: 4 3; opacity: .7; }
-
+/* Edge label */
 .ag-edge-label {
-  position: absolute;
-  transform: translate(-50%, -50%);
   background: var(--paper);
   border: 1px solid var(--line);
   padding: 1.5px 6px 2px;
@@ -403,15 +377,19 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   color: var(--muted);
   border-radius: 2px;
   white-space: nowrap;
-  pointer-events: none;
+  transition: opacity .15s;
 }
 .ag-edge-label.ag-causes    { color: var(--edge-causes); }
 .ag-edge-label.ag-moderates { color: var(--edge-moderates); opacity: .85; }
 .ag-edge-label.ag-reduces   { color: var(--edge-reduces); }
+.ag-edge-label.ag-cross-domain { font-weight: 500; }
+.ag-edge-label.has-rationale { cursor: help; }
+.ag-edge-label.is-dimmed { opacity: .25; }
+.ag-edge-label.ag-out-of-domain { opacity: .18; }
 
-.ag-nodes { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+/* Node — rendered as a div inside React Flow's wrapper */
 .ag-node {
-  position: absolute;
+  position: relative;
   background: var(--bg-tint, var(--paper));
   border: 1px solid var(--bd, var(--line-2));
   border-radius: 4px;
@@ -419,17 +397,17 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   text-decoration: none;
   color: inherit;
   display: block;
-  pointer-events: auto;
   cursor: pointer;
   transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease, opacity .15s;
 }
-.ag-inline .ag-node { padding: 9px 11px 10px; }
+.ag-rf-inline .ag-node { padding: 9px 11px 10px; }
 .ag-node:hover { box-shadow: var(--shadow-card); transform: translateY(-1px); }
 .ag-node[data-kind="symptom"]   { --bg-tint: var(--sym-bg);  --bd: var(--sym-fg);  }
 .ag-node[data-kind="mechanism"] { --bg-tint: var(--mech-bg); --bd: var(--mech-fg); }
 .ag-node[data-kind="leverage"]  { --bg-tint: var(--lev-bg);  --bd: var(--lev-fg);  }
 .ag-node.ag-unsigned { border-style: dashed; border-color: var(--bd); }
-.ag-node.ag-connect-target { outline: 2px solid var(--fg); outline-offset: 2px; }
+.ag-node.is-dimmed { opacity: .35; box-shadow: none; transform: none; }
+.ag-node.ag-out-of-domain { opacity: .22; box-shadow: none; }
 
 .ag-node-meta {
   display: flex; justify-content: space-between; align-items: baseline;
@@ -448,7 +426,7 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   line-height: 1.32; color: var(--fg); letter-spacing: -0.005em;
   text-wrap: pretty;
 }
-.ag-inline .ag-node-title { font-size: 12px; line-height: 1.28; }
+.ag-rf-inline .ag-node-title { font-size: 12px; line-height: 1.28; }
 
 .ag-node-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 9px; }
 .ag-badge {
@@ -462,30 +440,17 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 .ag-badge.dossier .b-dot { background: var(--fg); }
 .ag-badge.unsigned { color: var(--muted); border-style: dashed; }
 
-.ag-connect-handle, .ag-node-edit-btn {
+.ag-node-edit-btn {
   position: absolute; width: 22px; height: 22px;
   background: var(--paper); border: 1px solid var(--line-2);
   color: var(--muted); border-radius: 50%; display: none;
   align-items: center; justify-content: center;
   cursor: pointer; font-family: var(--mono); font-size: 11px;
   padding: 0; z-index: 3;
+  right: -11px; top: -11px;
 }
-.ag-connect-handle { right: -11px; top: 50%; transform: translateY(-50%); }
-.ag-node-edit-btn  { right: -11px; top: -11px; }
-.ag-editable .ag-node:hover .ag-connect-handle,
-.ag-editable .ag-node:hover .ag-node-edit-btn { display: inline-flex; }
-.ag-connect-handle:hover, .ag-node-edit-btn:hover { color: var(--fg); border-color: var(--fg); }
-
-.ag-dimmed .ag-node:not(.is-active) { opacity: .35; box-shadow: none; transform: none; }
-.ag-dimmed .ag-edge:not(.is-active) { opacity: .12; }
-.ag-dimmed .ag-edge-label:not(.is-active) { opacity: .25; }
-
-.ag-domain-filter .ag-node.ag-out-of-domain { opacity: .22; box-shadow: none; }
-.ag-domain-filter .ag-edge.ag-out-of-domain { opacity: .08; }
-.ag-domain-filter .ag-edge-label.ag-out-of-domain { opacity: .18; }
-
-.ag-edge.ag-cross-domain { stroke-width: 1.8; }
-.ag-edge-label.ag-cross-domain { font-weight: 500; }
+.ag-rf-fullbleed .ag-node:hover .ag-node-edit-btn { display: inline-flex; }
+.ag-node-edit-btn:hover { color: var(--fg); border-color: var(--fg); }
 
 .ag-popover {
   position: absolute; width: 300px;
