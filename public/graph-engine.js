@@ -170,7 +170,17 @@
     const nodeW = isInline ? 188 : 240;
     const padL = isInline ? 90 : 60;
     const padR = isInline ? 8 : 60;
-    const canvasW = isInline ? 1180 : 1520;
+    // Canvas width scales with the most-populous row so nodes don't overlap.
+    // Minimum widths preserve the design for sparse graphs; max-row count
+    // drives the floor for dense ones. Fullbleed has pan; inline relies on
+    // the parent filtering to a single domain (see toEngineData(graph, { domain })).
+    const minCanvasW = isInline ? 1180 : 1520;
+    const minGap = isInline ? 22 : 36;
+    const rowCounts = [0, 0, 0, 0];
+    state.nodes.forEach(n => { if (n.row >= 1 && n.row <= 3) rowCounts[n.row]++; });
+    const maxRow = Math.max(rowCounts[1], rowCounts[2], rowCounts[3], 1);
+    const requiredW = padL + padR + nodeW + (maxRow - 1) * (nodeW + minGap);
+    const canvasW = Math.max(minCanvasW, requiredW);
     const canvasH = isInline ? 460 : 700;
     const rowY = isInline ? { 1: 60, 2: 192, 3: 324 } : { 1: 110, 2: 320, 3: 530 };
 
