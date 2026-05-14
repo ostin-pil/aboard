@@ -366,6 +366,29 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 
 .react-flow__attribution { display: none !important; }
 
+.ag-rf-key-hints {
+  display: flex;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 5px 9px 6px;
+}
+.ag-rf-key-hints kbd {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  border-radius: 2px;
+  padding: 0 4px;
+  margin-right: 4px;
+  color: var(--fg);
+}
+
 /* Edge label */
 .ag-edge-label {
   background: var(--paper);

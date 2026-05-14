@@ -281,6 +281,31 @@ function ClaimGraphRFInner({
     onPersist?.(buildInstance());
   }, [snapshot, persist, buildInstance, onPersist]);
 
+  // Backspace/Delete on selected elements — React Flow handles the deletion
+  // via deleteKeyCode; we just snapshot + persist after.
+  const onNodesDelete = useCallback(
+    (deleted: ClaimNode[]) => {
+      const ids = new Set(deleted.map((n) => n.id));
+      setEdges((es) => es.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
+      requestAnimationFrame(() => {
+        snapshot();
+        persist();
+        onPersist?.(buildInstance());
+      });
+    },
+    [setEdges, snapshot, persist, buildInstance, onPersist]
+  );
+  const onEdgesDelete = useCallback(
+    () => {
+      requestAnimationFrame(() => {
+        snapshot();
+        persist();
+        onPersist?.(buildInstance());
+      });
+    },
+    [snapshot, persist, buildInstance, onPersist]
+  );
+
   // Editor save/delete handlers.
   const newId = useCallback((kind: EngineNode["kind"]) => {
     const prefix = kind === "symptom" ? "S" : kind === "mechanism" ? "M" : "L";
@@ -467,7 +492,12 @@ function ClaimGraphRFInner({
           onEdgesChange={onEdgesChange}
           onConnect={editable ? onConnect : undefined}
           onNodeDragStop={editable ? onNodeDragStop : undefined}
+          onNodesDelete={editable ? onNodesDelete : undefined}
+          onEdgesDelete={editable ? onEdgesDelete : undefined}
           onMoveEnd={onMoveEnd}
+          deleteKeyCode={editable ? ["Backspace", "Delete"] : null}
+          multiSelectionKeyCode={["Meta", "Control"]}
+          selectionKeyCode="Shift"
           nodeTypes={NODE_TYPES}
           edgeTypes={EDGE_TYPES}
           defaultEdgeOptions={defaultEdgeOptions}
@@ -488,9 +518,11 @@ function ClaimGraphRFInner({
         >
           {!isInline && <Background gap={24} size={1} color="var(--line)" />}
           {!isInline && <Controls showInteractive={false} />}
-          {isInline && (
-            <Panel position="top-right" className="ag-rf-inline-hint">
-              <span />
+          {!isInline && editable && (
+            <Panel position="bottom-right" className="ag-rf-key-hints">
+              <span><kbd>⇧</kbd>+drag box-select</span>
+              <span><kbd>⌘</kbd>+click add</span>
+              <span><kbd>⌫</kbd> delete</span>
             </Panel>
           )}
         </ReactFlow>
