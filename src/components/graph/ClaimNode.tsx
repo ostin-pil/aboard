@@ -1,19 +1,25 @@
 "use client";
 
 import { memo, useRef } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position, useStore, type NodeProps } from "@xyflow/react";
 import { useGraphContext } from "./GraphContext";
 import type { ClaimNode as ClaimNodeT } from "./types";
+
+const LOD_THRESHOLD = 0.6;
+const zoomSelector = (s: { transform: [number, number, number] }) => s.transform[2];
 
 function ClaimNodeImpl({ id, data }: NodeProps<ClaimNodeT>) {
   const ctx = useGraphContext();
   const ref = useRef<HTMLDivElement>(null);
+  const zoom = useStore(zoomSelector);
+  const lod = zoom < LOD_THRESHOLD;
   const isFocused = ctx.focusId !== null && ctx.isNeighbor(id);
   const isDimmed = ctx.focusId !== null && !ctx.isNeighbor(id);
 
   const classes = [
     "ag-node",
     "ag-node-rf",
+    lod ? "ag-node-lod" : "",
     isFocused ? "is-active" : "",
     isDimmed ? "is-dimmed" : "",
     data.outOfDomain ? "ag-out-of-domain" : "",
@@ -49,12 +55,12 @@ function ClaimNodeImpl({ id, data }: NodeProps<ClaimNodeT>) {
       <div className="ag-node-meta">
         <span className="kind">{data.kind.toUpperCase()}</span>
         <span className="id-part"> · {id}</span>
-        <span className="conf">c={data.conf.toFixed(2)}</span>
+        {!lod && <span className="conf">c={data.conf.toFixed(2)}</span>}
       </div>
 
-      <div className="ag-node-title">{data.title}</div>
+      {!lod && <div className="ag-node-title">{data.title}</div>}
 
-      {(data.dossier || data.forecast > 0 || data.author === "agent:reader/v0") && (
+      {!lod && (data.dossier || data.forecast > 0 || data.author === "agent:reader/v0") && (
         <div className="ag-node-badges">
           {data.forecast > 0 && (
             <span className="ag-badge">
@@ -77,7 +83,7 @@ function ClaimNodeImpl({ id, data }: NodeProps<ClaimNodeT>) {
         </div>
       )}
 
-      {ctx.editable && (
+      {!lod && ctx.editable && (
         <button
           className="ag-node-edit-btn"
           title="Edit node"

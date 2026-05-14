@@ -481,6 +481,7 @@ function ClaimGraphRFInner({
           nodesDraggable={editable}
           nodesConnectable={editable}
           elementsSelectable={!isInline}
+          onlyRenderVisibleElements
           proOptions={{ hideAttribution: true }}
           minZoom={0.4}
           maxZoom={2}
