@@ -24,6 +24,7 @@ import {
 } from "react";
 import { ClaimEdge as ClaimEdgeComp } from "./ClaimEdge";
 import { ClaimNode as ClaimNodeComp } from "./ClaimNode";
+import { DomainGroupNode as DomainGroupNodeComp } from "./DomainGroupNode";
 import { EdgeEditorModal } from "./EdgeEditorModal";
 import { EdgePopover } from "./EdgePopover";
 import { engineToRF, rfToEngine } from "./engine-to-rf";
@@ -37,11 +38,23 @@ import {
   loadPersisted,
   savePersisted,
 } from "./persist";
-import type { ClaimEdge, ClaimNode } from "./types";
+import {
+  isClaimNode,
+  isGroupNode,
+  type ClaimEdge,
+  type ClaimNode,
+  type GraphNode,
+} from "./types";
 
-const NODE_TYPES: NodeTypes = { claim: ClaimNodeComp };
+const NODE_TYPES: NodeTypes = {
+  claim: ClaimNodeComp,
+  domainGroup: DomainGroupNodeComp,
+};
 const EDGE_TYPES: EdgeTypes = { claim: ClaimEdgeComp };
 const HISTORY_LIMIT = 60;
+
+const COLLAPSED_GROUP_W = 220;
+const COLLAPSED_GROUP_H = 56;
 
 type Props = {
   data: EngineGraphData;
@@ -74,7 +87,7 @@ function ClaimGraphRFInner({
     return engineToRF(data, mode);
   }, [data, mode]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<ClaimNode>(initial.nodes);
+  const [nodes, setNodes, onNodesChange] = useNodesState<GraphNode>(initial.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ClaimEdge>(initial.edges);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [popoverNode, setPopoverNode] = useState<{ node: ClaimNode; anchor: HTMLElement } | null>(null);
@@ -102,7 +115,7 @@ function ClaimGraphRFInner({
   nodesRef.current = nodes;
   edgesRef.current = edges;
 
-  const historyRef = useRef<{ stack: { nodes: ClaimNode[]; edges: ClaimEdge[] }[]; idx: number }>({
+  const historyRef = useRef<{ stack: { nodes: GraphNode[]; edges: ClaimEdge[] }[]; idx: number }>({
     stack: [{ nodes: initial.nodes, edges: initial.edges }],
     idx: 0,
   });
@@ -141,7 +154,7 @@ function ClaimGraphRFInner({
     const h = historyRef.current;
     h.stack.splice(h.idx + 1);
     h.stack.push({
-      nodes: nodesRef.current.map((n) => ({ ...n, data: { ...n.data } })),
+      nodes: nodesRef.current.map((n) => ({ ...n, data: { ...n.data } } as GraphNode)),
       edges: edgesRef.current.map((e) => ({ ...e, data: { ...e.data! } })),
     });
     h.idx = h.stack.length - 1;
@@ -154,6 +167,50 @@ function ClaimGraphRFInner({
   const persist = useCallback(() => {
     savePersisted(nodesRef.current, edgesRef.current);
   }, []);
+
+  // Toggle a domain group's collapsed flag and propagate hidden to children + edges.
+  const toggleDomainCollapse = useCallback(
+    (groupId: string) => {
+      const group = nodesRef.current.find((n) => n.id === groupId);
+      if (!group || !isGroupNode(group)) return;
+      const nextCollapsed = !group.data.collapsed;
+      const childIds = new Set(
+        nodesRef.current
+          .filter((n): n is ClaimNode => isClaimNode(n) && n.parentId === groupId)
+          .map((n) => n.id)
+      );
+      setNodes((ns) =>
+        ns.map((n) => {
+          if (n.id === groupId && isGroupNode(n)) {
+            const next: typeof n = {
+              ...n,
+              data: { ...n.data, collapsed: nextCollapsed },
+              style: nextCollapsed
+                ? { ...n.style, width: COLLAPSED_GROUP_W, height: COLLAPSED_GROUP_H }
+                : { ...n.style, width: undefined, height: undefined },
+            };
+            return next;
+          }
+          if (childIds.has(n.id)) {
+            return { ...n, hidden: nextCollapsed } as GraphNode;
+          }
+          return n;
+        })
+      );
+      setEdges((es) =>
+        es.map((e) => {
+          const touchesCollapsed = childIds.has(e.source) || childIds.has(e.target);
+          if (!touchesCollapsed) return e;
+          return { ...e, hidden: nextCollapsed };
+        })
+      );
+      requestAnimationFrame(() => {
+        snapshot();
+        persist();
+      });
+    },
+    [setNodes, setEdges, snapshot, persist]
+  );
 
   const buildInstance = useCallback((): AboardGraphInstance => {
     return {
@@ -172,7 +229,7 @@ function ClaimGraphRFInner({
         if (h.idx > 0) {
           h.idx--;
           const snap = h.stack[h.idx];
-          setNodes(snap.nodes.map((n) => ({ ...n, data: { ...n.data } })));
+          setNodes(snap.nodes.map((n) => ({ ...n, data: { ...n.data } } as GraphNode)));
           setEdges(snap.edges.map((e) => ({ ...e, data: { ...e.data! } })));
           requestAnimationFrame(persist);
         }
@@ -182,7 +239,7 @@ function ClaimGraphRFInner({
         if (h.idx < h.stack.length - 1) {
           h.idx++;
           const snap = h.stack[h.idx];
-          setNodes(snap.nodes.map((n) => ({ ...n, data: { ...n.data } })));
+          setNodes(snap.nodes.map((n) => ({ ...n, data: { ...n.data } } as GraphNode)));
           setEdges(snap.edges.map((e) => ({ ...e, data: { ...e.data! } })));
           requestAnimationFrame(persist);
         }
@@ -200,7 +257,11 @@ function ClaimGraphRFInner({
         requestAnimationFrame(() => rf.fitView({ duration: 200, padding: 0.15 }));
       },
       exportJSONLD: () =>
-        exportClientJSONLD(nodesRef.current, edgesRef.current, data.domain),
+        exportClientJSONLD(
+          nodesRef.current.filter(isClaimNode),
+          edgesRef.current,
+          data.domain
+        ),
       setActiveDomain: (d) => setActiveDomain(d),
     };
   }, [data, mode, rf, setNodes, setEdges, persist]);
@@ -215,11 +276,14 @@ function ClaimGraphRFInner({
     requestAnimationFrame(() => rf.fitView({ padding: mode === "inline" ? 0.05 : 0.15 }));
   }, [buildInstance, onReady, rf, mode]);
 
-  // Apply domain filter by mutating outOfDomain flags.
+  // Apply domain filter by mutating outOfDomain flags on claim nodes / edges.
   useEffect(() => {
     if (activeDomain === "all") {
       setNodes((ns) =>
-        ns.map((n) => (n.data.outOfDomain ? { ...n, data: { ...n.data, outOfDomain: false } } : n))
+        ns.map((n) => {
+          if (!isClaimNode(n) || !n.data.outOfDomain) return n;
+          return { ...n, data: { ...n.data, outOfDomain: false } };
+        })
       );
       setEdges((es) =>
         es.map((e) =>
@@ -232,10 +296,11 @@ function ClaimGraphRFInner({
     }
     const inDomain = new Set<string>();
     for (const n of nodesRef.current) {
-      if (n.data.domain === activeDomain) inDomain.add(n.id);
+      if (isClaimNode(n) && n.data.domain === activeDomain) inDomain.add(n.id);
     }
     setNodes((ns) =>
       ns.map((n) => {
+        if (!isClaimNode(n)) return n;
         const out = !inDomain.has(n.id);
         if (n.data.outOfDomain === out) return n;
         return { ...n, data: { ...n.data, outOfDomain: out } };
@@ -265,7 +330,7 @@ function ClaimGraphRFInner({
       const fromN = nodesRef.current.find((n) => n.id === c.source);
       const toN = nodesRef.current.find((n) => n.id === c.target);
       let kind: EngineEdge["kind"] = "causes";
-      if (fromN && toN) {
+      if (fromN && toN && isClaimNode(fromN) && isClaimNode(toN)) {
         if (fromN.data.kind === "leverage") kind = "reduces";
         else if (fromN.data.row === toN.data.row) kind = "moderates";
       }
@@ -284,8 +349,9 @@ function ClaimGraphRFInner({
   // Backspace/Delete on selected elements — React Flow handles the deletion
   // via deleteKeyCode; we just snapshot + persist after.
   const onNodesDelete = useCallback(
-    (deleted: ClaimNode[]) => {
-      const ids = new Set(deleted.map((n) => n.id));
+    (deleted: GraphNode[]) => {
+      const ids = new Set(deleted.filter(isClaimNode).map((n) => n.id));
+      if (ids.size === 0) return;
       setEdges((es) => es.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
       requestAnimationFrame(() => {
         snapshot();
@@ -310,12 +376,17 @@ function ClaimGraphRFInner({
   const newId = useCallback((kind: EngineNode["kind"]) => {
     const prefix = kind === "symptom" ? "S" : kind === "mechanism" ? "M" : "L";
     let i = 1;
-    while (nodesRef.current.some((n) => n.id === prefix + i)) i++;
+    while (
+      nodesRef.current.some((n) => isClaimNode(n) && n.id === prefix + i)
+    )
+      i++;
     return prefix + i;
   }, []);
 
   const existingRowsCount = useCallback((row: 1 | 2 | 3) => {
-    return nodesRef.current.filter((n) => n.data.row === row).length;
+    return nodesRef.current.filter(
+      (n): n is ClaimNode => isClaimNode(n) && n.data.row === row
+    ).length;
   }, []);
 
   const onNodeSave = useCallback(
@@ -442,8 +513,17 @@ function ClaimGraphRFInner({
         }
       },
       isNeighbor,
+      toggleDomainCollapse,
     }),
-    [editable, mode, focusId, isNeighbor, scheduleCloseEdgePopover, cancelCloseEdgePopover]
+    [
+      editable,
+      mode,
+      focusId,
+      isNeighbor,
+      scheduleCloseEdgePopover,
+      cancelCloseEdgePopover,
+      toggleDomainCollapse,
+    ]
   );
 
   // Refit on resize.
@@ -485,7 +565,7 @@ function ClaimGraphRFInner({
       </svg>
 
       <GraphContext.Provider value={ctx}>
-        <ReactFlow<ClaimNode, ClaimEdge>
+        <ReactFlow<GraphNode, ClaimEdge>
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
@@ -581,4 +661,3 @@ function ClaimGraphRFInner({
     </div>
   );
 }
-

@@ -15,6 +15,7 @@ export type GraphContextValue = {
   openNodeEditor: (n: ClaimNode | null) => void;
   openEdgeEditor: (e: ClaimEdge | { source: string; target: string; kind: EngineEdge["kind"] }) => void;
   isNeighbor: (id: string) => boolean;
+  toggleDomainCollapse: (groupId: string) => void;
 };
 
 export const GraphContext = createContext<GraphContextValue | null>(null);

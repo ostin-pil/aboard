@@ -28,3 +28,20 @@ export type ClaimEdgeData = {
 
 export type ClaimNode = Node<ClaimNodeData, "claim">;
 export type ClaimEdge = Edge<ClaimEdgeData, "claim">;
+
+export type DomainGroupData = {
+  domain: string;
+  claimCount: number;
+  collapsed: boolean;
+  [key: string]: unknown;
+};
+export type DomainGroupNode = Node<DomainGroupData, "domainGroup">;
+
+export type GraphNode = ClaimNode | DomainGroupNode;
+
+export function isClaimNode(n: GraphNode): n is ClaimNode {
+  return n.type === "claim";
+}
+export function isGroupNode(n: GraphNode): n is DomainGroupNode {
+  return n.type === "domainGroup";
+}

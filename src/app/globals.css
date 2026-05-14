@@ -366,6 +366,69 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 
 .react-flow__attribution { display: none !important; }
 
+/* Domain group container — non-interactive parent that holds claim children */
+.react-flow__node-domainGroup {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  cursor: default;
+  pointer-events: auto;
+}
+
+.ag-domain-group {
+  width: 100%;
+  height: 100%;
+  background: color-mix(in srgb, var(--paper) 50%, transparent);
+  border: 1px dashed var(--line-2);
+  border-radius: 6px;
+  padding: 0;
+  position: relative;
+}
+.ag-domain-group.is-collapsed {
+  border-style: solid;
+  background: var(--paper);
+}
+
+.ag-domain-group-header {
+  appearance: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  text-transform: uppercase;
+  width: 100%;
+  text-align: left;
+}
+.ag-domain-group-header:hover { color: var(--fg); }
+.ag-domain-group-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--line-2);
+  border-radius: 2px;
+  font-size: 12px;
+  color: var(--fg);
+  background: var(--bg);
+}
+.ag-domain-group-label {
+  color: var(--fg);
+  font-weight: 500;
+}
+.ag-domain-group-count {
+  color: var(--muted-2);
+  margin-left: auto;
+  font-size: 10px;
+}
+
 .ag-rf-key-hints {
   display: flex;
   gap: 12px;
