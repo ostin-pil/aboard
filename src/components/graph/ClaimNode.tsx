@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useRef } from "react";
-import { Handle, Position, useStore, type NodeProps } from "@xyflow/react";
+import { Handle, Position, useConnection, useStore, type NodeProps } from "@xyflow/react";
 import { useGraphContext } from "./GraphContext";
 import type { ClaimNode as ClaimNodeT } from "./types";
 
@@ -15,6 +15,11 @@ function ClaimNodeImpl({ id, data, selected }: NodeProps<ClaimNodeT>) {
   const lod = zoom < LOD_THRESHOLD;
   const isFocused = ctx.focusId !== null && ctx.isNeighbor(id);
   const isDimmed = ctx.focusId !== null && !ctx.isNeighbor(id);
+
+  const connection = useConnection();
+  const isConnecting = !!connection.inProgress;
+  const isSelfConnecting = connection.fromNode?.id === id;
+  const showFullDropZone = isConnecting && !isSelfConnecting && ctx.editable;
 
   const classes = [
     "ag-node",
@@ -54,6 +59,16 @@ function ClaimNodeImpl({ id, data, selected }: NodeProps<ClaimNodeT>) {
       <Handle type="target" position={Position.Top} className="ag-rf-handle" isConnectable={ctx.editable} />
       <Handle type="target" position={Position.Left} className="ag-rf-handle" isConnectable={ctx.editable} id="left-target" />
       <Handle type="target" position={Position.Right} className="ag-rf-handle" isConnectable={ctx.editable} id="right-target" />
+
+      {showFullDropZone && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="full-target"
+          className="ag-rf-full-target"
+          isConnectable
+        />
+      )}
 
       {lod ? (
         <div className="ag-node-lod-row">
