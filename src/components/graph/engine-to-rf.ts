@@ -4,11 +4,11 @@ import type {
   DomainGroupNode,
   GraphNode,
 } from "./types";
-import { isClaimNode } from "./types";
+import { isClaimNode, isGroupNode } from "./types";
 
 export type LayoutMode = "inline" | "fullbleed";
 
-const LAYOUT = {
+export const LAYOUT = {
   inline: {
     nodeW: 188,
     rowGap: 132,
@@ -178,3 +178,43 @@ export function rfToEngine(
 }
 
 export { COLLAPSED_GROUP_W, COLLAPSED_GROUP_H };
+
+/**
+ * Resize each domainGroup node so it tightly contains its child claims.
+ * No-op for collapsed groups (their pill size is fixed).
+ */
+export function recomputeGroupBounds(
+  nodes: GraphNode[],
+  mode: LayoutMode = "fullbleed"
+): GraphNode[] {
+  const layout = LAYOUT[mode];
+  const byParent = new Map<string, ClaimNode[]>();
+  for (const n of nodes) {
+    if (isClaimNode(n) && n.parentId) {
+      const arr = byParent.get(n.parentId) ?? [];
+      arr.push(n);
+      byParent.set(n.parentId, arr);
+    }
+  }
+  return nodes.map((n) => {
+    if (!isGroupNode(n)) return n;
+    if (n.data.collapsed) return n;
+    const children = byParent.get(n.id) ?? [];
+    const childCount = children.length;
+    if (childCount === 0) return n;
+    const maxX = Math.max(
+      ...children.map((c) => c.position.x + layout.nodeW)
+    );
+    const maxY = Math.max(...children.map((c) => c.position.y)) + 96;
+    const width = Math.max(maxX + layout.padX, layout.nodeW + layout.padX * 2);
+    const height = Math.max(
+      maxY + layout.padY,
+      layout.rowY[3] + layout.groupHeaderH + 96
+    );
+    return {
+      ...n,
+      data: { ...n.data, claimCount: childCount },
+      style: { ...n.style, width, height },
+    };
+  });
+}

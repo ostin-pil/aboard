@@ -23,12 +23,18 @@ import {
   useRef,
   useState,
 } from "react";
+import { BulkActionsToolbar } from "./BulkActionsToolbar";
 import { ClaimEdge as ClaimEdgeComp } from "./ClaimEdge";
 import { ClaimNode as ClaimNodeComp } from "./ClaimNode";
 import { DomainGroupNode as DomainGroupNodeComp } from "./DomainGroupNode";
 import { EdgeEditorModal } from "./EdgeEditorModal";
 import { EdgePopover } from "./EdgePopover";
-import { engineToRF, rfToEngine } from "./engine-to-rf";
+import {
+  LAYOUT,
+  engineToRF,
+  recomputeGroupBounds,
+  rfToEngine,
+} from "./engine-to-rf";
 import { GraphContext, type GraphContextValue } from "./GraphContext";
 import { exportClientJSONLD } from "./jsonld-export";
 import { NodeEditorModal } from "./NodeEditorModal";
@@ -487,6 +493,157 @@ function ClaimGraphRFInner({
     [editingEdge, setEdges, snapshot, persist, buildInstance, onPersist]
   );
 
+  const selectedClaimIds = useMemo(
+    () =>
+      nodes
+        .filter((n): n is ClaimNode => isClaimNode(n) && !!n.selected)
+        .map((n) => n.id),
+    [nodes]
+  );
+
+  const bulkDelete = useCallback(() => {
+    if (selectedClaimIds.length === 0) return;
+    rf.deleteElements({ nodes: selectedClaimIds.map((id) => ({ id })) });
+  }, [rf, selectedClaimIds]);
+
+  const bulkClearSelection = useCallback(() => {
+    setNodes((ns) =>
+      ns.map((n) => (n.selected ? { ...n, selected: false } : n))
+    );
+  }, [setNodes]);
+
+  // Group selected claims into a named domain. Creates the domain group node
+  // if it doesn't already exist, reparents the claims (converting absolute
+  // positions to parent-relative), then recomputes group bounds.
+  const bulkGroupInto = useCallback(
+    (domainName: string) => {
+      if (selectedClaimIds.length === 0) return;
+      const selSet = new Set(selectedClaimIds);
+      const layout = LAYOUT[mode];
+
+      setNodes((ns) => {
+        const groupId = `__domain_${domainName}`;
+        let groupExists = ns.some((n) => n.id === groupId);
+
+        // Build a quick lookup of existing group positions.
+        const groupPosById = new Map<string, { x: number; y: number }>();
+        for (const n of ns) {
+          if (isGroupNode(n)) groupPosById.set(n.id, n.position);
+        }
+
+        let working = ns.slice();
+
+        if (!groupExists) {
+          // Synthesize new group node to the right of the last existing one.
+          let maxRight = 0;
+          for (const n of working) {
+            if (isGroupNode(n)) {
+              const w = (n.style?.width as number | undefined) ?? 600;
+              maxRight = Math.max(maxRight, n.position.x + w);
+            }
+          }
+          const newGroup = {
+            id: groupId,
+            type: "domainGroup" as const,
+            position: {
+              x: maxRight === 0 ? 0 : maxRight + layout.groupGapX,
+              y: 0,
+            },
+            data: {
+              domain: domainName,
+              claimCount: 0,
+              collapsed: false,
+            },
+            style: {
+              width: layout.padX * 2 + layout.nodeW + 200,
+              height: layout.rowY[3] + layout.groupHeaderH + 96,
+            },
+            draggable: false,
+            selectable: false,
+            focusable: false,
+          } as GraphNode;
+          working = [...working, newGroup];
+          groupPosById.set(groupId, newGroup.position);
+          groupExists = true;
+        }
+
+        const newGroupPos = groupPosById.get(groupId)!;
+
+        // Reparent each selected claim.
+        working = working.map((n) => {
+          if (!isClaimNode(n) || !selSet.has(n.id)) return n;
+          const oldParentPos = n.parentId
+            ? groupPosById.get(n.parentId)
+            : undefined;
+          const absX = (oldParentPos?.x ?? 0) + n.position.x;
+          const absY = (oldParentPos?.y ?? 0) + n.position.y;
+          const relX = Math.max(layout.padX, absX - newGroupPos.x);
+          const relY = Math.max(
+            layout.padY + layout.groupHeaderH,
+            absY - newGroupPos.y
+          );
+          return {
+            ...n,
+            parentId: groupId,
+            extent: "parent" as const,
+            position: { x: relX, y: relY },
+            data: { ...n.data, domain: domainName },
+            selected: false,
+          };
+        });
+
+        return recomputeGroupBounds(working, mode);
+      });
+
+      requestAnimationFrame(() => {
+        snapshot();
+        persist();
+        onPersist?.(buildInstance());
+      });
+    },
+    [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]
+  );
+
+  // Snap all selected claims onto the same row as the first one.
+  const bulkAlignSameRow = useCallback(() => {
+    if (selectedClaimIds.length < 2) return;
+    const selSet = new Set(selectedClaimIds);
+    const layout = LAYOUT[mode];
+    const first = nodesRef.current.find(
+      (n): n is ClaimNode => isClaimNode(n) && n.id === selectedClaimIds[0]
+    );
+    if (!first) return;
+    const targetRow = first.data.row;
+    const targetY = first.parentId
+      ? layout.padY + layout.groupHeaderH + layout.rowY[targetRow]
+      : layout.rowY[targetRow];
+
+    setNodes((ns) =>
+      ns.map((n) => {
+        if (!isClaimNode(n) || !selSet.has(n.id) || n.id === first.id) return n;
+        return {
+          ...n,
+          position: { ...n.position, y: targetY },
+          data: { ...n.data, row: targetRow },
+        };
+      })
+    );
+    requestAnimationFrame(() => {
+      snapshot();
+      persist();
+      onPersist?.(buildInstance());
+    });
+  }, [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]);
+
+  const availableDomains = useMemo(() => {
+    const out = new Set<string>();
+    for (const n of nodes) {
+      if (isGroupNode(n)) out.add(n.data.domain);
+      else if (isClaimNode(n) && n.data.domain) out.add(n.data.domain);
+    }
+    return Array.from(out).sort();
+  }, [nodes]);
+
   const onEdgeDelete = useCallback(() => {
     if (!editingEdge?.id) {
       setEditingEdge(null);
@@ -638,6 +795,18 @@ function ClaimGraphRFInner({
               <span><kbd>⇧</kbd>+drag box-select</span>
               <span><kbd>⌘</kbd>+click add</span>
               <span><kbd>⌫</kbd> delete</span>
+            </Panel>
+          )}
+          {!isInline && editable && selectedClaimIds.length >= 2 && (
+            <Panel position="top-center" className="ag-bulk-panel">
+              <BulkActionsToolbar
+                count={selectedClaimIds.length}
+                domains={availableDomains}
+                onDelete={bulkDelete}
+                onGroupInto={bulkGroupInto}
+                onAlignSameRow={bulkAlignSameRow}
+                onClear={bulkClearSelection}
+              />
             </Panel>
           )}
         </ReactFlow>

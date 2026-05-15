@@ -407,6 +407,82 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   outline-offset: -2px;
 }
 
+/* ============================================================
+   Bulk-actions toolbar (multi-select)
+   ============================================================ */
+.ag-bulk-panel { margin-top: 8px !important; }
+.ag-bulk-toolbar {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--paper);
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  box-shadow: var(--shadow-pop, 0 4px 14px rgba(0,0,0,.08));
+  z-index: 6;
+}
+.ag-bulk-count {
+  display: inline-flex; align-items: center;
+  padding: 3px 8px;
+  background: var(--fg); color: var(--bg);
+  border-radius: 3px;
+  font-weight: 600;
+}
+.ag-bulk-sep {
+  width: 1px; height: 18px; background: var(--line-2);
+}
+.ag-bulk-btn {
+  background: transparent;
+  border: 1px solid var(--line-2);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.02em;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.ag-bulk-btn:hover { border-color: var(--fg); background: var(--bg); }
+.ag-bulk-btn.danger:hover { color: var(--sym-fg, #c33); border-color: var(--sym-fg, #c33); }
+.ag-bulk-btn.subtle { border-color: transparent; color: var(--muted); }
+.ag-bulk-btn.subtle:hover { color: var(--fg); }
+.ag-bulk-btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; }
+.ag-bulk-pop {
+  position: absolute;
+  top: calc(100% + 6px); left: 0;
+  min-width: 200px;
+  background: var(--paper);
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  padding: 6px;
+  box-shadow: var(--shadow-pop, 0 4px 14px rgba(0,0,0,.08));
+  z-index: 7;
+}
+.ag-bulk-pop-list { display: flex; flex-direction: column; gap: 2px; max-height: 200px; overflow-y: auto; }
+.ag-bulk-pop-row {
+  text-align: left;
+  background: transparent; border: none; color: var(--fg);
+  font-family: var(--mono); font-size: 11.5px;
+  padding: 6px 8px; border-radius: 3px; cursor: pointer;
+}
+.ag-bulk-pop-row:hover { background: var(--bg); }
+.ag-bulk-pop-new {
+  display: flex; gap: 4px; margin-top: 6px;
+  padding-top: 6px; border-top: 1px solid var(--line-2);
+}
+.ag-bulk-pop-new input {
+  flex: 1; min-width: 0;
+  font-family: var(--mono); font-size: 11.5px;
+  padding: 5px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  background: var(--bg); color: var(--fg);
+}
+.ag-bulk-pop-new input:focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
+
 .react-flow__attribution { display: none !important; }
 
 /* Domain group container — non-interactive parent that holds claim children */
