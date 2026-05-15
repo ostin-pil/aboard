@@ -81,7 +81,6 @@ export function engineToRF(
         draggable: false,
         selectable: false,
         focusable: false,
-        zIndex: -1,
       };
       nodes.push(group);
     }
