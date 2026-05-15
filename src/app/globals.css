@@ -571,6 +571,19 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 }
 .ag-domain-group-count::after { content: " claims"; }
 
+/* Graph control chrome must not catch text-selection while Shift is held
+   for box-select. */
+.ag-toolbar,
+.meta-strip,
+.edit-help,
+.react-flow__panel,
+.react-flow__controls,
+.ag-rf-key-hints,
+.ag-bulk-toolbar {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .ag-rf-key-hints {
   display: flex;
   gap: 12px;
