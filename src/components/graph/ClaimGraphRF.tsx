@@ -343,11 +343,16 @@ function ClaimGraphRFInner({
         if (fromN.data.kind === "leverage") kind = "reduces";
         else if (fromN.data.row === toN.data.row) kind = "moderates";
       }
+      // "full-target" is the body-overlay handle that only mounts during a
+      // drag; an edge can't attach to it at rest. Normalize transient overlay
+      // handles to null so the edge binds to the persistent default handle.
+      const norm = (h: string | null | undefined) =>
+        !h || h.startsWith("full-") ? null : h;
       setEditingEdge({
         source: c.source,
         target: c.target,
-        sourceHandle: c.sourceHandle ?? null,
-        targetHandle: c.targetHandle ?? null,
+        sourceHandle: norm(c.sourceHandle),
+        targetHandle: norm(c.targetHandle),
         kind,
         isNew: true,
       });
