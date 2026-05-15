@@ -628,16 +628,20 @@ function ClaimGraphRFInner({
     );
     if (!first) return;
     const targetRow = first.data.row;
-    const targetY = first.parentId
-      ? layout.padY + layout.groupHeaderH + layout.rowY[targetRow]
-      : layout.rowY[targetRow];
+    // Y lives in each node's own coordinate space — grouped children are
+    // relative to their group, ungrouped claims are absolute. Compute per
+    // node, not from `first`, or a mixed selection lands at the wrong Y.
+    const rowYFor = (n: ClaimNode) =>
+      n.parentId
+        ? layout.padY + layout.groupHeaderH + layout.rowY[targetRow]
+        : layout.rowY[targetRow];
 
     setNodes((ns) =>
       ns.map((n) => {
         if (!isClaimNode(n) || !selSet.has(n.id) || n.id === first.id) return n;
         return {
           ...n,
-          position: { ...n.position, y: targetY },
+          position: { ...n.position, y: rowYFor(n) },
           data: { ...n.data, row: targetRow },
         };
       })
