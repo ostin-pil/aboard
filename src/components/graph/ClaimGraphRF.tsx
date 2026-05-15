@@ -528,13 +528,7 @@ function ClaimGraphRFInner({
 
       setNodes((ns) => {
         const groupId = `__domain_${domainName}`;
-        let groupExists = ns.some((n) => n.id === groupId);
-
-        // Build a quick lookup of existing group positions.
-        const groupPosById = new Map<string, { x: number; y: number }>();
-        for (const n of ns) {
-          if (isGroupNode(n)) groupPosById.set(n.id, n.position);
-        }
+        const groupExists = ns.some((n) => n.id === groupId);
 
         let working = ns.slice();
 
@@ -568,31 +562,43 @@ function ClaimGraphRFInner({
             focusable: false,
           } as GraphNode;
           working = [...working, newGroup];
-          groupPosById.set(groupId, newGroup.position);
-          groupExists = true;
         }
 
-        const newGroupPos = groupPosById.get(groupId)!;
+        // Next free column per row among the target group's *existing*
+        // children (claims not being moved). Moved claims append into clean,
+        // non-overlapping grid slots so the result is predictable.
+        const nextCol: Record<1 | 2 | 3, number> = { 1: 0, 2: 0, 3: 0 };
+        for (const n of working) {
+          if (
+            isClaimNode(n) &&
+            n.parentId === groupId &&
+            !selSet.has(n.id)
+          ) {
+            const r = n.data.row;
+            nextCol[r] = nextCol[r] + 1;
+          }
+        }
 
-        // Reparent each selected claim.
+        const slotFor = (row: 1 | 2 | 3) => {
+          const col = nextCol[row];
+          nextCol[row] = col + 1;
+          return {
+            x: layout.padX + col * (layout.nodeW + layout.colGap),
+            y: layout.padY + layout.groupHeaderH + layout.rowY[row],
+          };
+        };
+
+        // Reparent each selected claim into a tidy slot.
         working = working.map((n) => {
           if (!isClaimNode(n) || !selSet.has(n.id)) return n;
-          const oldParentPos = n.parentId
-            ? groupPosById.get(n.parentId)
-            : undefined;
-          const absX = (oldParentPos?.x ?? 0) + n.position.x;
-          const absY = (oldParentPos?.y ?? 0) + n.position.y;
-          const relX = Math.max(layout.padX, absX - newGroupPos.x);
-          const relY = Math.max(
-            layout.padY + layout.groupHeaderH,
-            absY - newGroupPos.y
-          );
+          const row = n.data.row;
+          const pos = slotFor(row);
           return {
             ...n,
             parentId: groupId,
             extent: "parent" as const,
-            position: { x: relX, y: relY },
-            data: { ...n.data, domain: domainName },
+            position: pos,
+            data: { ...n.data, domain: domainName, col: nextCol[row] - 1 },
             selected: false,
           };
         });
