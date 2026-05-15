@@ -6,6 +6,7 @@ import {
   Panel,
   ReactFlow,
   ReactFlowProvider,
+  SelectionMode,
   useEdgesState,
   useNodesState,
   useReactFlow,
@@ -578,6 +579,7 @@ function ClaimGraphRFInner({
           deleteKeyCode={editable ? ["Backspace", "Delete"] : null}
           multiSelectionKeyCode={["Meta", "Control"]}
           selectionKeyCode="Shift"
+          selectionMode={SelectionMode.Partial}
           nodeTypes={NODE_TYPES}
           edgeTypes={EDGE_TYPES}
           defaultEdgeOptions={defaultEdgeOptions}

@@ -8,7 +8,7 @@ import type { ClaimNode as ClaimNodeT } from "./types";
 const LOD_THRESHOLD = 0.6;
 const zoomSelector = (s: { transform: [number, number, number] }) => s.transform[2];
 
-function ClaimNodeImpl({ id, data }: NodeProps<ClaimNodeT>) {
+function ClaimNodeImpl({ id, data, selected }: NodeProps<ClaimNodeT>) {
   const ctx = useGraphContext();
   const ref = useRef<HTMLDivElement>(null);
   const zoom = useStore(zoomSelector);
@@ -22,15 +22,18 @@ function ClaimNodeImpl({ id, data }: NodeProps<ClaimNodeT>) {
     lod ? "ag-node-lod" : "",
     isFocused ? "is-active" : "",
     isDimmed ? "is-dimmed" : "",
+    selected ? "is-selected" : "",
     data.outOfDomain ? "ag-out-of-domain" : "",
     data.author === "agent:reader/v0" ? "ag-unsigned" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
+  // Click without modifier: open detail popover. With modifier (Cmd/Ctrl/Shift):
+  // let React Flow handle selection — don't preventDefault or stopPropagation,
+  // those swallow the event before selection runs.
   const onClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return;
     if (ref.current) ctx.openNodePopover({ id, data, position: { x: 0, y: 0 }, type: "claim" } as ClaimNodeT, ref.current);
   };
 

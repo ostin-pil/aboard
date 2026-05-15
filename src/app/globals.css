@@ -502,6 +502,7 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 .ag-node.ag-unsigned { border-style: dashed; border-color: var(--bd); }
 .ag-node.is-dimmed { opacity: .35; box-shadow: none; transform: none; }
 .ag-node.ag-out-of-domain { opacity: .22; box-shadow: none; }
+.ag-node.is-selected { outline: 2px solid var(--fg); outline-offset: 2px; }
 
 .ag-node-meta {
   display: flex; justify-content: space-between; align-items: baseline;
