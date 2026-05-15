@@ -5,10 +5,13 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   getBezierPath,
+  useConnection,
   type EdgeProps,
 } from "@xyflow/react";
 import { useGraphContext } from "./GraphContext";
 import type { ClaimEdge as ClaimEdgeT } from "./types";
+
+const connectingSelector = (c: { inProgress: boolean }) => c.inProgress;
 
 const STROKE: Record<EngineEdge["kind"], string> = {
   causes: "var(--edge-causes)",
@@ -36,6 +39,7 @@ function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
     target,
   } = props;
   const ctx = useGraphContext();
+  const isConnecting = useConnection(connectingSelector);
   const labelRef = useRef<HTMLDivElement>(null);
   const hitRef = useRef<SVGPathElement>(null);
 
@@ -70,7 +74,7 @@ function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
   };
 
   const onLabelMouseEnter = () => {
-    if (!hasPopover) return;
+    if (!hasPopover || isConnecting) return;
     ctx.cancelCloseEdgePopover();
     if (labelRef.current) {
       ctx.openEdgePopover(
@@ -81,7 +85,7 @@ function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
   };
 
   const onPathMouseEnter = (ev: React.MouseEvent) => {
-    if (!hasPopover) return;
+    if (!hasPopover || isConnecting) return;
     ctx.cancelCloseEdgePopover();
     if (hitRef.current) {
       ctx.openEdgePopover(
@@ -122,7 +126,10 @@ function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
           fill="none"
           stroke="transparent"
           strokeWidth={18}
-          style={{ pointerEvents: "stroke", cursor: ctx.editable ? "pointer" : "default" }}
+          style={{
+            pointerEvents: isConnecting ? "none" : "stroke",
+            cursor: ctx.editable ? "pointer" : "default",
+          }}
           onMouseEnter={onPathMouseEnter}
           onMouseLeave={onMouseLeave}
           onClick={onClick}
@@ -134,7 +141,10 @@ function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
           fill="none"
           stroke="transparent"
           strokeWidth={18}
-          style={{ pointerEvents: "stroke", cursor: "pointer" }}
+          style={{
+            pointerEvents: isConnecting ? "none" : "stroke",
+            cursor: "pointer",
+          }}
           onClick={onClick}
         />
       )}
