@@ -1,7 +1,8 @@
 import type { ClaimEdge, GraphNode } from "./types";
 import { isClaimNode } from "./types";
 
-const STORE_KEY = "aboard.graph.v2";
+const STORE_KEY = "aboard.graph.v3";
+const LEGACY_STORE_KEYS = ["aboard.graph.v2"];
 
 type PersistedClaim = {
   kind: "claim";
@@ -34,6 +35,9 @@ type Persisted = {
 export function loadPersisted(): Persisted | null {
   if (typeof window === "undefined") return null;
   try {
+    for (const k of LEGACY_STORE_KEYS) {
+      try { window.localStorage.removeItem(k); } catch { /* non-fatal */ }
+    }
     const raw = window.localStorage.getItem(STORE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Persisted;
@@ -128,7 +132,6 @@ export function hydrateFromPersisted(p: Persisted): { nodes: GraphNode[]; edges:
       draggable: false,
       selectable: false,
       focusable: false,
-      zIndex: -1,
     } as GraphNode;
     return g;
   });
