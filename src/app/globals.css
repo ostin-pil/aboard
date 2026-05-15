@@ -351,17 +351,34 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 .react-flow__node-claim { width: 240px; }
 .ag-rf-inline .react-flow__node-claim { width: 188px; }
 
-/* React Flow handles — invisible until node hover in editor mode */
-.ag-rf-handle {
-  width: 8px !important; height: 8px !important;
+/* React Flow handles — discreet always, prominent on node hover, fg on handle hover.
+   Invisible in inline mode (read-only). */
+.ag-rf-inline .ag-rf-handle {
+  width: 0 !important; height: 0 !important;
   background: transparent !important;
   border: none !important;
-  opacity: 0;
+  opacity: 0 !important;
+  pointer-events: none;
 }
-.ag-rf-fullbleed .ag-node:hover .ag-rf-handle {
+.ag-rf-fullbleed .ag-rf-handle {
+  width: 10px !important;
+  height: 10px !important;
+  background: var(--paper) !important;
+  border: 1.5px solid var(--muted-2) !important;
+  border-radius: 50% !important;
+  opacity: 0.45;
+  transition: opacity .15s ease, background .15s ease, border-color .15s ease, transform .15s ease;
+}
+.ag-rf-fullbleed .ag-node:hover .ag-rf-handle,
+.ag-rf-fullbleed .react-flow__node.dragging .ag-rf-handle {
   opacity: 1;
+  border-color: var(--fg) !important;
+}
+.ag-rf-fullbleed .ag-rf-handle:hover {
   background: var(--fg) !important;
-  border-radius: 50%;
+  border-color: var(--fg) !important;
+  transform: scale(1.25);
+  cursor: crosshair;
 }
 
 .react-flow__attribution { display: none !important; }
