@@ -395,8 +395,16 @@ function ClaimGraphRFInner({
       setNodes((ns) => {
         const idx = ns.findIndex((n) => n.id === draft.id);
         if (idx >= 0) {
+          const existing = ns[idx];
+          const merged: ClaimNode = {
+            ...draft,
+            position: existing.position,
+            ...(existing.parentId
+              ? { parentId: existing.parentId, extent: "parent" as const }
+              : {}),
+          };
           const next = ns.slice();
-          next[idx] = draft;
+          next[idx] = merged;
           return next;
         }
         return [...ns, draft];
@@ -492,12 +500,22 @@ function ClaimGraphRFInner({
       mode,
       focusId,
       setFocusId,
-      openNodePopover: (n, anchor) => setPopoverNode({ node: n, anchor }),
+      openNodePopover: (id, anchor) => {
+        const live = nodesRef.current.find((n) => n.id === id);
+        if (live && isClaimNode(live)) setPopoverNode({ node: live, anchor });
+      },
       openEdgePopover: (e, anchor, ev) =>
         setPopoverEdge({ edge: e, anchor, cursor: ev }),
       scheduleCloseEdgePopover,
       cancelCloseEdgePopover,
-      openNodeEditor: (n) => setEditingNode({ node: n }),
+      openNodeEditor: (id) => {
+        if (id === null) {
+          setEditingNode({ node: null });
+          return;
+        }
+        const live = nodesRef.current.find((n) => n.id === id);
+        if (live && isClaimNode(live)) setEditingNode({ node: live });
+      },
       openEdgeEditor: (e) => {
         if ("data" in e && e.data) {
           const ee = e as ClaimEdge;

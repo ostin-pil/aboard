@@ -34,7 +34,7 @@ function ClaimNodeImpl({ id, data, selected }: NodeProps<ClaimNodeT>) {
   // those swallow the event before selection runs.
   const onClick = (e: React.MouseEvent) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey) return;
-    if (ref.current) ctx.openNodePopover({ id, data, position: { x: 0, y: 0 }, type: "claim" } as ClaimNodeT, ref.current);
+    if (ref.current) ctx.openNodePopover(id, ref.current);
   };
 
   const onMouseEnter = () => ctx.setFocusId(id);
@@ -101,7 +101,7 @@ function ClaimNodeImpl({ id, data, selected }: NodeProps<ClaimNodeT>) {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            ctx.openNodeEditor({ id, data, position: { x: 0, y: 0 }, type: "claim" } as ClaimNodeT);
+            ctx.openNodeEditor(id);
           }}
         >
           ✎
