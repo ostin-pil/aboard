@@ -20,7 +20,15 @@ type PersistedGroup = {
 };
 type Persisted = {
   nodes: (PersistedClaim | PersistedGroup)[];
-  edges: { id: string; source: string; target: string; data: ClaimEdge["data"]; hidden?: boolean }[];
+  edges: {
+    id: string;
+    source: string;
+    target: string;
+    sourceHandle?: string;
+    targetHandle?: string;
+    data: ClaimEdge["data"];
+    hidden?: boolean;
+  }[];
 };
 
 export function loadPersisted(): Persisted | null {
@@ -75,6 +83,8 @@ export function savePersisted(nodes: GraphNode[], edges: ClaimEdge[]) {
           target: e.target,
           data: e.data!,
         };
+        if (e.sourceHandle) out.sourceHandle = e.sourceHandle;
+        if (e.targetHandle) out.targetHandle = e.targetHandle;
         if (e.hidden) out.hidden = true;
         return out;
       }),
@@ -127,6 +137,8 @@ export function hydrateFromPersisted(p: Persisted): { nodes: GraphNode[]; edges:
     type: "claim",
     source: e.source,
     target: e.target,
+    ...(e.sourceHandle ? { sourceHandle: e.sourceHandle } : {}),
+    ...(e.targetHandle ? { targetHandle: e.targetHandle } : {}),
     data: e.data,
     ...(e.hidden ? { hidden: true } : {}),
   }));

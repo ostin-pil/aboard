@@ -105,6 +105,8 @@ function ClaimGraphRFInner({
     id?: string;
     source: string;
     target: string;
+    sourceHandle?: string | null;
+    targetHandle?: string | null;
     kind: EngineEdge["kind"];
     isNew: boolean;
   } | null>(null);
@@ -335,7 +337,14 @@ function ClaimGraphRFInner({
         if (fromN.data.kind === "leverage") kind = "reduces";
         else if (fromN.data.row === toN.data.row) kind = "moderates";
       }
-      setEditingEdge({ source: c.source, target: c.target, kind, isNew: true });
+      setEditingEdge({
+        source: c.source,
+        target: c.target,
+        sourceHandle: c.sourceHandle ?? null,
+        targetHandle: c.targetHandle ?? null,
+        kind,
+        isNew: true,
+      });
     },
     []
   );
@@ -443,6 +452,12 @@ function ClaimGraphRFInner({
             type: "claim",
             source: editingEdge.source,
             target: editingEdge.target,
+            ...(editingEdge.sourceHandle
+              ? { sourceHandle: editingEdge.sourceHandle }
+              : {}),
+            ...(editingEdge.targetHandle
+              ? { targetHandle: editingEdge.targetHandle }
+              : {}),
             data: {
               kind,
               rationale: "",
