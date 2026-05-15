@@ -588,6 +588,17 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   transition: background .15s, color .15s;
 }
 .ag-pop-cta:hover { background: var(--fg); color: var(--bg); }
+.ag-pop-sandbox-note {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  border: 1px dashed var(--line-2);
+  padding: 6px 10px;
+  border-radius: 3px;
+  line-height: 1.45;
+}
 
 /* edge hit-zone: invisible wide stroke for reliable hover on thin edges */
 .ag-edge-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: help; }

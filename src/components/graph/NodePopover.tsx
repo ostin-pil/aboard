@@ -81,9 +81,15 @@ export function NodePopover({ node, anchor, containerRef, onClose }: Props) {
         </div>
       )}
       <div className="ag-pop-cta-row">
-        <Link className="ag-pop-cta" href={`/claims/${id}`}>
-          open detail <span className="arrow">→</span>
-        </Link>
+        {data.author === "agent:reader/v0" ? (
+          <span className="ag-pop-sandbox-note">
+            sandbox claim — not filed. Export PR pack from the toolbar to publish.
+          </span>
+        ) : (
+          <Link className="ag-pop-cta" href={`/claims/${id}`}>
+            open detail <span className="arrow">→</span>
+          </Link>
+        )}
       </div>
     </div>
   );
