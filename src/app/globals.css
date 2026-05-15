@@ -531,11 +531,35 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 .react-flow__node.dragging .ag-node { transition: none; }
 
 .ag-node-lod {
-  padding: 6px 9px 7px !important;
+  padding: 7px 10px 8px !important;
   border-radius: 3px;
 }
-.ag-node-lod .ag-node-meta { margin-bottom: 0; }
-.ag-node-lod .ag-node-meta .id-part { padding-right: 0; }
+.ag-node-lod-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ag-node-lod-title {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--fg);
+  letter-spacing: -0.005em;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ag-node-lod-id {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  flex-shrink: 0;
+}
 .ag-node[data-kind="symptom"]   { --bg-tint: var(--sym-bg);  --bd: var(--sym-fg);  }
 .ag-node[data-kind="mechanism"] { --bg-tint: var(--mech-bg); --bd: var(--mech-fg); }
 .ag-node[data-kind="leverage"]  { --bg-tint: var(--lev-bg);  --bd: var(--lev-fg);  }

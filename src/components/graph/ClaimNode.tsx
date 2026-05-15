@@ -55,13 +55,21 @@ function ClaimNodeImpl({ id, data, selected }: NodeProps<ClaimNodeT>) {
       <Handle type="target" position={Position.Left} className="ag-rf-handle" isConnectable={ctx.editable} id="left-target" />
       <Handle type="target" position={Position.Right} className="ag-rf-handle" isConnectable={ctx.editable} id="right-target" />
 
-      <div className="ag-node-meta">
-        <span className="kind">{data.kind.toUpperCase()}</span>
-        <span className="id-part"> · {id}</span>
-        {!lod && <span className="conf">c={data.conf.toFixed(2)}</span>}
-      </div>
-
-      {!lod && <div className="ag-node-title">{data.title}</div>}
+      {lod ? (
+        <div className="ag-node-lod-row">
+          <span className="ag-node-lod-title" title={data.title}>{data.title}</span>
+          <span className="ag-node-lod-id">{id}</span>
+        </div>
+      ) : (
+        <>
+          <div className="ag-node-meta">
+            <span className="kind">{data.kind.toUpperCase()}</span>
+            <span className="id-part"> · {id}</span>
+            <span className="conf">c={data.conf.toFixed(2)}</span>
+          </div>
+          <div className="ag-node-title">{data.title}</div>
+        </>
+      )}
 
       {!lod && (data.dossier || data.forecast > 0 || data.author === "agent:reader/v0") && (
         <div className="ag-node-badges">
