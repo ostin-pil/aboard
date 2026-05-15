@@ -29,6 +29,7 @@ import { ClaimNode as ClaimNodeComp } from "./ClaimNode";
 import { DomainGroupNode as DomainGroupNodeComp } from "./DomainGroupNode";
 import { EdgeEditorModal } from "./EdgeEditorModal";
 import { EdgePopover } from "./EdgePopover";
+import { alignX, distributeX, type HAlign, type XBox } from "./align";
 import {
   LAYOUT,
   engineToRF,
@@ -615,8 +616,10 @@ function ClaimGraphRFInner({
     [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]
   );
 
-  // Snap all selected claims onto the same row as the first one.
-  const bulkAlignSameRow = useCallback(() => {
+  // Snap all selected claims onto the same row as the first one. Updates
+  // data.row AND position.y together so the semantic layer can't desync
+  // from the visual one (rfToEngine serializes data.row verbatim).
+  const bulkAlignToRow = useCallback(() => {
     if (selectedClaimIds.length < 2) return;
     const selSet = new Set(selectedClaimIds);
     const layout = LAYOUT[mode];
@@ -645,6 +648,61 @@ function ClaimGraphRFInner({
       onPersist?.(buildInstance());
     });
   }, [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]);
+
+  // Horizontal align / distribute. Pure-positional (X only) — rows carry
+  // semantic meaning so Y is left to bulkAlignToRow. Selected claims may live
+  // in different groups, so work in absolute X then convert back per-node.
+  const applyXResult = useCallback(
+    (compute: (boxes: XBox[]) => Map<string, number>) => {
+      if (selectedClaimIds.length < 2) return;
+      const selSet = new Set(selectedClaimIds);
+      const layout = LAYOUT[mode];
+
+      setNodes((ns) => {
+        const groupX = new Map<string, number>();
+        for (const n of ns) {
+          if (isGroupNode(n)) groupX.set(n.id, n.position.x);
+        }
+        const offsetOf = (n: ClaimNode) =>
+          n.parentId ? groupX.get(n.parentId) ?? 0 : 0;
+
+        const boxes: XBox[] = ns
+          .filter((n): n is ClaimNode => isClaimNode(n) && selSet.has(n.id))
+          .map((n) => ({
+            id: n.id,
+            x: offsetOf(n) + n.position.x,
+            w: layout.nodeW,
+          }));
+
+        const result = compute(boxes);
+        if (result.size === 0) return ns;
+
+        const next = ns.map((n) => {
+          if (!isClaimNode(n) || !result.has(n.id)) return n;
+          const absX = result.get(n.id)!;
+          let localX = absX - offsetOf(n);
+          if (n.parentId) localX = Math.max(layout.padX, localX);
+          return { ...n, position: { ...n.position, x: localX } };
+        });
+        return recomputeGroupBounds(next, mode);
+      });
+      requestAnimationFrame(() => {
+        snapshot();
+        persist();
+        onPersist?.(buildInstance());
+      });
+    },
+    [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]
+  );
+
+  const bulkAlignX = useCallback(
+    (op: HAlign) => applyXResult((boxes) => alignX(boxes, op)),
+    [applyXResult]
+  );
+  const bulkDistributeX = useCallback(
+    () => applyXResult((boxes) => distributeX(boxes)),
+    [applyXResult]
+  );
 
   const availableDomains = useMemo(() => {
     const out = new Set<string>();
@@ -815,7 +873,9 @@ function ClaimGraphRFInner({
                 domains={availableDomains}
                 onDelete={bulkDelete}
                 onGroupInto={bulkGroupInto}
-                onAlignSameRow={bulkAlignSameRow}
+                onAlignX={bulkAlignX}
+                onDistributeX={bulkDistributeX}
+                onAlignToRow={bulkAlignToRow}
                 onClear={bulkClearSelection}
               />
             </Panel>
