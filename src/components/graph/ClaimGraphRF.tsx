@@ -49,6 +49,7 @@ import {
 import {
   isClaimNode,
   isGroupNode,
+  orderParentsFirst,
   type ClaimEdge,
   type ClaimNode,
   type GraphNode,
@@ -604,7 +605,7 @@ function ClaimGraphRFInner({
           };
         });
 
-        return recomputeGroupBounds(working, mode);
+        return orderParentsFirst(recomputeGroupBounds(working, mode));
       });
 
       requestAnimationFrame(() => {

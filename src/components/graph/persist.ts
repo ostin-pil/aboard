@@ -1,5 +1,11 @@
 import type { ClaimEdge, GraphNode } from "./types";
-import { isClaimNode } from "./types";
+import { isClaimNode, orderParentsFirst } from "./types";
+
+// A transient overlay handle ("full-target") only exists during a
+// connection drag; an edge persisted against it dangles forever and
+// React Flow logs error #008. Drop any full-* handle on load.
+const cleanHandle = (h?: string) =>
+  h && !h.startsWith("full-") ? h : undefined;
 
 const STORE_KEY = "aboard.graph.v3";
 const LEGACY_STORE_KEYS = ["aboard.graph.v2"];
@@ -54,7 +60,7 @@ export function savePersisted(nodes: GraphNode[], edges: ClaimEdge[]) {
   if (typeof window === "undefined") return;
   try {
     const slim: Persisted = {
-      nodes: nodes.map((n) => {
+      nodes: orderParentsFirst(nodes).map((n) => {
         if (isClaimNode(n)) {
           const out: PersistedClaim = {
             kind: "claim",
@@ -135,15 +141,19 @@ export function hydrateFromPersisted(p: Persisted): { nodes: GraphNode[]; edges:
     } as GraphNode;
     return g;
   });
-  const edges: ClaimEdge[] = p.edges.map((e) => ({
-    id: e.id,
-    type: "claim",
-    source: e.source,
-    target: e.target,
-    ...(e.sourceHandle ? { sourceHandle: e.sourceHandle } : {}),
-    ...(e.targetHandle ? { targetHandle: e.targetHandle } : {}),
-    data: e.data,
-    ...(e.hidden ? { hidden: true } : {}),
-  }));
-  return { nodes, edges };
+  const edges: ClaimEdge[] = p.edges.map((e) => {
+    const sh = cleanHandle(e.sourceHandle);
+    const th = cleanHandle(e.targetHandle);
+    return {
+      id: e.id,
+      type: "claim",
+      source: e.source,
+      target: e.target,
+      ...(sh ? { sourceHandle: sh } : {}),
+      ...(th ? { targetHandle: th } : {}),
+      data: e.data,
+      ...(e.hidden ? { hidden: true } : {}),
+    };
+  });
+  return { nodes: orderParentsFirst(nodes), edges };
 }

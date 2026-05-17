@@ -45,3 +45,11 @@ export function isClaimNode(n: GraphNode): n is ClaimNode {
 export function isGroupNode(n: GraphNode): n is DomainGroupNode {
   return n.type === "domainGroup";
 }
+
+// React Flow requires a parent node to appear before its children in the
+// nodes array, or it logs "Parent node ... not found" and the child's
+// extent:'parent' can't resolve (pins the node). Claims' only parents are
+// domain groups, so groups-then-claims (stable) satisfies the invariant.
+export function orderParentsFirst(nodes: GraphNode[]): GraphNode[] {
+  return [...nodes.filter(isGroupNode), ...nodes.filter(isClaimNode)];
+}
