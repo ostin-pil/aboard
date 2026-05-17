@@ -1,22 +1,6 @@
 export {};
 
 declare global {
-  interface Window {
-    AboardGraph?: {
-      mount: (
-        rootEl: HTMLElement,
-        opts: {
-          mode?: "inline" | "fullbleed";
-          editable?: boolean;
-          data?: EngineGraphData;
-          onPersist?: () => void;
-          onZoom?: (scale: number) => void;
-        }
-      ) => AboardGraphInstance;
-      SEED: EngineGraphData;
-    };
-  }
-
   interface AboardGraphInstance {
     state: EngineGraphData;
     render: () => void;
@@ -48,6 +32,13 @@ declare global {
     domain?: string;
   }
 
+  interface EngineEdgeSource {
+    label: string;
+    url: string;
+    kind?: string;
+    finding?: string;
+  }
+
   interface EngineEdge {
     from: string;
     to: string;
@@ -55,6 +46,7 @@ declare global {
     author?: string;
     rationale?: string;
     crossDomain?: boolean;
+    sources?: EngineEdgeSource[];
   }
 
   interface EngineGraphData {

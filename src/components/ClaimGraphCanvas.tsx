@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
+import { ClaimGraphRF } from "./graph/ClaimGraphRF";
 
 type Mode = "inline" | "fullbleed";
 
@@ -25,56 +26,22 @@ export function ClaimGraphCanvas({
   className,
   style,
 }: Props) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const instanceRef = useRef<AboardGraphInstance | null>(null);
-  const [, setReady] = useState(false);
-
-  useEffect(() => {
-    if (!rootRef.current) return;
-    let cancelled = false;
-    let pollHandle: number | undefined;
-
-    function tryMount() {
-      if (cancelled) return;
-      const root = rootRef.current;
-      if (!root) return;
-      if (!window.AboardGraph) {
-        pollHandle = window.setTimeout(tryMount, 50);
-        return;
-      }
-      root.innerHTML = "";
-      const instance = window.AboardGraph.mount(root, {
-        mode,
-        editable,
-        data,
-        onPersist: () => {
-          if (instance && onPersist) onPersist(instance);
-        },
-        onZoom,
-      });
-      instanceRef.current = instance;
-      setReady(true);
-      onReady?.(instance);
-    }
-
-    tryMount();
-
-    return () => {
-      cancelled = true;
-      if (pollHandle) window.clearTimeout(pollHandle);
-      if (rootRef.current) rootRef.current.innerHTML = "";
-      instanceRef.current = null;
-    };
-  }, [mode, editable, data, onPersist, onZoom, onReady]);
-
   return (
     <div
-      ref={rootRef}
       className={`${mode === "fullbleed" ? "ag-fullbleed" : "ag-inline"}${
         className ? " " + className : ""
       }`}
       style={style}
-    />
+    >
+      <ClaimGraphRF
+        data={data}
+        mode={mode}
+        editable={editable}
+        onPersist={onPersist}
+        onZoom={onZoom}
+        onReady={onReady}
+      />
+    </div>
   );
 }
 

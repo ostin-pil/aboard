@@ -14,13 +14,17 @@ const ENGINE_KIND = {
 
 const SUPPORTED_EDGE_KINDS = new Set(["causes", "moderates", "reduces"]);
 
-export function toEngineData(graph: ClaimGraph): EngineGraphData {
+export function toEngineData(graph: ClaimGraph, opts?: { domain?: string }): EngineGraphData {
+  const includeClaim = opts?.domain
+    ? (c: ClaimGraph["claims"][number]) => c.domain === opts.domain
+    : () => true;
   const claimsByKind: Record<string, typeof graph.claims> = {
     symptom: [],
     mechanism: [],
     leverage_point: [],
   };
   for (const c of graph.claims) {
+    if (!includeClaim(c)) continue;
     claimsByKind[c.kind].push(c);
   }
 
@@ -59,8 +63,10 @@ export function toEngineData(graph: ClaimGraph): EngineGraphData {
     });
   }
 
+  const includedIds = new Set(nodes.map((n) => n.id));
   const edges: EngineEdge[] = graph.edges
     .filter((e) => SUPPORTED_EDGE_KINDS.has(e.kind))
+    .filter((e) => includedIds.has(e.fromId) && includedIds.has(e.toId))
     .map((e) => {
       const fromDomain = domainOf.get(e.fromId);
       const toDomain = domainOf.get(e.toId);
@@ -70,13 +76,23 @@ export function toEngineData(graph: ClaimGraph): EngineGraphData {
         kind: e.kind as EngineEdge["kind"],
       };
       if (e.rationale) edge.rationale = e.rationale;
+      if (e.sources && e.sources.length > 0) {
+        edge.sources = e.sources.map((s) => {
+          const slim: EngineEdgeSource = { label: s.label, url: s.url };
+          if (s.kind) slim.kind = s.kind;
+          if (s.finding) slim.finding = s.finding;
+          return slim;
+        });
+      }
       if (fromDomain && toDomain && fromDomain !== toDomain) {
         edge.crossDomain = true;
       }
       return edge;
     });
 
-  const domains = Array.from(new Set(graph.claims.map((c) => c.domain))).sort();
+  const domains = Array.from(
+    new Set(graph.claims.filter(includeClaim).map((c) => c.domain))
+  ).sort();
   return {
     domain: domains[0],
     domains,

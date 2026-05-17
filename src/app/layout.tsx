@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -15,9 +14,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// PLACEHOLDER: revise after audience decision in research/vision.md
 const SITE_DESCRIPTION =
-  "An agent-first board of falsifiable claims, attached forecasts, and steel-manned dossiers on civilizational issues. Machine-readable by default.";
+  "aboard surfaces interpretive friction across LLM ensembles applied to falsifiable claims about systemic problems. Machine-readable by default; the disagreement between models is the signal.";
 
 export const metadata: Metadata = {
   title: {
@@ -65,7 +63,6 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeBootstrap }} />
       </head>
       <body>
-        <Script src="/graph-engine.js" strategy="afterInteractive" />
         <header className="top">
           <div className="top-inner">
             <Link href="/" className="wordmark">
