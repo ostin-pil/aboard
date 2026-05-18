@@ -443,9 +443,11 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   width: 1px; align-self: stretch; margin: 2px 1px;
   background: var(--line-2);
 }
-.ag-bulk-cluster { display: inline-flex; align-items: center; gap: 2px; }
+/* move-to-row group: three text buttons, same rhythm as the rest */
+.ag-bulk-cluster { display: inline-flex; align-items: center; gap: var(--ctl-gap); }
 
-/* text + icon controls share one height/rhythm */
+/* text + icon controls share one height/rhythm. Icon styling is retained
+   only for the ✕ clear-selection control (the lone permitted icon). */
 .ag-bulk-btn,
 .ag-bulk-icon {
   height: var(--ctl-h);

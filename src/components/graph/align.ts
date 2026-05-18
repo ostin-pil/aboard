@@ -3,33 +3,27 @@
  * space (caller passes absolute X, gets absolute X back). Widths are uniform
  * for claim cards so only X + width are needed.
  *
+ * Claim cards are a fixed width, so left/center/right X-align all collapse to
+ * the same visual result — only a single column snap is meaningful. The old
+ * three-way HAlign code path was removed for that reason.
+ *
  * Y alignment is intentionally NOT here: rows carry semantic meaning
  * (symptom/mechanism/leverage), so vertical placement is handled as a
  * row-snap in the caller, not as free-form pixel alignment.
  */
 
 export type XBox = { id: string; x: number; w: number };
-export type HAlign = "left" | "hcenter" | "right";
 
-export function alignX(boxes: XBox[], op: HAlign): Map<string, number> {
+/**
+ * Snap every box to a shared column at the minimum X of the selection
+ * (Figma "align left", but since card widths are uniform this is simply
+ * "same column"). Needs ≥2 boxes to be meaningful.
+ */
+export function alignColumn(boxes: XBox[]): Map<string, number> {
   const out = new Map<string, number>();
   if (boxes.length < 2) return out;
-
-  if (op === "left") {
-    const minX = Math.min(...boxes.map((b) => b.x));
-    for (const b of boxes) out.set(b.id, minX);
-    return out;
-  }
-  if (op === "right") {
-    const maxRight = Math.max(...boxes.map((b) => b.x + b.w));
-    for (const b of boxes) out.set(b.id, maxRight - b.w);
-    return out;
-  }
-  // hcenter — align centers to the selection's bounding-box center.
   const minX = Math.min(...boxes.map((b) => b.x));
-  const maxRight = Math.max(...boxes.map((b) => b.x + b.w));
-  const center = (minX + maxRight) / 2;
-  for (const b of boxes) out.set(b.id, center - b.w / 2);
+  for (const b of boxes) out.set(b.id, minX);
   return out;
 }
 
