@@ -598,6 +598,36 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 }
 .ag-domain-group-count::after { content: " claims"; }
 
+/* Row band labels — a non-panning Panel pinned to the flow pane's top-left.
+   Children are absolutely stacked; only their translateY tracks the live
+   viewport transform (see RowLabels.tsx), so the text is screen-fixed and
+   never scales with zoom. Never blocks pointer interaction. Fullbleed only;
+   inline mode never mounts this Panel. */
+.react-flow__panel.ag-row-labels {
+  margin: 0;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+.ag-row-label {
+  position: absolute;
+  top: 0;
+  left: 14px;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 3px 7px 4px;
+  will-change: transform;
+}
+
 /* Graph control chrome must not catch text-selection while Shift is held
    for box-select. */
 .ag-toolbar,

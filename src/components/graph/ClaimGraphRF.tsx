@@ -40,6 +40,7 @@ import { GraphContext, type GraphContextValue } from "./GraphContext";
 import { exportClientJSONLD } from "./jsonld-export";
 import { NodeEditorModal } from "./NodeEditorModal";
 import { NodePopover } from "./NodePopover";
+import { RowLabels } from "./RowLabels";
 import {
   clearPersisted,
   hydrateFromPersisted,
@@ -864,6 +865,7 @@ function ClaimGraphRFInner({
         >
           {!isInline && <Background gap={24} size={1} color="var(--line)" />}
           {!isInline && <Controls showInteractive={false} />}
+          {!isInline && <RowLabels />}
           {!isInline && editable && (
             <Panel position="bottom-right" className="ag-rf-key-hints">
               <span><kbd>⇧</kbd>+drag box-select</span>
