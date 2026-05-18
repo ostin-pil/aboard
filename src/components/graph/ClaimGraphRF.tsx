@@ -203,8 +203,8 @@ function ClaimGraphRFInner({
           .filter((n): n is ClaimNode => isClaimNode(n) && n.parentId === groupId)
           .map((n) => n.id)
       );
-      setNodes((ns) =>
-        ns.map((n) => {
+      setNodes((ns) => {
+        const mapped = ns.map((n) => {
           if (n.id === groupId && isGroupNode(n)) {
             const next: typeof n = {
               ...n,
@@ -219,8 +219,13 @@ function ClaimGraphRFInner({
             return { ...n, hidden: nextCollapsed } as GraphNode;
           }
           return n;
-        })
-      );
+        });
+        // Expand path: width/height were just cleared, so RF would otherwise
+        // fall back to the cached collapsed 220×56 box and crush the
+        // re-shown children into the corner. Recompute bounds from the now-
+        // visible children to restore the real group size.
+        return nextCollapsed ? mapped : recomputeGroupBounds(mapped, mode);
+      });
       setEdges((es) =>
         es.map((e) => {
           const touchesCollapsed = childIds.has(e.source) || childIds.has(e.target);
@@ -233,7 +238,7 @@ function ClaimGraphRFInner({
         persist();
       });
     },
-    [setNodes, setEdges, snapshot, persist]
+    [setNodes, setEdges, snapshot, persist, mode]
   );
 
   const buildInstance = useCallback((): AboardGraphInstance => {
