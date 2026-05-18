@@ -16,7 +16,11 @@ function DomainGroupNodeImpl({ id, data }: NodeProps<DomainGroupNodeT>) {
     >
       <button
         type="button"
-        className="ag-domain-group-header"
+        // nodrag/nopan: React Flow binds drag+pan at pointerdown via
+        // d3-zoom, which a React onClick stopPropagation cannot intercept —
+        // without these classes a click on the header is swallowed as a
+        // node-drag / pane-pan and the toggle never fires.
+        className="ag-domain-group-header nodrag nopan"
         // Chevron + explicit verb make the disclosure role obvious; the
         // title/aria-label flip with state so it reads as a control, not a
         // decoration. (Text glyphs only — no SVG; the bulk-toolbar
