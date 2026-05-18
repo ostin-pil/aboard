@@ -597,6 +597,24 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   letter-spacing: 0.04em;
 }
 .ag-domain-group-count::after { content: " claims"; }
+/* Explicit verb so the header reads as a control, not a static label. */
+.ag-domain-group-action {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  padding: 2px 7px 3px;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.ag-domain-group-header:hover .ag-domain-group-action {
+  color: var(--bg);
+  background: var(--fg);
+  border-color: var(--fg);
+}
 
 /* Row band labels — a non-panning Panel pinned to the flow pane's top-left.
    Children are absolutely stacked; only their translateY tracks the live
