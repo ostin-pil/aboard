@@ -70,7 +70,8 @@ While the above is open, treat the demo as:
 - **Audience: humans, with agent-readability as a strong differentiator.**
 - **Unit: claim-as-record, with optional attached forecasts.** Both ticket
   and standing-dossier supported by the data model; UX deferred.
-- **One domain visible (democratic_backsliding); architecture should not
-  preclude multi-domain.**
+- **Two domains live (democratic_backsliding, inequality) with
+  cross-domain edges supported; domain is a claim property, not a
+  codebase partition.**
 - **Forecasts are illustrative; cost-aware live generation is a v1 question.**
 - **Visual / brand: editorial, not SaaS. Restraint is the credibility play.**
