@@ -29,7 +29,7 @@ import { ClaimNode as ClaimNodeComp } from "./ClaimNode";
 import { DomainGroupNode as DomainGroupNodeComp } from "./DomainGroupNode";
 import { EdgeEditorModal } from "./EdgeEditorModal";
 import { EdgePopover } from "./EdgePopover";
-import { alignX, distributeX, type HAlign, type XBox } from "./align";
+import { alignColumn, distributeX, type XBox } from "./align";
 import {
   LAYOUT,
   engineToRF,
@@ -40,11 +40,15 @@ import { GraphContext, type GraphContextValue } from "./GraphContext";
 import { exportClientJSONLD } from "./jsonld-export";
 import { NodeEditorModal } from "./NodeEditorModal";
 import { NodePopover } from "./NodePopover";
+import { RowLabels } from "./RowLabels";
 import {
+  applyCollapsedState,
   clearPersisted,
   hydrateFromPersisted,
+  loadCollapsedIds,
   loadPersisted,
   savePersisted,
+  saveCollapsedIds,
 } from "./persist";
 import {
   isClaimNode,
@@ -185,13 +189,22 @@ function ClaimGraphRFInner({
       const group = nodesRef.current.find((n) => n.id === groupId);
       if (!group || !isGroupNode(group)) return;
       const nextCollapsed = !group.data.collapsed;
+      // Persist the resulting collapsed-id set to its own key so it survives
+      // a graph reset (clearPersisted intentionally leaves COLLAPSED_KEY).
+      const collapsedIds = new Set<string>();
+      for (const n of nodesRef.current) {
+        if (isGroupNode(n) && n.data.collapsed) collapsedIds.add(n.id);
+      }
+      if (nextCollapsed) collapsedIds.add(groupId);
+      else collapsedIds.delete(groupId);
+      saveCollapsedIds(Array.from(collapsedIds));
       const childIds = new Set(
         nodesRef.current
           .filter((n): n is ClaimNode => isClaimNode(n) && n.parentId === groupId)
           .map((n) => n.id)
       );
-      setNodes((ns) =>
-        ns.map((n) => {
+      setNodes((ns) => {
+        const mapped = ns.map((n) => {
           if (n.id === groupId && isGroupNode(n)) {
             const next: typeof n = {
               ...n,
@@ -206,8 +219,13 @@ function ClaimGraphRFInner({
             return { ...n, hidden: nextCollapsed } as GraphNode;
           }
           return n;
-        })
-      );
+        });
+        // Expand path: width/height were just cleared, so RF would otherwise
+        // fall back to the cached collapsed 220×56 box and crush the
+        // re-shown children into the corner. Recompute bounds from the now-
+        // visible children to restore the real group size.
+        return nextCollapsed ? mapped : recomputeGroupBounds(mapped, mode);
+      });
       setEdges((es) =>
         es.map((e) => {
           const touchesCollapsed = childIds.has(e.source) || childIds.has(e.target);
@@ -220,7 +238,7 @@ function ClaimGraphRFInner({
         persist();
       });
     },
-    [setNodes, setEdges, snapshot, persist]
+    [setNodes, setEdges, snapshot, persist, mode]
   );
 
   const buildInstance = useCallback((): AboardGraphInstance => {
@@ -261,7 +279,16 @@ function ClaimGraphRFInner({
       zoom: () => rf.getZoom(),
       reset: () => {
         clearPersisted();
-        const fresh = engineToRF(data, mode);
+        const built = engineToRF(data, mode);
+        // Collapsed-group state survives reset (separate localStorage key).
+        // Re-apply it via the shared pure helper so the rebuilt graph
+        // matches what a manual toggle would have produced.
+        const fresh = applyCollapsedState(
+          built.nodes,
+          built.edges,
+          loadCollapsedIds(),
+          { w: COLLAPSED_GROUP_W, h: COLLAPSED_GROUP_H }
+        );
         setNodes(fresh.nodes);
         setEdges(fresh.edges);
         historyRef.current = { stack: [{ nodes: fresh.nodes, edges: fresh.edges }], idx: 0 };
@@ -617,45 +644,45 @@ function ClaimGraphRFInner({
     [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]
   );
 
-  // Snap all selected claims onto the same row as the first one. Updates
-  // data.row AND position.y together so the semantic layer can't desync
-  // from the visual one (rfToEngine serializes data.row verbatim).
-  const bulkAlignToRow = useCallback(() => {
-    if (selectedClaimIds.length < 2) return;
-    const selSet = new Set(selectedClaimIds);
-    const layout = LAYOUT[mode];
-    const first = nodesRef.current.find(
-      (n): n is ClaimNode => isClaimNode(n) && n.id === selectedClaimIds[0]
-    );
-    if (!first) return;
-    const targetRow = first.data.row;
-    // Y lives in each node's own coordinate space — grouped children are
-    // relative to their group, ungrouped claims are absolute. Compute per
-    // node, not from `first`, or a mixed selection lands at the wrong Y.
-    const rowYFor = (n: ClaimNode) =>
-      n.parentId
-        ? layout.padY + layout.groupHeaderH + layout.rowY[targetRow]
-        : layout.rowY[targetRow];
+  // Move every selected claim onto an explicit row (1=symptom, 2=mechanism,
+  // 3=leverage). Updates data.row AND position.y together so the semantic
+  // layer can't desync from the visual one (rfToEngine serializes data.row
+  // verbatim). Unlike the old "row of the first selected" behaviour, ALL
+  // selected claims move — there is no skipped anchor node.
+  const bulkMoveToRow = useCallback(
+    (targetRow: 1 | 2 | 3) => {
+      if (selectedClaimIds.length < 1) return;
+      const selSet = new Set(selectedClaimIds);
+      const layout = LAYOUT[mode];
+      // Y lives in each node's own coordinate space — grouped children are
+      // relative to their group, ungrouped claims are absolute. Compute per
+      // node so a mixed selection lands at the right Y in either space.
+      const rowYFor = (n: ClaimNode) =>
+        n.parentId
+          ? layout.padY + layout.groupHeaderH + layout.rowY[targetRow]
+          : layout.rowY[targetRow];
 
-    setNodes((ns) =>
-      ns.map((n) => {
-        if (!isClaimNode(n) || !selSet.has(n.id) || n.id === first.id) return n;
-        return {
-          ...n,
-          position: { ...n.position, y: rowYFor(n) },
-          data: { ...n.data, row: targetRow },
-        };
-      })
-    );
-    requestAnimationFrame(() => {
-      snapshot();
-      persist();
-      onPersist?.(buildInstance());
-    });
-  }, [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]);
+      setNodes((ns) =>
+        ns.map((n) => {
+          if (!isClaimNode(n) || !selSet.has(n.id)) return n;
+          return {
+            ...n,
+            position: { ...n.position, y: rowYFor(n) },
+            data: { ...n.data, row: targetRow },
+          };
+        })
+      );
+      requestAnimationFrame(() => {
+        snapshot();
+        persist();
+        onPersist?.(buildInstance());
+      });
+    },
+    [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]
+  );
 
   // Horizontal align / distribute. Pure-positional (X only) — rows carry
-  // semantic meaning so Y is left to bulkAlignToRow. Selected claims may live
+  // semantic meaning so Y is left to bulkMoveToRow. Selected claims may live
   // in different groups, so work in absolute X then convert back per-node.
   const applyXResult = useCallback(
     (compute: (boxes: XBox[]) => Map<string, number>) => {
@@ -700,8 +727,8 @@ function ClaimGraphRFInner({
     [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]
   );
 
-  const bulkAlignX = useCallback(
-    (op: HAlign) => applyXResult((boxes) => alignX(boxes, op)),
+  const bulkAlignColumn = useCallback(
+    () => applyXResult((boxes) => alignColumn(boxes)),
     [applyXResult]
   );
   const bulkDistributeX = useCallback(
@@ -864,6 +891,7 @@ function ClaimGraphRFInner({
         >
           {!isInline && <Background gap={24} size={1} color="var(--line)" />}
           {!isInline && <Controls showInteractive={false} />}
+          {!isInline && <RowLabels />}
           {!isInline && editable && (
             <Panel position="bottom-right" className="ag-rf-key-hints">
               <span><kbd>⇧</kbd>+drag box-select</span>
@@ -878,9 +906,9 @@ function ClaimGraphRFInner({
                 domains={availableDomains}
                 onDelete={bulkDelete}
                 onGroupInto={bulkGroupInto}
-                onAlignX={bulkAlignX}
+                onAlignColumn={bulkAlignColumn}
                 onDistributeX={bulkDistributeX}
-                onAlignToRow={bulkAlignToRow}
+                onMoveToRow={bulkMoveToRow}
                 onClear={bulkClearSelection}
               />
             </Panel>

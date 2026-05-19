@@ -1,54 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import type { HAlign } from "./align";
+
+// Icon/label rule: icon-only is permitted ONLY for the universally-understood
+// ✕ clear-selection control; every other control is a text label. No SVG
+// iconography is introduced anywhere else in this toolbar.
 
 type Props = {
   count: number;
   domains: string[];
   onDelete: () => void;
   onGroupInto: (domain: string) => void;
-  onAlignX: (op: HAlign) => void;
+  onAlignColumn: () => void;
   onDistributeX: () => void;
-  onAlignToRow: () => void;
+  onMoveToRow: (row: 1 | 2 | 3) => void;
   onClear: () => void;
 };
-
-function IconBtn({
-  label,
-  onClick,
-  disabled,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      className="ag-bulk-icon"
-      onClick={onClick}
-      disabled={disabled}
-      title={label}
-      aria-label={label}
-      type="button"
-    >
-      <svg viewBox="0 0 24 24" aria-hidden>
-        {children}
-      </svg>
-    </button>
-  );
-}
 
 export function BulkActionsToolbar({
   count,
   domains,
   onDelete,
   onGroupInto,
-  onAlignX,
+  onAlignColumn,
   onDistributeX,
-  onAlignToRow,
+  onMoveToRow,
   onClear,
 }: Props) {
   const [groupOpen, setGroupOpen] = useState(false);
@@ -68,38 +44,55 @@ export function BulkActionsToolbar({
 
       <span className="ag-bulk-sep" aria-hidden />
 
-      <div className="ag-bulk-cluster" role="group" aria-label="Align horizontal">
-        <IconBtn label="Align left" onClick={() => onAlignX("left")}>
-          <path d="M4 3v18M8 7h10v3H8zM8 14h6v3H8z" fill="currentColor" />
-        </IconBtn>
-        <IconBtn label="Align horizontal centers" onClick={() => onAlignX("hcenter")}>
-          <path d="M12 3v18M7 7h10v3H7zM9 14h6v3H9z" fill="currentColor" />
-        </IconBtn>
-        <IconBtn label="Align right" onClick={() => onAlignX("right")}>
-          <path d="M20 3v18M6 7h10v3H6zM10 14h6v3h-6z" fill="currentColor" />
-        </IconBtn>
-        <IconBtn
-          label="Distribute horizontally (3+)"
-          onClick={onDistributeX}
-          disabled={count < 3}
+      <button
+        className="ag-bulk-btn"
+        onClick={onAlignColumn}
+        title="Snap selected claims to a shared column (left edge of the selection)"
+        type="button"
+      >
+        align column
+      </button>
+      <button
+        className="ag-bulk-btn"
+        onClick={onDistributeX}
+        disabled={count < 3}
+        title="Even horizontal spacing between selected claims (needs 3+)"
+        type="button"
+      >
+        distribute
+      </button>
+
+      <span className="ag-bulk-sep" aria-hidden />
+
+      <div className="ag-bulk-cluster" role="group" aria-label="Move to row">
+        <button
+          className="ag-bulk-btn"
+          onClick={() => onMoveToRow(1)}
+          title="Move selected claims into the symptom row"
+          type="button"
         >
-          <path
-            d="M4 3v18M20 3v18M10.5 7h3v10h-3z"
-            fill="currentColor"
-          />
-        </IconBtn>
+          → symptom
+        </button>
+        <button
+          className="ag-bulk-btn"
+          onClick={() => onMoveToRow(2)}
+          title="Move selected claims into the mechanism row"
+          type="button"
+        >
+          → mechanism
+        </button>
+        <button
+          className="ag-bulk-btn"
+          onClick={() => onMoveToRow(3)}
+          title="Move selected claims into the leverage row"
+          type="button"
+        >
+          → leverage
+        </button>
       </div>
 
       <span className="ag-bulk-sep" aria-hidden />
 
-      <button
-        className="ag-bulk-btn"
-        onClick={onAlignToRow}
-        title="Snap selected onto the row of the first selected claim"
-        type="button"
-      >
-        align row
-      </button>
       <button
         className="ag-bulk-btn"
         onClick={() => setGroupOpen((v) => !v)}

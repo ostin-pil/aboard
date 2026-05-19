@@ -443,9 +443,11 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   width: 1px; align-self: stretch; margin: 2px 1px;
   background: var(--line-2);
 }
-.ag-bulk-cluster { display: inline-flex; align-items: center; gap: 2px; }
+/* move-to-row group: three text buttons, same rhythm as the rest */
+.ag-bulk-cluster { display: inline-flex; align-items: center; gap: var(--ctl-gap); }
 
-/* text + icon controls share one height/rhythm */
+/* text + icon controls share one height/rhythm. Icon styling is retained
+   only for the ✕ clear-selection control (the lone permitted icon). */
 .ag-bulk-btn,
 .ag-bulk-icon {
   height: var(--ctl-h);
@@ -595,6 +597,60 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   letter-spacing: 0.04em;
 }
 .ag-domain-group-count::after { content: " claims"; }
+/* Explicit verb so the header reads as a control, not a static label. */
+.ag-domain-group-action {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  padding: 2px 7px 3px;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.ag-domain-group-header:hover .ag-domain-group-action {
+  color: var(--bg);
+  background: var(--fg);
+  border-color: var(--fg);
+}
+
+/* Row band labels — a non-panning Panel pinned to the flow pane's top-left.
+   Children are absolutely stacked; only their translateY tracks the live
+   viewport transform (see RowLabels.tsx), so the text is screen-fixed and
+   never scales with zoom. Never blocks pointer interaction. Fullbleed only;
+   inline mode never mounts this Panel. */
+.react-flow__panel.ag-row-labels {
+  margin: 0;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+.ag-row-label {
+  position: absolute;
+  top: 0;
+  left: 14px;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--paper) 78%, transparent);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 3px 7px 4px;
+  will-change: transform;
+  /* The labels are translated OUT of their 0×0 Panel and the row-1 label
+     overlaps the domain-group header strip. The Panel is pointer-events:none
+     but an absolutely-positioned child with its own background can still
+     swallow the pointer in practice — make every label explicitly
+     non-interactive so header hover/click reach the group node. */
+  pointer-events: none;
+}
 
 /* Graph control chrome must not catch text-selection while Shift is held
    for box-select. */
