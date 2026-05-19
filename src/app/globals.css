@@ -644,6 +644,12 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   border-radius: 2px;
   padding: 3px 7px 4px;
   will-change: transform;
+  /* The labels are translated OUT of their 0×0 Panel and the row-1 label
+     overlaps the domain-group header strip. The Panel is pointer-events:none
+     but an absolutely-positioned child with its own background can still
+     swallow the pointer in practice — make every label explicitly
+     non-interactive so header hover/click reach the group node. */
+  pointer-events: none;
 }
 
 /* Graph control chrome must not catch text-selection while Shift is held
