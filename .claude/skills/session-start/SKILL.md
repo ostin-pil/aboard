@@ -20,6 +20,9 @@ Counterpart to `/session-end`, which finalizes a session. This is the
    - Local `main` has commits ahead of `origin/main` *and* the user is unaware (rare).
    - `HEAD` is on a `feature/*` branch but the user thinks they're on `main` (or vice-versa).
    Surface any of these in the briefing's "Where we left off" line; don't silently move on.
+   Also count stale merged local branches:
+   `git branch --merged main | grep -vE '^\*| main$' | wc -l`. If on an
+   up-to-date `main` and the count is > 0, carry it to step 6.
 
 2. **Find the latest session log.** `ls sessions/ 2>/dev/null | sort | tail -3` — the lexicographically last `YYYY-MM-DD_session*.md` file (prefer non-worktree-suffixed ones if multiple share a date). Read it in full, focusing on `## What's next`, `## Build status`, `## Commits`, and the branch line at the top. Also note the highest session number from filenames — needed in step 6. If no `sessions/` directory or no logs exist, note "no prior sessions" and skip ahead.
 
@@ -41,7 +44,11 @@ Counterpart to `/session-end`, which finalizes a session. This is the
    - **Where we left off** — one short paragraph (branch, last session number, what landed, build status). Include the divergence flag from step 1 if any.
    - **Shipped since the last log** — bullets from step 3's `git log`, or "no commits since last log".
    - **Uncommitted work** — flag dirty files from `git status`, or "clean tree".
-   - **Open follow-ups** — bulleted, deduped list from step 4.
+   - **Open follow-ups** — bulleted, deduped list from step 4. If step 1
+     found stale merged local branches, add a bullet: "N merged local
+     branches can be pruned — run `/prune-branches`" with the note that
+     it must run *before* accepting step 7's branch switch (`/prune-branches`
+     requires being on `main`).
    - **Suggested next slice** — 1–2 picks with a one-line rationale each. Bias by `$ARGUMENTS` if given. Phrase as a recommendation, not a decision.
 
 7. **Branch isolation.** After the briefing, ask the user via `AskUserQuestion` whether to open this session on a new feature branch. Compute the next session number `N` from the highest `_session_<n>` in `sessions/` (step 2), plus 1. Suggest `feature/session-<N>-<short-topic>` where `<short-topic>` is a one-word slug derived from `$ARGUMENTS` or the picked next slice (e.g. `live-forecasts`, `multi-domain`, `schema`). Two answers:
