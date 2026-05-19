@@ -8,6 +8,7 @@ import {
 } from "@/lib/graph";
 import { fullClaimLD } from "@/lib/jsonld";
 import { aggregate } from "@/lib/forecast";
+import { InterpretationCard } from "@/components/InterpretationCard";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -282,6 +283,8 @@ export default async function ClaimPage({
                     </div>
                   </div>
                 )}
+
+                {isEnsemble && <InterpretationCard forecast={f} />}
 
                 <details className={isEnsemble ? "ensemble-details" : "single-details"} open={!isEnsemble}>
                   <summary>
