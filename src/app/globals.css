@@ -563,6 +563,14 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   border-bottom: none;
   border-radius: 6px;
 }
+/* Collapsed pill is fixed-width (220×56). Hide the count + action verb
+   when collapsed — chevron + pointer cursor + aria-label convey the
+   disclosure role; the verbose decorations only fit in the expanded
+   header. */
+.ag-domain-group.is-collapsed .ag-domain-group-count,
+.ag-domain-group.is-collapsed .ag-domain-group-action {
+  display: none;
+}
 .ag-domain-group-toggle {
   display: inline-flex;
   align-items: center;
