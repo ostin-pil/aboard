@@ -14,34 +14,25 @@ function DomainGroupNodeImpl({ id, data }: NodeProps<DomainGroupNodeT>) {
       className={`ag-domain-group${collapsed ? " is-collapsed" : ""}`}
       data-domain={data.domain}
     >
-      <button
-        type="button"
-        // nodrag/nopan: React Flow binds drag+pan at pointerdown via
-        // d3-zoom, which a React onClick stopPropagation cannot intercept —
-        // without these classes a click on the header is swallowed as a
-        // node-drag / pane-pan and the toggle never fires.
-        className="ag-domain-group-header nodrag nopan"
-        // Chevron + explicit verb make the disclosure role obvious; the
-        // title/aria-label flip with state so it reads as a control, not a
-        // decoration. (Text glyphs only — no SVG; the bulk-toolbar
-        // icon-ban is scoped to that toolbar, not this disclosure widget.)
-        title={collapsed ? "Expand group" : "Collapse group"}
-        aria-label={collapsed ? "Expand group" : "Collapse group"}
-        aria-expanded={!collapsed}
-        onClick={(e) => {
-          e.stopPropagation();
-          ctx.toggleDomainCollapse(id);
-        }}
-      >
-        <span className="ag-domain-group-toggle" aria-hidden>
+      {/* Header is a plain div so it acts as a drag handle for the group;
+          only the chevron button is `nodrag nopan` and clickable. */}
+      <div className="ag-domain-group-header">
+        <button
+          type="button"
+          className="ag-domain-group-toggle nodrag nopan"
+          title={collapsed ? "Expand group" : "Collapse group"}
+          aria-label={collapsed ? "Expand group" : "Collapse group"}
+          aria-expanded={!collapsed}
+          onClick={(e) => {
+            e.stopPropagation();
+            ctx.toggleDomainCollapse(id);
+          }}
+        >
           {collapsed ? "▸" : "▾"}
-        </span>
+        </button>
         <span className="ag-domain-group-label">{data.domain}</span>
         <span className="ag-domain-group-count">{data.claimCount}</span>
-        <span className="ag-domain-group-action" aria-hidden>
-          {collapsed ? "expand" : "collapse"}
-        </span>
-      </button>
+      </div>
     </div>
   );
 }

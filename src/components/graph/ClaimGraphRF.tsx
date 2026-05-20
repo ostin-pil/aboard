@@ -867,6 +867,15 @@ function ClaimGraphRFInner({
           onNodesDelete={editable ? onNodesDelete : undefined}
           onEdgesDelete={editable ? onEdgesDelete : undefined}
           onMoveEnd={onMoveEnd}
+          // Load-bearing: @xyflow/react v12 only wires up React's click
+          // event for nodes when an onNodeClick prop is present. Without
+          // it, clicks on interactive children inside a custom node
+          // (e.g. the DomainGroupNode header button, even with `nodrag
+          // nopan`) are silently dropped — the inner onClick never
+          // fires. A no-op is sufficient; we have no node-click semantics
+          // of our own. Removing this re-introduces the regression
+          // bisected on 2026-05-20.
+          onNodeClick={() => { /* noop — see above */ }}
           deleteKeyCode={editable ? ["Backspace", "Delete"] : null}
           multiSelectionKeyCode={["Meta", "Control"]}
           selectionKeyCode="Shift"

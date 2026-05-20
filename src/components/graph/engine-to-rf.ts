@@ -78,7 +78,10 @@ export function engineToRF(
           width: groupInnerW,
           height: groupInnerH + layout.groupHeaderH,
         },
-        draggable: false,
+        // Header is the drag handle (the chevron button inside it has
+        // `nodrag nopan` so it stays clickable). Children move with the
+        // group via React Flow's parent semantics.
+        draggable: true,
         selectable: false,
         focusable: false,
       };
