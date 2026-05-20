@@ -144,4 +144,13 @@ detects an indeterminate package manager. Noise, not a real change.
 **Workaround.** Don't stage it; `git checkout -- package.json` after
 non-package-manager edits, or use `git add` with specific files.
 
-Status: deferred cleanup carried from session 8.
+**Fix landed 2026-05-20.** `.claude/settings.json` sets
+`COREPACK_ENABLE_AUTO_PIN=0` in the env for Claude-invoked tools, which
+stops the auto-pin at its source for any yarn/npm command Claude runs.
+Caveat: this env var only applies to shells Claude spawns. If yarn is
+invoked from the user's own terminal in this repo, corepack may still
+auto-pin — export the same var in your shell profile if so.
+
+Status: resolved for Claude-driven invocations
+(`chore/session-10-corepack-autopin`). Re-open if it reappears after
+a user-shell yarn run.
