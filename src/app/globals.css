@@ -537,13 +537,13 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   box-shadow: var(--shadow-card);
 }
 
+/* Header is a div (drag handle for the group); only the chevron is a
+   button. `cursor: grab` advertises that you can drag the group. */
 .ag-domain-group-header {
-  appearance: none;
   background: var(--paper);
-  border: none;
   border-bottom: 1px solid var(--line-2);
   border-radius: 6px 6px 0 0;
-  cursor: pointer;
+  cursor: grab;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -553,25 +553,21 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   letter-spacing: 0.04em;
   color: var(--fg);
   width: 100%;
-  text-align: left;
   transition: background .15s ease;
 }
-.ag-domain-group-header:hover {
-  background: var(--hair);
-}
+.ag-domain-group-header:active { cursor: grabbing; }
 .ag-domain-group.is-collapsed .ag-domain-group-header {
   border-bottom: none;
   border-radius: 6px;
 }
-/* Collapsed pill is fixed-width (220×56). Hide the count + action verb
-   when collapsed — chevron + pointer cursor + aria-label convey the
-   disclosure role; the verbose decorations only fit in the expanded
-   header. */
-.ag-domain-group.is-collapsed .ag-domain-group-count,
-.ag-domain-group.is-collapsed .ag-domain-group-action {
+/* Collapsed pill is 220×56 — even without the action verb the long
+   domain name + count overflows, so hide the count when collapsed.
+   Chevron + label is enough; the full count returns on expand. */
+.ag-domain-group.is-collapsed .ag-domain-group-count {
   display: none;
 }
 .ag-domain-group-toggle {
+  appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -584,8 +580,12 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   color: var(--fg);
   background: var(--bg);
   flex-shrink: 0;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  line-height: 1;
 }
-.ag-domain-group-header:hover .ag-domain-group-toggle {
+.ag-domain-group-toggle:hover {
   background: var(--fg);
   color: var(--bg);
 }
@@ -605,24 +605,6 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   letter-spacing: 0.04em;
 }
 .ag-domain-group-count::after { content: " claims"; }
-/* Explicit verb so the header reads as a control, not a static label. */
-.ag-domain-group-action {
-  flex-shrink: 0;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  border: 1px solid var(--line-2);
-  border-radius: 3px;
-  padding: 2px 7px 3px;
-  transition: color .15s ease, border-color .15s ease, background .15s ease;
-}
-.ag-domain-group-header:hover .ag-domain-group-action {
-  color: var(--bg);
-  background: var(--fg);
-  border-color: var(--fg);
-}
 
 /* Row band labels — a non-panning Panel pinned to the flow pane's top-left.
    Children are absolutely stacked; only their translateY tracks the live

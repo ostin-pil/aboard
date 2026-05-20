@@ -220,7 +220,9 @@ export function hydrateFromPersisted(p: Persisted): { nodes: GraphNode[]; edges:
       position: n.position,
       data: n.data,
       ...(n.style ? { style: n.style } : {}),
-      draggable: false,
+      // Match engineToRF: header drags the whole group; chevron button
+      // inside uses `nodrag nopan` to stay clickable.
+      draggable: true,
       selectable: false,
       focusable: false,
     } as GraphNode;
