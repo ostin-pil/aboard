@@ -109,8 +109,12 @@ didn't know about the new types.
    `/graph`) that calls `clearPersisted()` + `window.location.reload()`
    would be a cheap escape hatch.
 
-Status: option 1 not yet implemented — recommended for next graph
-session.
+Status: option 1 landed
+(`feature/session-10-localstorage-selfheal`). The `useMemo` in
+`ClaimGraphRFInner` now sanity-checks that fullbleed-mode rehydrations
+contain at least one `domainGroup` node; otherwise it calls
+`clearPersisted()` and rebuilds from `data/`. Options 3 and 4 remain
+open if option 1 turns out to lose real local edits in practice.
 
 ---
 
