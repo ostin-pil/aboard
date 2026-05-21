@@ -10,6 +10,7 @@ import {
   useEdgesState,
   useNodesState,
   useReactFlow,
+  useUpdateNodeInternals,
   type Connection,
   type NodeTypes,
   type EdgeTypes,
@@ -148,6 +149,7 @@ function ClaimGraphRFInner({
   });
 
   const rf = useReactFlow();
+  const updateNodeInternals = useUpdateNodeInternals();
 
   const closeEdgePopoverTimer = useRef<number | null>(null);
   const cancelCloseEdgePopover = useCallback(() => {
@@ -246,11 +248,16 @@ function ClaimGraphRFInner({
         })
       );
       requestAnimationFrame(() => {
+        // The group's style.width/height just changed; React Flow does
+        // not re-measure on its own, so its cached `measured` dims (used
+        // for drag coordinate mapping) stay stale and the collapsed pill
+        // becomes undraggable. Force a re-measure. See knowledge/issues.md.
+        updateNodeInternals(groupId);
         snapshot();
         persist();
       });
     },
-    [setNodes, setEdges, snapshot, persist, mode]
+    [setNodes, setEdges, snapshot, persist, mode, updateNodeInternals]
   );
 
   const buildInstance = useCallback((): AboardGraphInstance => {
@@ -304,7 +311,15 @@ function ClaimGraphRFInner({
         setNodes(fresh.nodes);
         setEdges(fresh.edges);
         historyRef.current = { stack: [{ nodes: fresh.nodes, edges: fresh.edges }], idx: 0 };
-        requestAnimationFrame(() => rf.fitView({ duration: 200, padding: 0.15 }));
+        requestAnimationFrame(() => {
+          // Any group that comes back collapsed had its dims set live;
+          // re-measure so it stays draggable (same staleness as the
+          // toggle path above).
+          for (const n of fresh.nodes) {
+            if (isGroupNode(n) && n.data.collapsed) updateNodeInternals(n.id);
+          }
+          rf.fitView({ duration: 200, padding: 0.15 });
+        });
       },
       exportJSONLD: () =>
         exportClientJSONLD(
@@ -314,7 +329,7 @@ function ClaimGraphRFInner({
         ),
       setActiveDomain: (d) => setActiveDomain(d),
     };
-  }, [data, mode, rf, setNodes, setEdges, persist]);
+  }, [data, mode, rf, setNodes, setEdges, persist, updateNodeInternals]);
 
   // onReady — fire once after first mount.
   const readyFiredRef = useRef(false);
