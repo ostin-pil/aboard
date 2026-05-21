@@ -181,4 +181,13 @@ committed in `package.json`. Corepack stops rewriting the field once a
 valid value is present, so the recurring diff is gone. If npm is
 upgraded, bump this value to the new `npm --version` in the same commit.
 
+**Rejected alternative.** A parallel branch
+(`chore/session-10-corepack-autopin`, commit `ae36481`) set
+`COREPACK_ENABLE_AUTO_PIN=0` in `.claude/settings.json`. That only
+applies to shells Claude spawns — the user's own terminal, CI, and
+other contributors aren't covered, and it doesn't declare the package
+manager. The pin is corepack's intended mechanism and works
+universally, so the autopin branch was abandoned (deleted; recover from
+`ae36481` if ever needed). Don't re-add the env var — the pin covers it.
+
 Status: resolved — `packageManager` pinned to npm.
