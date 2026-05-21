@@ -8,6 +8,8 @@ order they could be picked up; pick any.
 
 | Plan | Effort | Decision-heavy? | Prereq |
 | --- | --- | --- | --- |
+| [domain-on-create.md](domain-on-create.md) | ~1–2 hr | Light — slot-on-create vs leave-free | None |
+| [cross-domain-claim-drag.md](cross-domain-claim-drag.md) | ~half-day | Yes — extent strategy, confirm UX, coordinate math | None |
 | [editor-mode-posture.md](editor-mode-posture.md) | ~3 hr (Posture 2) / ~12+ hr (Posture 3) | Yes — three postures to choose between | None |
 | [open-weights-forecaster.md](open-weights-forecaster.md) | ~4–6 hr for the M2/F2 prototype | Yes — inference provider, model roster, aggregation rule | None |
 

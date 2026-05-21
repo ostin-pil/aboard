@@ -96,7 +96,19 @@ function ClaimGraphRFInner({
 }: Props) {
   const initial = useMemo(() => {
     const persisted = loadPersisted();
-    if (persisted) return hydrateFromPersisted(persisted);
+    if (persisted) {
+      const hydrated = hydrateFromPersisted(persisted);
+      // Self-heal on schema drift: fullbleed mode must contain at
+      // least one domainGroup node. A persisted snapshot pre-dating a
+      // structural refactor (e.g. before multi-domain landed) would
+      // rehydrate into an inert graph — drop it and rebuild from
+      // data/. Load-bearing; do not remove without replacing with a
+      // smarter drift check. See knowledge/issues.md.
+      const schemaOk =
+        mode !== "fullbleed" || hydrated.nodes.some(isGroupNode);
+      if (schemaOk) return hydrated;
+      clearPersisted();
+    }
     return engineToRF(data, mode);
   }, [data, mode]);
 

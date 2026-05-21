@@ -109,8 +109,12 @@ didn't know about the new types.
    `/graph`) that calls `clearPersisted()` + `window.location.reload()`
    would be a cheap escape hatch.
 
-Status: option 1 not yet implemented — recommended for next graph
-session.
+Status: option 1 landed
+(`feature/session-10-localstorage-selfheal`). The `useMemo` in
+`ClaimGraphRFInner` now sanity-checks that fullbleed-mode rehydrations
+contain at least one `domainGroup` node; otherwise it calls
+`clearPersisted()` and rebuilds from `data/`. Options 3 and 4 remain
+open if option 1 turns out to lose real local edits in practice.
 
 ---
 
@@ -133,6 +137,32 @@ reproduced often enough to file upstream; track if it gets worse.
 
 ---
 
+## 2026-05-20 — Lightning CSS `z-index` warnings during build are cosmetic
+
+**Symptom.** `npm run build` prints `` `z-index` is currently not
+supported. `` repeatedly (once per `z-index` declaration).
+
+**Cause.** Tailwind v4's Lightning CSS minifier emits this for each
+`z-index` it can't fully analyze at minification time. There are 13
+`z-index` declarations in `src/app/globals.css` (the only
+build-relevant stylesheet — the `Claude Design Screens/` assets are
+standalone mockups, not in the Next build).
+
+**Impact.** None functional. The declarations are **not dropped**; the
+stacking order renders correctly. Purely an optimization-time notice.
+
+**Suppression.** None available. Lightning CSS exposes no comment
+directive or per-property opt-out, and there is no `next.config.ts` /
+PostCSS knob for it on Next.js 16.2.6 + Tailwind v4. Investigated
+session 10 — concluded not cleanly fixable in code, so we deliberately
+do **not** churn the CSS to chase it.
+
+Status: accepted as benign. Revisit only if a future Lightning CSS
+release adds a knob, or if a `z-index` is ever actually dropped from
+the output.
+
+---
+
 ## 2026-05-20 — Recurring `packageManager` field added to `package.json`
 
 **Symptom.** `git diff package.json` periodically shows a new
@@ -141,7 +171,23 @@ reproduced often enough to file upstream; track if it gets worse.
 **Cause.** Corepack (the Node tooling shim) injects this when it
 detects an indeterminate package manager. Noise, not a real change.
 
-**Workaround.** Don't stage it; `git checkout -- package.json` after
-non-package-manager edits, or use `git add` with specific files.
+**Why `yarn`?** Spurious — the project is npm-based (CLAUDE.md
+`npm install` / `npm run dev`, every session). The injected value was
+wrong, not just noisy.
 
-Status: deferred cleanup carried from session 8.
+**Resolution (2026-05-20, session 10).** Pinned the correct manager
+instead of fighting the churn: `"packageManager": "npm@10.9.2"` is now
+committed in `package.json`. Corepack stops rewriting the field once a
+valid value is present, so the recurring diff is gone. If npm is
+upgraded, bump this value to the new `npm --version` in the same commit.
+
+**Rejected alternative.** A parallel branch
+(`chore/session-10-corepack-autopin`, commit `ae36481`) set
+`COREPACK_ENABLE_AUTO_PIN=0` in `.claude/settings.json`. That only
+applies to shells Claude spawns — the user's own terminal, CI, and
+other contributors aren't covered, and it doesn't declare the package
+manager. The pin is corepack's intended mechanism and works
+universally, so the autopin branch was abandoned (deleted; recover from
+`ae36481` if ever needed). Don't re-add the env var — the pin covers it.
+
+Status: resolved — `packageManager` pinned to npm.
