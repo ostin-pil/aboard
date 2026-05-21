@@ -137,6 +137,32 @@ reproduced often enough to file upstream; track if it gets worse.
 
 ---
 
+## 2026-05-20 — Lightning CSS `z-index` warnings during build are cosmetic
+
+**Symptom.** `npm run build` prints `` `z-index` is currently not
+supported. `` repeatedly (once per `z-index` declaration).
+
+**Cause.** Tailwind v4's Lightning CSS minifier emits this for each
+`z-index` it can't fully analyze at minification time. There are 13
+`z-index` declarations in `src/app/globals.css` (the only
+build-relevant stylesheet — the `Claude Design Screens/` assets are
+standalone mockups, not in the Next build).
+
+**Impact.** None functional. The declarations are **not dropped**; the
+stacking order renders correctly. Purely an optimization-time notice.
+
+**Suppression.** None available. Lightning CSS exposes no comment
+directive or per-property opt-out, and there is no `next.config.ts` /
+PostCSS knob for it on Next.js 16.2.6 + Tailwind v4. Investigated
+session 10 — concluded not cleanly fixable in code, so we deliberately
+do **not** churn the CSS to chase it.
+
+Status: accepted as benign. Revisit only if a future Lightning CSS
+release adds a knob, or if a `z-index` is ever actually dropped from
+the output.
+
+---
+
 ## 2026-05-20 — Recurring `packageManager` field added to `package.json`
 
 **Symptom.** `git diff package.json` periodically shows a new
@@ -145,7 +171,14 @@ reproduced often enough to file upstream; track if it gets worse.
 **Cause.** Corepack (the Node tooling shim) injects this when it
 detects an indeterminate package manager. Noise, not a real change.
 
-**Workaround.** Don't stage it; `git checkout -- package.json` after
-non-package-manager edits, or use `git add` with specific files.
+**Why `yarn`?** Spurious — the project is npm-based (CLAUDE.md
+`npm install` / `npm run dev`, every session). The injected value was
+wrong, not just noisy.
 
-Status: deferred cleanup carried from session 8.
+**Resolution (2026-05-20, session 10).** Pinned the correct manager
+instead of fighting the churn: `"packageManager": "npm@10.9.2"` is now
+committed in `package.json`. Corepack stops rewriting the field once a
+valid value is present, so the recurring diff is gone. If npm is
+upgraded, bump this value to the new `npm --version` in the same commit.
+
+Status: resolved — `packageManager` pinned to npm.
