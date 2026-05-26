@@ -54,6 +54,7 @@ import {
   orderParentsFirst,
   type ClaimEdge,
   type ClaimNode,
+  type CollapsedRemap,
   type GraphNode,
 } from "./types";
 
@@ -230,9 +231,66 @@ function ClaimGraphRFInner({
       });
       setEdges((es) =>
         es.map((e) => {
-          const touchesCollapsed = childIds.has(e.source) || childIds.has(e.target);
-          if (!touchesCollapsed) return e;
-          return { ...e, hidden: nextCollapsed };
+          if (nextCollapsed) {
+            const sIn = childIds.has(e.source);
+            const tIn = childIds.has(e.target);
+            // Internal edge (both ends inside this group) → hide; it would
+            // live entirely inside the pill.
+            if (sIn && tIn) return { ...e, hidden: true };
+            // Boundary edge (exactly one end inside) → re-point that end to
+            // the collapsed pill so the connection stays visible; stash the
+            // original child endpoint + handle to restore on expand.
+            if (sIn || tIn) {
+              const remap: CollapsedRemap = { ...(e.data?.collapsedRemap ?? {}) };
+              const next: ClaimEdge = {
+                ...e,
+                hidden: false,
+                data: { ...e.data!, collapsedRemap: remap },
+              };
+              if (sIn) {
+                remap.source = { node: e.source, handle: e.sourceHandle ?? null };
+                next.source = groupId;
+                next.sourceHandle = null;
+              }
+              if (tIn) {
+                remap.target = { node: e.target, handle: e.targetHandle ?? null };
+                next.target = groupId;
+                next.targetHandle = null;
+              }
+              return next;
+            }
+            return e;
+          }
+          // Expanding this group.
+          // Internal edges (both literal ends are children) were only hidden,
+          // never re-pointed → just un-hide.
+          if (childIds.has(e.source) && childIds.has(e.target)) {
+            return { ...e, hidden: false };
+          }
+          // Boundary edges: restore any endpoint stashed for THIS group's
+          // children (an edge crossing two collapsed groups keeps the other
+          // group's remap until that group expands).
+          const remap = e.data?.collapsedRemap;
+          const restoreSource = !!remap?.source && childIds.has(remap.source.node);
+          const restoreTarget = !!remap?.target && childIds.has(remap.target.node);
+          if (!restoreSource && !restoreTarget) return e;
+          const next: ClaimEdge = { ...e };
+          const newRemap: CollapsedRemap = { ...remap };
+          if (restoreSource) {
+            next.source = remap!.source!.node;
+            next.sourceHandle = remap!.source!.handle ?? undefined;
+            delete newRemap.source;
+          }
+          if (restoreTarget) {
+            next.target = remap!.target!.node;
+            next.targetHandle = remap!.target!.handle ?? undefined;
+            delete newRemap.target;
+          }
+          const data = { ...e.data! };
+          if (newRemap.source || newRemap.target) data.collapsedRemap = newRemap;
+          else delete data.collapsedRemap;
+          next.data = data;
+          return next;
         })
       );
       requestAnimationFrame(() => {

@@ -1,4 +1,4 @@
-import type { ClaimEdge, ClaimNode } from "./types";
+import { canonicalEndpoints, type ClaimEdge, type ClaimNode } from "./types";
 
 export function exportClientJSONLD(
   nodes: ClaimNode[],
@@ -25,12 +25,16 @@ export function exportClientJSONLD(
       filedAt: n.data.filed,
       dossier: n.data.dossier ? "aboard:dossier/" + n.id : null,
     })),
-    relations: edges.map((e) => ({
-      "@type": "Relation",
-      kind: e.data?.kind ?? "causes",
-      from: "aboard:claim/" + e.source,
-      to: "aboard:claim/" + e.target,
-    })),
+    relations: edges.map((e) => {
+      // Canonical endpoints so a collapsed group's pill id never leaks.
+      const { source, target } = canonicalEndpoints(e);
+      return {
+        "@type": "Relation",
+        kind: e.data?.kind ?? "causes",
+        from: "aboard:claim/" + source,
+        to: "aboard:claim/" + target,
+      };
+    }),
   };
   return JSON.stringify(out, null, 2);
 }

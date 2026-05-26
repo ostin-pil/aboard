@@ -537,6 +537,19 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   box-shadow: var(--shadow-card);
 }
 
+/* Collapsed-group edge anchors: present only so boundary edges have a
+   point to attach to on the pill. Display-only (non-interactive) — make
+   them invisible; the edge still anchors to their position. */
+.ag-group-edge-handle {
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  min-width: 1px;
+  min-height: 1px;
+  border: none;
+}
+
 /* Header is a div (drag handle for the group); only the chevron is a
    button. `cursor: grab` advertises that you can drag the group. */
 .ag-domain-group-header {
