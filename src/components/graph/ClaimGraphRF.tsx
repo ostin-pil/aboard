@@ -43,13 +43,10 @@ import { NodeEditorModal } from "./NodeEditorModal";
 import { NodePopover } from "./NodePopover";
 import { RowLabels } from "./RowLabels";
 import {
-  applyCollapsedState,
   clearPersisted,
   hydrateFromPersisted,
-  loadCollapsedIds,
   loadPersisted,
   savePersisted,
-  saveCollapsedIds,
 } from "./persist";
 import {
   isClaimNode,
@@ -203,15 +200,6 @@ function ClaimGraphRFInner({
       const group = nodesRef.current.find((n) => n.id === groupId);
       if (!group || !isGroupNode(group)) return;
       const nextCollapsed = !group.data.collapsed;
-      // Persist the resulting collapsed-id set to its own key so it survives
-      // a graph reset (clearPersisted intentionally leaves COLLAPSED_KEY).
-      const collapsedIds = new Set<string>();
-      for (const n of nodesRef.current) {
-        if (isGroupNode(n) && n.data.collapsed) collapsedIds.add(n.id);
-      }
-      if (nextCollapsed) collapsedIds.add(groupId);
-      else collapsedIds.delete(groupId);
-      saveCollapsedIds(Array.from(collapsedIds));
       const childIds = new Set(
         nodesRef.current
           .filter((n): n is ClaimNode => isClaimNode(n) && n.parentId === groupId)
@@ -298,28 +286,14 @@ function ClaimGraphRFInner({
       zoom: () => rf.getZoom(),
       reset: () => {
         clearPersisted();
+        // Reset returns to the canonical seed fully expanded. Collapsed
+        // state is intentionally discarded — it lives only in the
+        // persisted graph (STORE_KEY), which clearPersisted just removed.
         const built = engineToRF(data, mode);
-        // Collapsed-group state survives reset (separate localStorage key).
-        // Re-apply it via the shared pure helper so the rebuilt graph
-        // matches what a manual toggle would have produced.
-        const fresh = applyCollapsedState(
-          built.nodes,
-          built.edges,
-          loadCollapsedIds(),
-          { w: COLLAPSED_GROUP_W, h: COLLAPSED_GROUP_H }
-        );
-        setNodes(fresh.nodes);
-        setEdges(fresh.edges);
-        historyRef.current = { stack: [{ nodes: fresh.nodes, edges: fresh.edges }], idx: 0 };
-        requestAnimationFrame(() => {
-          // Any group that comes back collapsed had its dims set live;
-          // re-measure so it stays draggable (same staleness as the
-          // toggle path above).
-          for (const n of fresh.nodes) {
-            if (isGroupNode(n) && n.data.collapsed) updateNodeInternals(n.id);
-          }
-          rf.fitView({ duration: 200, padding: 0.15 });
-        });
+        setNodes(built.nodes);
+        setEdges(built.edges);
+        historyRef.current = { stack: [{ nodes: built.nodes, edges: built.edges }], idx: 0 };
+        requestAnimationFrame(() => rf.fitView({ duration: 200, padding: 0.15 }));
       },
       exportJSONLD: () =>
         exportClientJSONLD(

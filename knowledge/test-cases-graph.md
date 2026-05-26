@@ -86,7 +86,9 @@ nodes.
 - Mid-session schema-drift detection (we only check at hydration
   time). If a future change mutates the persisted shape during a live
   session, the user must reload to trigger the check.
-- Collapsed-group restoration when the saved collapsed-id set
-  references groups that no longer exist — already covered by the
-  `applyCollapsedState` "stale ids ignored" branch in
-  `persist.ts` (line 162).
+- Collapsed-group restoration across `reset` — no longer applicable.
+  As of session 11, `reset` returns the graph fully expanded and the
+  separate collapsed-id store (`applyCollapsedState` /
+  `aboard.graph.collapsedGroups.v1`) was removed. Collapse state now
+  lives only in the persisted graph (`aboard.graph.v3`) and is restored
+  by normal hydration; `reset` (which clears that key) discards it.
