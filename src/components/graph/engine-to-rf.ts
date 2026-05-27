@@ -4,7 +4,7 @@ import type {
   DomainGroupNode,
   GraphNode,
 } from "./types";
-import { isClaimNode, isGroupNode } from "./types";
+import { canonicalEndpoints, isClaimNode, isGroupNode } from "./types";
 
 export type LayoutMode = "inline" | "fullbleed";
 
@@ -167,9 +167,12 @@ export function rfToEngine(
     return out;
   });
   const engineEdges: EngineEdge[] = edges.map((e) => {
+    // Use canonical endpoints so a collapsed group's pill id (set when a
+    // boundary edge is re-pointed) never leaks into the exported model.
+    const { source, target } = canonicalEndpoints(e);
     const out: EngineEdge = {
-      from: e.source,
-      to: e.target,
+      from: source,
+      to: target,
       kind: e.data?.kind ?? "causes",
     };
     if (e.data?.rationale) out.rationale = e.data.rationale;

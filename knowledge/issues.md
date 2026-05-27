@@ -45,15 +45,17 @@ next @xyflow/react major.
 inert / invisible / unstyled. New code paths don't seem to apply even
 after restart, build, or hard reload.
 
-**Cause.** `aboard.graph.v3` and `aboard.graph.collapsedGroups.v1` in
-the browser's localStorage hold whatever shape the graph had the last
-time the user touched it. When the in-code schema evolves (e.g.
-`domainGroup` nodes were added), the persisted snapshot is from before
-that evolution and rehydrates into a graph that doesn't match what
-`engineToRF` would now produce. The new node types literally never
-mount because they aren't in the persisted nodes array.
+**Cause.** `aboard.graph.v3` in the browser's localStorage holds
+whatever shape the graph had the last time the user touched it. When the
+in-code schema evolves (e.g. `domainGroup` nodes were added), the
+persisted snapshot is from before that evolution and rehydrates into a
+graph that doesn't match what `engineToRF` would now produce. The new
+node types literally never mount because they aren't in the persisted
+nodes array. (Note: as of session 11 collapse state lives only in
+`aboard.graph.v3`; the separate `aboard.graph.collapsedGroups.v1` key was
+removed when `reset` was changed to expand all groups.)
 
-**Concrete repro from this session.** Clearing both keys fixed a
+**Concrete repro from this session.** Clearing the key fixed a
 non-interactive `/graph` page where the domain headers visually
 existed (rendered from `engineToRF` on first hit) but the
 collapse/expand pipeline routed through stale persisted nodes that

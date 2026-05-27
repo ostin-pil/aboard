@@ -1,5 +1,5 @@
 import type { ClaimEdge, GraphNode } from "./types";
-import { isClaimNode, isGroupNode, orderParentsFirst } from "./types";
+import { isClaimNode, orderParentsFirst } from "./types";
 
 // A transient overlay handle ("full-target") only exists during a
 // connection drag; an edge persisted against it dangles forever and
@@ -9,11 +9,6 @@ const cleanHandle = (h?: string) =>
 
 const STORE_KEY = "aboard.graph.v3";
 const LEGACY_STORE_KEYS = ["aboard.graph.v2"];
-
-// Collapsed domain-group ids live under a SEPARATE key so they survive a
-// graph `reset` (which clears STORE_KEY only). Value: JSON string[] of group
-// node ids. Stale ids (groups absent after a rebuild) are ignored on apply.
-const COLLAPSED_KEY = "aboard.graph.collapsedGroups.v1";
 
 type PersistedClaim = {
   kind: "claim";
@@ -113,90 +108,13 @@ export function savePersisted(nodes: GraphNode[], edges: ClaimEdge[]) {
 export function clearPersisted() {
   if (typeof window === "undefined") return;
   try {
-    // Intentionally does NOT remove COLLAPSED_KEY — collapsed-group state is
-    // meant to survive `reset`.
+    // Removes the whole persisted graph — including collapsed-group state,
+    // which lives only here. `reset` relies on this to return fully
+    // expanded.
     window.localStorage.removeItem(STORE_KEY);
   } catch {
     // non-fatal
   }
-}
-
-export function loadCollapsedIds(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(COLLAPSED_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((x): x is string => typeof x === "string");
-  } catch {
-    return [];
-  }
-}
-
-export function saveCollapsedIds(ids: string[]) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(COLLAPSED_KEY, JSON.stringify(ids));
-  } catch {
-    // non-fatal
-  }
-}
-
-/**
- * Pure: apply collapsed state for a set of group ids onto fresh nodes/edges.
- * Mirrors the three effects of toggleDomainCollapse exactly (group flag +
- * collapsed dims; child claims hidden; edges touching those children hidden)
- * so the reset path and the toggle path can never desync. Group ids not
- * present in `nodes` are silently ignored (stale after a rebuild).
- */
-export function applyCollapsedState(
-  nodes: GraphNode[],
-  edges: ClaimEdge[],
-  collapsedIds: Iterable<string>,
-  collapsedDims: { w: number; h: number }
-): { nodes: GraphNode[]; edges: ClaimEdge[] } {
-  const wanted = new Set(collapsedIds);
-  if (wanted.size === 0) return { nodes, edges };
-
-  const present = new Set<string>();
-  for (const n of nodes) {
-    if (isGroupNode(n) && wanted.has(n.id)) present.add(n.id);
-  }
-  if (present.size === 0) return { nodes, edges };
-
-  const hiddenChildIds = new Set<string>();
-  for (const n of nodes) {
-    if (isClaimNode(n) && n.parentId && present.has(n.parentId)) {
-      hiddenChildIds.add(n.id);
-    }
-  }
-
-  const nextNodes = nodes.map((n) => {
-    if (isGroupNode(n) && present.has(n.id)) {
-      return {
-        ...n,
-        data: { ...n.data, collapsed: true },
-        style: {
-          ...n.style,
-          width: collapsedDims.w,
-          height: collapsedDims.h,
-        },
-      } as GraphNode;
-    }
-    if (hiddenChildIds.has(n.id)) {
-      return { ...n, hidden: true } as GraphNode;
-    }
-    return n;
-  });
-
-  const nextEdges = edges.map((e) =>
-    hiddenChildIds.has(e.source) || hiddenChildIds.has(e.target)
-      ? { ...e, hidden: true }
-      : e
-  );
-
-  return { nodes: nextNodes, edges: nextEdges };
 }
 
 export function hydrateFromPersisted(p: Persisted): { nodes: GraphNode[]; edges: ClaimEdge[] } {

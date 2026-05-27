@@ -17,17 +17,40 @@ export type ClaimNodeData = {
   [key: string]: unknown;
 };
 
+// When a domain group collapses, a boundary edge (one endpoint inside the
+// group) is re-pointed to the collapsed pill so it stays visible. The
+// original child endpoint + handle is stashed here so expand can restore
+// it. Source and target are stashed independently (an edge can cross two
+// collapsed groups). Absent on edges that have never been re-pointed.
+export type CollapsedEndpoint = { node: string; handle: string | null };
+export type CollapsedRemap = {
+  source?: CollapsedEndpoint;
+  target?: CollapsedEndpoint;
+};
+
 export type ClaimEdgeData = {
   kind: EngineEdge["kind"];
   rationale: string;
   sources: EngineEdgeSource[];
   crossDomain: boolean;
   outOfDomain: boolean;
+  collapsedRemap?: CollapsedRemap;
   [key: string]: unknown;
 };
 
 export type ClaimNode = Node<ClaimNodeData, "claim">;
 export type ClaimEdge = Edge<ClaimEdgeData, "claim">;
+
+// The real claim endpoints of an edge, seeing through any collapse
+// re-pointing. Use this for export/serialization so a collapsed group's
+// pill id never leaks into JSON-LD or the PR pack.
+export function canonicalEndpoints(e: ClaimEdge): { source: string; target: string } {
+  const remap = e.data?.collapsedRemap;
+  return {
+    source: remap?.source?.node ?? e.source,
+    target: remap?.target?.node ?? e.target,
+  };
+}
 
 export type DomainGroupData = {
   domain: string;
