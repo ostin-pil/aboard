@@ -109,13 +109,28 @@ Convention: `prefix(topic): short description`
 - `docs` — documentation, session logs, research
 - `chore` — config, scripts, tooling, dependencies
 
-**Topics:** `claims`, `graph`, `dossier`, `forecast`, `schema`, `jsonld`, `ui`, `data`, `lib`, `scripts`, `research`, `sessions`, `config`, `deps`, `claude`
+**Topics:** `claims`, `graph`, `dossier`, `forecast`, `schema`, `jsonld`, `ui`, `data`, `lib`, `scripts`, `mcp`, `research`, `sessions`, `config`, `deps`, `claude`
 
 **Rules:**
 - Commits must be atomic — one logical change per commit
 - No `Co-Authored-By` trailers
 - Message body is optional; use it only when the "why" isn't obvious from the title
 - Keep title under 72 characters
+
+## Pull Requests
+
+PR titles use the same convention as commits, with a trailing session
+reference: `prefix(topic): description (session N)`.
+
+- Pick the `prefix`/`topic` of the PR's headline change. A session PR
+  that bundles several types (e.g. a `fix` plus `docs`) takes the
+  dominant one — don't invent a combined prefix.
+- The `(session N)` suffix ties the PR to its session log in `sessions/`.
+  Use `(sessions N–M)` if it spans several, or omit it for a PR that
+  isn't session-scoped.
+- No `🤖 Generated with…` or `Co-Authored-By` trailers in the PR body.
+- Examples: `feat(graph): boundary edges visible on collapse (session 11)`,
+  `chore(claude): /prune-branches skill + docs de-stale (session 8)`.
 
 ## Verification
 
