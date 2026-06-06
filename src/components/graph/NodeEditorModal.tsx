@@ -10,6 +10,8 @@ type Props = {
   onClose: () => void;
   newId: (kind: EngineNode["kind"]) => string;
   existingRowsCount: (row: 1 | 2 | 3) => number;
+  availableDomains: string[];
+  defaultDomain?: string;
   defaultPosition: { x: number; y: number };
 };
 
@@ -19,6 +21,9 @@ const ROW_BY_KIND: Record<EngineNode["kind"], 1 | 2 | 3> = {
   leverage: 3,
 };
 
+// Sentinel select value for "type a new domain".
+const NEW_DOMAIN = "__new__";
+
 export function NodeEditorModal({
   node,
   onSave,
@@ -26,6 +31,8 @@ export function NodeEditorModal({
   onClose,
   newId,
   existingRowsCount,
+  availableDomains,
+  defaultDomain,
   defaultPosition,
 }: Props) {
   const isNew = !node;
@@ -34,6 +41,15 @@ export function NodeEditorModal({
   const [meta, setMeta] = useState(node?.data.meta ?? "");
   const [body, setBody] = useState(node?.data.body ?? "");
   const [conf, setConf] = useState(node?.data.conf ?? 0.5);
+  // Editing seeds from the claim's domain; a new claim seeds from the
+  // editor's active domain (if any). Empty string = no domain.
+  const [domainChoice, setDomainChoice] = useState<string>(
+    node?.data.domain ?? defaultDomain ?? ""
+  );
+  const [newDomain, setNewDomain] = useState("");
+  const resolvedDomain = (
+    domainChoice === NEW_DOMAIN ? newDomain : domainChoice
+  ).trim();
 
   function onBack(e: React.MouseEvent) {
     if (e.target === e.currentTarget) onClose();
@@ -61,7 +77,7 @@ export function NodeEditorModal({
           col,
           dossier: false,
           forecast: 0,
-          domain: undefined,
+          domain: resolvedDomain || undefined,
           outOfDomain: false,
         },
       };
@@ -79,6 +95,7 @@ export function NodeEditorModal({
           author: "agent:reader/v0",
           filed,
           row,
+          domain: resolvedDomain || undefined,
         },
       };
       onSave(draft);
@@ -133,6 +150,33 @@ export function NodeEditorModal({
               onChange={(e) => setConf(parseFloat(e.target.value) || 0)}
             />
           </label>
+          <label className="ag-field">
+            <span>domain</span>
+            <select
+              value={domainChoice}
+              onChange={(e) => setDomainChoice(e.target.value)}
+            >
+              <option value="">(no domain)</option>
+              {availableDomains.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+              <option value={NEW_DOMAIN}>+ new domain…</option>
+            </select>
+          </label>
+          {domainChoice === NEW_DOMAIN && (
+            <label className="ag-field">
+              <span>new domain</span>
+              <input
+                type="text"
+                value={newDomain}
+                onChange={(e) => setNewDomain(e.target.value)}
+                placeholder="e.g. climate"
+                autoFocus
+              />
+            </label>
+          )}
         </div>
         <div className="ag-modal-foot">
           {!isNew && (

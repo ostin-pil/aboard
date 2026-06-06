@@ -224,3 +224,37 @@ export function recomputeGroupBounds(
     };
   });
 }
+
+/**
+ * Build a fresh domain-group node positioned to the right of the existing
+ * groups. Shared by `bulkGroupInto` and create-time domain slotting so a
+ * synthesized group matches what `engineToRF` produces — notably
+ * `draggable: true` (session 11 made groups draggable from the header).
+ */
+export function makeDomainGroupNode(
+  domainName: string,
+  nodes: GraphNode[],
+  mode: LayoutMode
+): DomainGroupNode {
+  const layout = LAYOUT[mode];
+  let maxRight = 0;
+  for (const n of nodes) {
+    if (isGroupNode(n)) {
+      const w = (n.style?.width as number | undefined) ?? 600;
+      maxRight = Math.max(maxRight, n.position.x + w);
+    }
+  }
+  return {
+    id: `__domain_${domainName}`,
+    type: "domainGroup",
+    position: { x: maxRight === 0 ? 0 : maxRight + layout.groupGapX, y: 0 },
+    data: { domain: domainName, claimCount: 0, collapsed: false },
+    style: {
+      width: layout.padX * 2 + layout.nodeW + 200,
+      height: layout.rowY[3] + layout.groupHeaderH + 96,
+    },
+    draggable: true,
+    selectable: false,
+    focusable: false,
+  };
+}

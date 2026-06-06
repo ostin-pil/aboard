@@ -34,6 +34,7 @@ import { alignColumn, distributeX, type XBox } from "./align";
 import {
   LAYOUT,
   engineToRF,
+  makeDomainGroupNode,
   recomputeGroupBounds,
   rfToEngine,
 } from "./engine-to-rf";
@@ -502,20 +503,90 @@ function ClaimGraphRFInner({
     (draft: ClaimNode) => {
       setNodes((ns) => {
         const idx = ns.findIndex((n) => n.id === draft.id);
-        if (idx >= 0) {
-          const existing = ns[idx];
+        const isNew = idx < 0;
+        const existing = isNew ? null : ns[idx];
+
+        // Inline mode has no groups — preserve position/parent on edit,
+        // append on create.
+        if (mode !== "fullbleed") {
+          if (isNew) return [...ns, draft];
           const merged: ClaimNode = {
             ...draft,
-            position: existing.position,
-            ...(existing.parentId
-              ? { parentId: existing.parentId, extent: "parent" as const }
+            position: existing!.position,
+            ...(existing!.parentId
+              ? { parentId: existing!.parentId, extent: "parent" as const }
               : {}),
           };
           const next = ns.slice();
           next[idx] = merged;
           return next;
         }
-        return [...ns, draft];
+
+        const domain = draft.data.domain;
+        const currentDomain =
+          existing && isClaimNode(existing) ? existing.data.domain : undefined;
+        const domainChanged = isNew || domain !== currentDomain;
+
+        // Plain edit that didn't touch the domain → keep the node exactly
+        // where it sits (don't yank a manually-placed claim into a slot).
+        if (!domainChanged) {
+          const merged: ClaimNode = {
+            ...draft,
+            position: existing!.position,
+            ...(existing!.parentId
+              ? { parentId: existing!.parentId, extent: "parent" as const }
+              : {}),
+          };
+          const next = ns.slice();
+          next[idx] = merged;
+          return next;
+        }
+
+        // New claim, or its domain changed → (re)slot it. Removing the old
+        // instance first lets recomputeGroupBounds shrink the prior group.
+        const layout = LAYOUT[mode];
+        let working = ns.filter((n) => n.id !== draft.id);
+
+        if (domain) {
+          const groupId = `__domain_${domain}`;
+          if (!working.some((n) => n.id === groupId)) {
+            working = [...working, makeDomainGroupNode(domain, working, mode)];
+          }
+          const row = draft.data.row;
+          let col = 0;
+          for (const n of working) {
+            if (isClaimNode(n) && n.parentId === groupId && n.data.row === row) col++;
+          }
+          const placed: ClaimNode = {
+            ...draft,
+            parentId: groupId,
+            extent: "parent",
+            position: {
+              x: layout.padX + col * (layout.nodeW + layout.colGap),
+              y: layout.padY + layout.groupHeaderH + layout.rowY[row],
+            },
+            data: { ...draft.data, col },
+          };
+          working = [...working, placed];
+        } else {
+          // Domain cleared → ungroup. Convert the old local position to
+          // absolute so the claim doesn't jump to the origin.
+          let position = draft.position;
+          if (existing && isClaimNode(existing) && existing.parentId) {
+            const parent = ns.find((n) => n.id === existing.parentId);
+            if (parent) {
+              position = {
+                x: parent.position.x + existing.position.x,
+                y: parent.position.y + existing.position.y,
+              };
+            }
+          }
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { parentId: _p, extent: _e, ...rest } = draft;
+          working = [...working, { ...rest, position } as ClaimNode];
+        }
+
+        return orderParentsFirst(recomputeGroupBounds(working, mode));
       });
       setEditingNode(null);
       requestAnimationFrame(() => {
@@ -524,7 +595,7 @@ function ClaimGraphRFInner({
         onPersist?.(buildInstance());
       });
     },
-    [setNodes, snapshot, persist, buildInstance, onPersist]
+    [mode, setNodes, snapshot, persist, buildInstance, onPersist]
   );
 
   const onNodeDelete = useCallback(
@@ -621,35 +692,7 @@ function ClaimGraphRFInner({
         let working = ns.slice();
 
         if (!groupExists) {
-          // Synthesize new group node to the right of the last existing one.
-          let maxRight = 0;
-          for (const n of working) {
-            if (isGroupNode(n)) {
-              const w = (n.style?.width as number | undefined) ?? 600;
-              maxRight = Math.max(maxRight, n.position.x + w);
-            }
-          }
-          const newGroup = {
-            id: groupId,
-            type: "domainGroup" as const,
-            position: {
-              x: maxRight === 0 ? 0 : maxRight + layout.groupGapX,
-              y: 0,
-            },
-            data: {
-              domain: domainName,
-              claimCount: 0,
-              collapsed: false,
-            },
-            style: {
-              width: layout.padX * 2 + layout.nodeW + 200,
-              height: layout.rowY[3] + layout.groupHeaderH + 96,
-            },
-            draggable: false,
-            selectable: false,
-            focusable: false,
-          } as GraphNode;
-          working = [...working, newGroup];
+          working = [...working, makeDomainGroupNode(domainName, working, mode)];
         }
 
         // Next free column per row among the target group's *existing*
@@ -1015,6 +1058,8 @@ function ClaimGraphRFInner({
           onClose={() => setEditingNode(null)}
           newId={newId}
           existingRowsCount={existingRowsCount}
+          availableDomains={availableDomains}
+          defaultDomain={activeDomain !== "all" ? activeDomain : undefined}
           defaultPosition={(() => {
             const wrap = wrapperRef.current;
             if (!wrap) return { x: 0, y: 0 };
