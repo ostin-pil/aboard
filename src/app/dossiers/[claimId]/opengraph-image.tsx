@@ -1,11 +1,22 @@
 import { ImageResponse } from "next/og";
-import { getClaim, getDossierForClaim } from "@/lib/graph";
+import {
+  getClaim,
+  getClaimsWithDossiers,
+  getDossierForClaim,
+} from "@/lib/graph";
+
+export function generateStaticParams() {
+  return getClaimsWithDossiers().map((c) => ({ claimId: c.id }));
+}
 
 export const alt =
   // PLACEHOLDER: revise after audience decision in research/vision.md
   "aboard — dossier · steel-manned · non-convergent";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+
+// Generate the images at build time (required by output: "export").
+export const dynamic = "force-static";
 
 export default async function Image({
   params,
