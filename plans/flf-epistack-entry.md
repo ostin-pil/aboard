@@ -1,119 +1,134 @@
-# Plan: FLF Epistemic Case Study Competition entry — deadline 2026-07-19
+# Plan: FLF Epistemic Case Study Competition entry — writeup-led — deadline 2026-07-19
 
 Enter the Future of Life Foundation's Epistemic Case Study Competition
-(~$200k pool, awards $5k–$50k, continuation funding possible) with aboard as a
-**prototype tool implementing the structure + assessment layers of the epistemic
-stack**, demonstrated on the competition's own case studies. Submission is a
-Google Form at [flf.org/epistack-competition](https://flf.org/epistack-competition/).
+(~$200k pool; awards $5k–$50k; continuation funding possible) with a
+**writeup-led** entry: aboard's external-anchor thesis + both-readings
+methodology as the substance, aboard the deployed prototype as the
+demonstration, and **one** cheap worked example (eggs, through the existing
+ensemble) to satisfy "address the cases." Submit via the Google Form linked at
+[flf.org/epistack-competition](https://flf.org/epistack-competition/).
 
-**Hard deadline: 2026-07-19** (8 days from 2026-07-11, when this plan was written).
-Facts below verified against the competition page on 2026-07-11.
+**Hard deadline: 2026-07-19.** Early-feedback option: 2026-06-21 (past). Facts
+verified against the competition page 2026-07-11. Realistic effort: **~2
+sessions**, not five — this is a writing + light-demo sprint, not a build.
 
-## Context
+## Why writeup-led (the Fork C decision, 2026-07-11)
 
-FLF is soliciting exactly aboard's architecture: "layered infrastructure for
-making the provenance, structure, and assessment of knowledge transparent and
-traversable at scale," including AI tooling that identifies **cruxes**. Entry
-forms include "prototype tools: LLM pipelines implementing one or more stack
-layers (ingestion, structure, assessment)." Judging: *would this help someone
-reason better about this case? does it generalize? does it scale with better
-AI? does it compound?*
+FLF's accepted entry forms explicitly include **"comparative analyses"** and
+**"critiques: identifying limitations of promising approaches"** alongside
+prototype tools and protocols. World-class comparative analysis is the thing
+aboard has *already produced*: `research/landscape.md`,
+`agent-first-validation.md`, and the `integrity-anti-gaming.md` /
+`sybil-identity.md` pair. The load-bearing synthesis —
+**integrity, adjudication, and Sybil-resistance are one problem; every
+gaming-resistant defense terminates in an external anchor outside the agent
+graph** — is a sharp, underexplored contribution to exactly the question FLF
+is asking ("reliable epistemic investigations and trustworthy knowledge
+bases"). Leading with the thinking plays to the maintainer's strongest muscle
+(research/writing) instead of the scarcest resource (build-sessions), and keeps
+the artifact-first track (below) as the real work.
 
-The catch: entries are judged against **three provided cases** — COVID-19
-origins (framed via the 2024 Rootclaim debate), LHC black-hole risk
-(essentially settled), and health effects of eggs (open-ended). aboard's
-existing domains don't count as a demonstration; the schema and modules must be
-applied to at least one of their cases. "Tooling should be general" — which is
-aboard's strength: the claim graph + dossier + ensemble machinery is
-domain-agnostic by construction (domain is a claim property, not a partition).
+A build-led entry (a hand-authored COVID-origins dossier + eggs + LHC in 8
+days) was the original scoping here; it was over-scoped for a solo builder and
+is explicitly rejected.
 
-Why the fit is unusually good:
+## The one framing risk to manage
 
-- **COVID origins ≙ the dual-dossier module.** The Rootclaim debate *is* a
-  steel-manned two-position dispute with identifiable cruxes — the exact shape
-  of `Dossier` (pro / con / ranked cruxes). Non-convergence as a legitimate
-  terminal state ("unresolved — competing dossiers") is aboard's honest answer
-  to a case that public reasoning notoriously botched.
-- **LHC ≙ the resolution anchor.** A settled case demonstrates what
-  resolution-against-reality looks like in the schema (and exercises the
-  `resolutionSource` fields from `integrity-foundations.md`).
-- **Eggs ≙ both-readings ensemble.** Contested nutrition evidence run through
-  the open-weights ensemble + interpretation-card machinery (median, spread,
-  leave-one-out) is the F4 demo transplanted onto their open-ended case.
+There is a philosophical seam: FLF wants tooling that helps someone
+"reason **better** about this case" — implicitly, *converge toward truth*.
+aboard's signature move is **not** converging ("both readings as tension").
+Manage it, don't hide it:
+
+- **Lead with the aligned parts:** crux identification and ranking (FLF names
+  cruxes as a wanted capability), provenance structure, machine-readable
+  interoperability (a protocol other investigations can share), the
+  external-anchor design constraint as a *reliability* result.
+- **Deploy non-convergence only where it genuinely fits** — the eggs case (an
+  open-ended everyday question) and the honest reporting that FRI's adversarial
+  collaborations moved a 20-point disagreement ~1 point even after resolving top
+  cruxes. Non-convergence is a *finding about hard cases*, not a refusal to
+  reason. Do not make "we don't pick" the headline for a settled case.
 
 ## Deliverables
 
-1. **A deployed, navigable knowledge base** ("worked examples … arbitrary size
-   but must be navigable"). Deploy aboard to Vercel — this is the carried
-   "Vercel deploy" item, now with a forcing function. A public URL is also a
-   prereq for the funding plan and fixes the `aboard.example` vocab namespace
-   (see `repo-hardening.md`).
-2. **One new data domain per case** (or a single `epistack_cases` domain —
-   decision below) in `data/`, built with the existing pipeline:
-   - COVID origins: claim graph (symptoms/mechanisms of the dispute) + a full
-     dual-dossier with ranked cruxes sourced from the public Rootclaim debate
-     record. The deep worked example.
-   - Eggs: 2–3 claims + one forecast-shaped question run through the live
-     Groq ensemble (`scripts/forecasters/ensemble-predict.ts`), rendered with
-     both readings.
-   - LHC: 1–2 claims marked resolved, demonstrating the external anchor.
-     The shallow breadth examples.
-3. **The written entry (≤10 pages)**: aboard as structure+assessment layers —
-   schema (JSON Schema + JSON-LD), provenance (`AgentAttribution`), typed
-   causal edges, dual-dossier + crux ranking, ensemble disagreement as signal,
-   the external-anchor design constraint (cite `research/integrity-anti-gaming.md`
-   honestly — including that cruxes barely moved beliefs in FRI's adversarial
-   collaborations). Appendices: schema spec, MCP read-tool transcript, JSON-LD
-   samples.
-4. **Single-click code**: the public repo qualifies ("well-documented,
-   single-click installable") once `repo-hardening.md`'s LICENSE step lands —
-   **do the LICENSE before submitting**; an unlicensed repo undercuts an
-   infrastructure entry.
+1. **The written entry (≤10 pages, excluding appendices/worked examples).**
+   Structure:
+   - The epistemic-stack framing: ingestion → structure → assessment, and where
+     aboard sits (structure + assessment).
+   - aboard's mechanisms as the reliability toolkit: typed causal claim graph,
+     `AgentAttribution` provenance on every object, dual-dossier with ranked
+     cruxes (`cruxRank = impact × uncertainty`), ensemble disagreement as a
+     measured signal (median / spread / leave-one-out), JSON-LD + JSON Schema +
+     MCP as the interoperability protocol.
+   - The external-anchor result, stated as a *design principle for trustworthy
+     knowledge bases*, cited honestly from the integrity research (including the
+     cruxes-barely-move-beliefs caveat and the cold-start problem).
+   - Answers to FLF's four judging questions, explicitly: *helps reason better?
+     generalizes? scales with better AI? compounds?* (The last two are
+     aboard's strong suit — schema + ensemble both improve monotonically with
+     better/cheaper models, and the corpus compounds as agents contribute.)
+   - Appendices: schema spec (`research/schema.md`), a live MCP read-tool
+     transcript, JSON-LD samples, links to the deployed demo.
+2. **The deployed demo** — aboard on a public URL (see the deploy runbook;
+   this is the fork-independent forcing function). The existing two domains +
+   the eggs example are the worked examples ("navigable knowledge base").
+3. **The eggs worked example** — 2–3 claims + one forecast-shaped question run
+   through the live Groq ensemble (`scripts/forecasters/ensemble-predict.ts`),
+   rendered with both readings. This is the case-study coverage; it reuses
+   machinery that already exists, so it's ~1–2 hours, not a build.
 
-## Suggested schedule (8 days)
+## Tiered scope (submit the tier you reach — all are legitimate entries)
 
-- Day 1: decisions below; deploy to Vercel; LICENSE (pull forward from
-  `repo-hardening.md`).
-- Days 2–4: COVID-origins domain — claims, edges, dossier, cruxes. Human
-  review of every source URL (CLAUDE.md rule: real landing pages only).
-- Day 5: eggs ensemble run + LHC resolved claims.
-- Days 6–7: the 10-page writeup; internal red-team pass against the judging
-  questions; `/prose-check` on the writeup.
-- Day 8: buffer + submit via the form. Do not submit on the deadline day if
-  avoidable.
+- **T1 — minimum viable (target: submit this):** writeup + deployed demo +
+  eggs example + the two live domains as generality evidence. Addresses one FLF
+  case directly and argues generality from the existing corpus. ~2 sessions.
+- **T2 — if time allows:** add a **light** COVID-origins treatment — a
+  structural claim map + ranked cruxes drawn from the *public* Rootclaim debate
+  record (not a fully hand-authored steelmanned dossier). Demonstrates the
+  dual-dossier module on their flagship case. +~1 session.
+- **T3 — only if T1+T2 land early:** a 1–2 claim LHC "settled case" showing the
+  external resolution anchor (needs `integrity-foundations.md`'s
+  `resolutionSource` fields — do that slice first if reaching for T3).
 
-## Decisions to make before starting
+Do not let T2/T3 ambition threaten a clean T1 submission. One convincing worked
+example + strong writeup beats three thin ones — which is also what FLF's
+"tooling should be general" rewards.
 
-- **One domain or three?** *Recommend one `epistack_cases` domain* with the
-  three cases as sub-clusters — cheaper, and cross-case edges are allowed by
-  design. New ID prefixes per CLAUDE.md (e.g. `EC…`).
-- **Depth allocation** — deep on COVID + shallow on the other two (recommended)
-  vs even coverage. The guidance rewards generality, but one convincing worked
-  example beats three thin ones.
-- **Does `integrity-foundations.md` land first?** Its `resolutionSource` /
-  `resolvedOutcome` fields make the LHC demo real instead of prose. It's a
-  ~2–3 hr slice — *recommend yes, immediately after the Day-1 items*.
-- **Attribution posture** — the entry should state plainly which content is
-  agent-generated (all of it carries `AgentAttribution`) and what the human
-  reviewed. Radical transparency is the credibility play; don't soften it.
+## Prerequisites (do before writing)
+
+- **Deploy + LICENSE.** LICENSE landed 2026-07-11 (`7b3348e`). Deploy is the
+  one blocker; follow the runbook. A public URL is required for the demo links
+  and unblocks the real vocab namespace (`repo-hardening.md` §4).
+- **Every source URL human-reviewed** — real landing pages only (CLAUDE.md).
+  Applies especially to any eggs / Rootclaim sources.
+
+## Suggested schedule (fits the ~8 days, front-loaded)
+
+- Session A: deploy; eggs example (claims + ensemble run + render); outline the
+  writeup against the four judging questions.
+- Session B: draft the ≤10-page writeup; `/prose-check` it; internal red-team
+  against the judging questions; assemble appendices; submit T1. Add T2 only if
+  a full session remains before 07-19.
+- Leave 07-18/07-19 as buffer; do not first-submit on the deadline day.
 
 ## Verification
 
-1. Deployed URL renders all three cases; graph, claim pages, dossier page.
+1. Deployed URL renders the graph, claim pages, a dossier, and the eggs example.
 2. `npx tsc --noEmit` + `npm run build` + `clients/validate.ts` against the
    deployed `/api/graph`.
-3. Every source URL in the new domain resolves to a real landing page.
-4. Writeup ≤10 pages; every judging question explicitly addressed.
+3. Every new source URL resolves to a real landing page.
+4. Writeup ≤10 pages; each of the four judging questions explicitly answered;
+   prose-checked.
 
 ## Out of scope
 
 - MCP write path (mention as roadmap in the writeup; don't build under deadline).
-- Any new UI features — the existing surfaces are enough; this is a data +
-  writing sprint.
+- Any new UI feature or redesign — existing surfaces + the deploy are enough.
+- A fully hand-authored COVID dossier (that's the rejected build-led scope).
 
 ## Even if it doesn't win
 
-The entry doubles as: the first cross-domain-by-design demonstration outside
-the two seed domains, a citable artifact for every funding application in
-`funding-applications.md`, and reconnaissance — FLF will surface whoever else
-is building the same stack.
+The entry doubles as: the deployed public artifact every funding application
+needs (`funding-applications.md`), a citable write-up of the external-anchor
+thesis, the eggs example as the first worked case outside the two seed domains,
+and reconnaissance — FLF will surface whoever else is building this stack.

@@ -8,7 +8,7 @@ order they could be picked up; pick any.
 
 | Plan | Deadline | Effort | Prereq |
 | --- | --- | --- | --- |
-| [flf-epistack-entry.md](flf-epistack-entry.md) | **2026-07-19** (submission) | ~5–8 days | Pulls forward: Vercel deploy, LICENSE, ideally integrity-foundations |
+| [flf-epistack-entry.md](flf-epistack-entry.md) | **2026-07-19** (submission) | ~2 sessions (writeup-led; T2/T3 optional) | Deploy (blocker); LICENSE done `7b3348e` |
 | [funding-applications.md](funding-applications.md) | Rolling (micro-grants now) | ~1 day writing + evidence package | Evidence items: FLF entry, repo-hardening, one resolved forecast |
 
 ## Open — build
