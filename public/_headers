@@ -1,0 +1,25 @@
+# Response headers for the static export (Cloudflare Pages / Netlify syntax).
+#
+# The JSON-LD API routes and the OG-image routes export as extensionless files
+# (inherent to statically exporting route handlers + metadata images), so the
+# host can't infer their content type from a file extension — set it here.
+# This also (re)applies CORS: the baked static files don't carry the
+# Access-Control-Allow-Origin header the original route handlers set, and the
+# JSON-LD graph is meant to be fetched cross-origin by agents.
+
+/api/graph
+  Content-Type: application/ld+json; charset=utf-8
+  Access-Control-Allow-Origin: *
+
+/api/claims/*
+  Content-Type: application/ld+json; charset=utf-8
+  Access-Control-Allow-Origin: *
+
+/opengraph-image
+  Content-Type: image/png
+
+/claims/:id/opengraph-image
+  Content-Type: image/png
+
+/dossiers/:id/opengraph-image
+  Content-Type: image/png
