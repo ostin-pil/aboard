@@ -121,32 +121,47 @@ passes `clients/validate.ts` on `/api/graph` and `/api/claims/<id>`.
 SITE_URL=https://<domain> npm run build     # → out/
 ```
 
-Host options, ranked by how far the "no company / own it" preference goes
-(all serve the same `out/`, so the choice is reversible):
-- **Cloudflare Pages / GitHub Pages** — free, easy, fast; portable output means
-  no lock-in.
-- **Codeberg Pages** — free static hosting from a non-profit; most aligned with
-  aboard's posture.
-- **Own €4/mo VPS (Hetzner) + Caddy** — maximum ownership; Caddy does auto-TLS
-  and serves `out/` directly.
+**Host: Cloudflare Pages (primary), Codeberg Pages (mirror).** Both serve the
+same `out/`, so the choice stays reversible; the output is portable, not
+locked in.
 
-Two host-level settings to apply (the API/OG files are extensionless, inherent
-to static export of route handlers + metadata images):
-- Serve `/api/graph` and `/api/claims/*` as `application/ld+json` (or at least
-  `application/json`) and `/*/opengraph-image` as `image/png` via a `_headers`
-  file (Cloudflare/Netlify) or web-server config. Consumers still parse the
-  body regardless; this is correctness, not a blocker.
-- Enable clean-URL / `.html` resolution (default on Cloudflare Pages, Netlify,
-  GitHub Pages).
+Content-type + CORS on the extensionless API/OG files is already handled by
+`public/_headers` (Cloudflare/Netlify syntax; copied to `out/_headers` at
+build), so nothing to configure by hand there.
 
-Verify after deploy:
+### Cloudflare Pages (primary)
+
+Connect the GitHub repo in the Cloudflare Pages dashboard (native git build —
+no separate CI needed) with:
+- **Build command:** `npm run build`
+- **Output directory:** `out`
+- **Environment variables:** `SITE_URL = https://<domain>` (required — absolute,
+  schema-valid `@id`s), and `NODE_VERSION = 22` if Pages' default is older than
+  Next 16 needs.
+
+Clean-URL / `.html` resolution is on by default, so `/claims/L1` serves
+`claims/L1.html`. Pushes to `main` then auto-deploy.
+
+### Codeberg Pages (mirror)
+
+Codeberg Pages serves prebuilt files from a branch and does not run `npm build`,
+and (unlike Cloudflare) has no `_headers` mechanism — so the extensionless
+API/OG files fall back to a default content type there. Acceptable for a backup.
+Two setup paths, later/secondary:
+- Codeberg **pull-mirror** of the GitHub repo + a CI step (Woodpecker on
+  Codeberg, or a GitHub Action) that runs `SITE_URL=… npm run build` and pushes
+  `out/` to a `pages` branch.
+- Or a manual periodic `out/` push.
+
+### Verify after deploy
+
 - `! curl -s https://<domain>/api/graph | head -c 300` → JSON-LD with claims.
+- `! curl -sI https://<domain>/api/graph` → `content-type: application/ld+json`.
 - Open `https://<domain>/graph` → the interactive graph renders.
 - `! (cd clients && npx tsx validate.ts https://<domain>/api/graph)` → passes.
 
-Then wire the host to rebuild on push to `main` (with `SITE_URL` set in its
-build env), and feed the canonical domain into the JSON-LD namespace
-(`repo-hardening.md` §4).
+Then feed the canonical domain into the JSON-LD namespace (`repo-hardening.md`
+§4), replacing the `aboard.example` placeholder.
 
 ## Suggested schedule (fits the ~8 days, front-loaded)
 
