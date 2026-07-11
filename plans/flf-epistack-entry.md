@@ -102,29 +102,51 @@ example + strong writeup beats three thin ones — which is also what FLF's
 - **Every source URL human-reviewed** — real landing pages only (CLAUDE.md).
   Applies especially to any eggs / Rootclaim sources.
 
-## Deploy runbook (Vercel, first deploy)
+## Deploy runbook (static export → any static host)
 
-De-risked 2026-07-11: `npm run build` is green; `data/` is confirmed traced into
-the serverless bundle (31 files in `.next/server/app/api/graph/route.js.nft.json`
-via `outputFileTracingIncludes` in `next.config.ts`); the API routes are dynamic
-(`ƒ`) and read those traced files at request time. **No runtime env vars** — the
-app only reads `data/`; the Groq keys are dev/build-only.
+The app is a **static site** (`output: "export"`, landed on `feat/static-export`,
+commit `a9905cf`): `npm run build` writes portable files to `out/` with no
+server runtime — so it deploys to any static host with zero lock-in, and the
+host is swappable by copying `out/`. Rationale: the site is a pure function of
+`data/`; static files are the most durable, cacheable form for a
+machine-readable substrate (and independence from any one platform is on-thesis
+— see the ClaimReview lesson in `research/agent-first-validation.md`).
 
-Needs a Vercel account (free Hobby tier suffices). Run from the repo root with
-the `!` prefix so output lands in-session:
+**Build-time requirement — set `SITE_URL`.** It seeds absolute JSON-LD `@id`s;
+without it the export uses relative IRIs (valid JSON-LD, but they fail
+`v0.json`'s strict `uri` format). Verified 2026-07-11: a `SITE_URL`-set export
+passes `clients/validate.ts` on `/api/graph` and `/api/claims/<id>`.
 
-1. `! npx vercel login`
-2. `! npx vercel` — first run links/creates the project; accept the Next.js
-   preset + defaults; yields a preview URL.
-3. `! npx vercel --prod` — promote to the production URL.
+```
+SITE_URL=https://<domain> npm run build     # → out/
+```
 
-Verify:
-- `! curl -s https://<url>/api/graph | head -c 300` → JSON-LD with claims, not an error.
-- Open `https://<url>/graph` → the interactive graph renders.
-- `! (cd clients && npx tsx validate.ts https://<url>/api/graph)` → schema validation passes.
+Host options, ranked by how far the "no company / own it" preference goes
+(all serve the same `out/`, so the choice is reversible):
+- **Cloudflare Pages / GitHub Pages** — free, easy, fast; portable output means
+  no lock-in.
+- **Codeberg Pages** — free static hosting from a non-profit; most aligned with
+  aboard's posture.
+- **Own €4/mo VPS (Hetzner) + Caddy** — maximum ownership; Caddy does auto-TLS
+  and serves `out/` directly.
 
-Then connect the GitHub repo in the Vercel dashboard for push-to-deploy, and
-feed the canonical URL into the JSON-LD namespace (`repo-hardening.md` §4).
+Two host-level settings to apply (the API/OG files are extensionless, inherent
+to static export of route handlers + metadata images):
+- Serve `/api/graph` and `/api/claims/*` as `application/ld+json` (or at least
+  `application/json`) and `/*/opengraph-image` as `image/png` via a `_headers`
+  file (Cloudflare/Netlify) or web-server config. Consumers still parse the
+  body regardless; this is correctness, not a blocker.
+- Enable clean-URL / `.html` resolution (default on Cloudflare Pages, Netlify,
+  GitHub Pages).
+
+Verify after deploy:
+- `! curl -s https://<domain>/api/graph | head -c 300` → JSON-LD with claims.
+- Open `https://<domain>/graph` → the interactive graph renders.
+- `! (cd clients && npx tsx validate.ts https://<domain>/api/graph)` → passes.
+
+Then wire the host to rebuild on push to `main` (with `SITE_URL` set in its
+build env), and feed the canonical domain into the JSON-LD namespace
+(`repo-hardening.md` §4).
 
 ## Suggested schedule (fits the ~8 days, front-loaded)
 
