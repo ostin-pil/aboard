@@ -102,6 +102,30 @@ example + strong writeup beats three thin ones — which is also what FLF's
 - **Every source URL human-reviewed** — real landing pages only (CLAUDE.md).
   Applies especially to any eggs / Rootclaim sources.
 
+## Deploy runbook (Vercel, first deploy)
+
+De-risked 2026-07-11: `npm run build` is green; `data/` is confirmed traced into
+the serverless bundle (31 files in `.next/server/app/api/graph/route.js.nft.json`
+via `outputFileTracingIncludes` in `next.config.ts`); the API routes are dynamic
+(`ƒ`) and read those traced files at request time. **No runtime env vars** — the
+app only reads `data/`; the Groq keys are dev/build-only.
+
+Needs a Vercel account (free Hobby tier suffices). Run from the repo root with
+the `!` prefix so output lands in-session:
+
+1. `! npx vercel login`
+2. `! npx vercel` — first run links/creates the project; accept the Next.js
+   preset + defaults; yields a preview URL.
+3. `! npx vercel --prod` — promote to the production URL.
+
+Verify:
+- `! curl -s https://<url>/api/graph | head -c 300` → JSON-LD with claims, not an error.
+- Open `https://<url>/graph` → the interactive graph renders.
+- `! (cd clients && npx tsx validate.ts https://<url>/api/graph)` → schema validation passes.
+
+Then connect the GitHub repo in the Vercel dashboard for push-to-deploy, and
+feed the canonical URL into the JSON-LD namespace (`repo-hardening.md` §4).
+
 ## Suggested schedule (fits the ~8 days, front-loaded)
 
 - Session A: deploy; eggs example (claims + ensemble run + render); outline the
