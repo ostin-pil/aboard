@@ -1,10 +1,19 @@
-import { getClaim, getDossierForClaim } from "@/lib/graph";
+import {
+  getClaim,
+  getClaimsWithDossiers,
+  getDossierForClaim,
+} from "@/lib/graph";
 import { dossierLD } from "@/lib/jsonld";
+import { siteBaseUrl } from "@/lib/site";
 import { cruxRank, type Argument, type Crux } from "@/lib/types";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Fragment } from "react";
+
+export function generateStaticParams() {
+  return getClaimsWithDossiers().map((c) => ({ claimId: c.id }));
+}
 
 export async function generateMetadata({
   params,
@@ -53,7 +62,7 @@ export default async function DossierPage({
     (a, b) => cruxRank(b) - cruxRank(a)
   );
   const total = sortedCruxes.length;
-  const ldJson = JSON.stringify(dossierLD(dossier, ""));
+  const ldJson = JSON.stringify(dossierLD(dossier, siteBaseUrl()));
 
   return (
     <main className="dossier-page">

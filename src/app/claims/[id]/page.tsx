@@ -1,5 +1,6 @@
 import {
   getClaim,
+  getClaims,
   getEdgesForClaim,
   getForecastsForClaim,
   getDossierForClaim,
@@ -7,6 +8,7 @@ import {
   graph,
 } from "@/lib/graph";
 import { fullClaimLD } from "@/lib/jsonld";
+import { siteBaseUrl } from "@/lib/site";
 import { aggregate } from "@/lib/forecast";
 import { modelFamily, modelFamilyLabel } from "@/lib/model-family";
 import { InterpretationCard } from "@/components/InterpretationCard";
@@ -14,6 +16,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import type { Claim } from "@/lib/types";
+
+export function generateStaticParams() {
+  return getClaims().map((c) => ({ id: c.id }));
+}
 
 export async function generateMetadata({
   params,
@@ -72,7 +78,7 @@ export default async function ClaimPage({
   const forecasts = getForecastsForClaim(id);
   const dossier = getDossierForClaim(id);
   const analyses = getAnalysesForClaim(claim);
-  const ldJson = JSON.stringify(fullClaimLD(claim, graph, ""));
+  const ldJson = JSON.stringify(fullClaimLD(claim, graph, siteBaseUrl()));
 
   return (
     <main className="page">
