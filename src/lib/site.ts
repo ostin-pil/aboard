@@ -8,5 +8,5 @@
  * build time once the canonical domain is chosen.
  */
 export function siteBaseUrl(): string {
-  return (process.env.SITE_URL ?? "").replace(/\/+$/, "");
+  return (process.env.SITE_URL ?? "").trim().replace(/\/+$/, "");
 }
