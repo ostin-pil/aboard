@@ -1,8 +1,8 @@
 # Handover — aboard (point-in-time, 2026-06-12)
 
 A "start here" brief for whoever picks aboard up next (a future session or a
-collaborator). Point-in-time — for live orientation, also run `/session-start`
-and check `git log`.
+collaborator). Point-in-time — for live orientation, also run
+`/lifecycle-kit:session-start` and check `git log`.
 
 ## TL;DR
 

@@ -91,7 +91,7 @@ clients/                                independent npm package
 scripts/
   generate-prediction.ts                live agent forecast generator
 research/                               landscape, vision, schema docs
-sessions/                               per-session work logs (created by /session-end)
+sessions/                               per-session work logs (created by /lifecycle-kit:session-end)
 knowledge/                              issues.md and other long-lived notes
 .claude/lifecycle-manifest.md           config for the lifecycle-kit + knowledge-kit plugins
 ```
