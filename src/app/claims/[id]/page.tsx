@@ -10,6 +10,7 @@ import {
 import { fullClaimLD } from "@/lib/jsonld";
 import { siteBaseUrl } from "@/lib/site";
 import { aggregate } from "@/lib/forecast";
+import { modelFamily, modelFamilyLabel } from "@/lib/model-family";
 import { InterpretationCard } from "@/components/InterpretationCard";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -298,7 +299,9 @@ export default async function ClaimPage({
                       ? `Individual predictions (${stats.count})`
                       : "Prediction"}
                   </summary>
-                  {f.predictions.map((p, i) => (
+                  {f.predictions.map((p, i) => {
+                    const fam = modelFamily(p.agent.agent);
+                    return (
                     <div className="prediction" key={i}>
                       <div>
                         <div className="p-num">
@@ -306,6 +309,9 @@ export default async function ClaimPage({
                           {p.probability.toFixed(2)}
                         </div>
                         <div className="agent">
+                          <span className={`family-tag fam-${fam}`}>
+                            {modelFamilyLabel(fam)}
+                          </span>
                           filed by <span className="name">{p.agent.agent}</span>
                         </div>
                       </div>
@@ -345,7 +351,8 @@ export default async function ClaimPage({
                         )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </details>
               </div>
             );

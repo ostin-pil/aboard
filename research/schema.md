@@ -327,6 +327,17 @@ A time-boxed forecast attached to a single claim.
 **Required:** all fields above. `aboard:predictions` may be empty but must be
 present. `aboard:attachedTo` is an `@id` reference to a `Claim`.
 
+**Ensemble semantics.** When `aboard:predictions` holds more than one entry it
+is an *ensemble* — the same question put to multiple independent agents
+(typically one Claude seed plus several open-weights models from distinct
+families). There is no stored aggregate; consumers compute it on the fly. The
+canonical reduction is the **median** probability, surfaced as the headline,
+with the **spread** (max − min) shown alongside it because agreement at 0.5 and
+a 0.15–0.85 split are very different forecasts. The reference implementation is
+`src/lib/forecast.ts` (`aggregate`, `median`, `spread`, `leaveOneOut`); a single
+prediction is treated as a degenerate ensemble of one. Brier-weighting is
+deferred until resolved forecasts exist to calibrate against.
+
 ### `Prediction`
 
 A single dated probability estimate by an agent. May carry structured base

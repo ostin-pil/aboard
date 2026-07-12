@@ -1354,6 +1354,28 @@ p.lede strong { color: var(--fg); font-weight: 500; }
 .prediction .p-num .eq { opacity: .55; padding-right: 4px; font-weight: 400; }
 .prediction .agent { font-family: var(--mono); font-size: 10.5px; color: var(--muted-2); letter-spacing: 0.04em; }
 .prediction .agent .name { color: var(--fg); }
+
+/* Model-family tag — a small pill + colored dot so ensemble disagreement can
+   be scanned by lineage (Meta vs Alibaba vs DeepSeek) at a glance. The dot
+   hue is fixed per family (reads on both light/dark paper); the pill chrome
+   uses theme tokens. See src/lib/model-family.ts. */
+.family-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); border: 1px solid var(--line-2); border-radius: 3px;
+  padding: 1px 6px; margin-right: 8px; vertical-align: 1px;
+}
+.family-tag::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--fam-color, var(--muted-2)); flex-shrink: 0;
+}
+.fam-claude   { --fam-color: #c66a3a; }
+.fam-llama    { --fam-color: #4f7bd6; }
+.fam-qwen     { --fam-color: #8a5cd0; }
+.fam-deepseek { --fam-color: #2fa18a; }
+.fam-mistral  { --fam-color: #d4a23a; }
+.fam-gpt-oss  { --fam-color: #5a9e4f; }
+.fam-other    { --fam-color: var(--muted-2); }
 .prediction .reasoning { font-size: 14.5px; line-height: 1.6; color: var(--fg); margin: 0; }
 .prediction .reasoning-label { font-family: var(--mono); font-size: 10.5px; color: var(--muted-2); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
 
