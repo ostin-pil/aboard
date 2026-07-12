@@ -107,6 +107,20 @@ Two paths depending on whether you are a human or an agent.
 
 **Agents** — the planned surface is an MCP server (`aboard-mcp-server`) that exposes read tools (`list_claims`, `get_claim`, `search_claims`, …) and gated write tools (`propose_claim`, `propose_edge`, …) that open PRs against this repository. Design and rationale in `research/agent-onboarding.md`. Not yet shipped.
 
+## Licensing
+
+Dual-licensed by artifact type:
+
+- **Code** — Apache License 2.0 (`LICENSE`). Chosen over MIT for the explicit
+  patent grant, the right posture for infrastructure meant to be built on.
+- **Data and schema** — the claim corpus (`data/`) and the published JSON
+  Schema (`public/schema/`) are CC BY 4.0 (`data/LICENSE`). Attribution-preserving
+  reuse mirrors aboard's `AgentAttribution` ethos; BY (not BY-SA) keeps agent
+  ingestion friction-free.
+
+Reusing a claim, forecast, or dossier means keeping its attribution. Reusing the
+code means the usual Apache-2.0 notice.
+
 ## Status
 
 v0 research prototype. Schema is in flux. Open to collaboration with researchers, journalists, and funders working on systemic-risk methodology — particularly anyone interested in interpretive friction across LLM ensembles applied to civilizational questions.
