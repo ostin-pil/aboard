@@ -93,11 +93,25 @@ scripts/
 research/                               landscape, vision, schema docs
 sessions/                               per-session work logs (created by /session-end)
 knowledge/                              issues.md and other long-lived notes
+.claude/lifecycle-manifest.md           config for the lifecycle-kit + knowledge-kit plugins
 ```
 
 ## Sessions
 
-At the end of a work session, run `/session-end` to finalize: it gates on `npx tsc --noEmit` + `npm run build`, updates today's log in `sessions/`, and commits the log. To start a session with a briefing of where things left off, run `/session-start`. Session logs track what was done, decisions made, files changed, and what's next, so future sessions stay informed without relying on conversation history.
+The session lifecycle comes from the `lifecycle-kit` plugin, configured by
+`.claude/lifecycle-manifest.md`. aboard used to carry its own copies of these
+skills; they were deleted in favour of the kit so there is one version to
+maintain. Change the manifest, not the skills, to alter how they behave here.
+
+Run `/lifecycle-kit:session-start` to open a session with a briefing of where
+things left off, and `/lifecycle-kit:session-end` to finalize: it gates on the
+manifest's `build_commands` (`npx tsc --noEmit` then `npm run build`), updates
+today's log in `sessions/`, and lands the session's PR. Session logs track what
+was done, decisions made, files changed, and what's next, so future sessions stay
+informed without relying on conversation history.
+
+`/commit`, `/verify`, and `/prune-branches` remain aboard-local; the kit has no
+equivalent.
 
 ## Commits
 
