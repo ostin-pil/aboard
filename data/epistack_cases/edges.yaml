@@ -1,0 +1,12 @@
+- id: ECE1
+  fromId: ECM1
+  toId: ECS1
+  kind: causes
+  strength: 0.6
+  rationale: Because the egg–CVD causal claim is genuinely unresolved — large cohorts and meta-analyses split on direction and magnitude — official guidance swings with each new study, producing the public whipsaw and the erosion of trust in nutrition science.
+- id: ECE2
+  fromId: ECL1
+  toId: ECM1
+  kind: reduces
+  strength: 0.5
+  rationale: Confounder-controlled, pre-registered designs (individual-participant reanalysis with harmonized covariates, or an RCT on hard endpoints) shrink the residual-confounding uncertainty that keeps the egg–CVD claim contested, moving it toward resolution.

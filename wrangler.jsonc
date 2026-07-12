@@ -1,0 +1,10 @@
+{
+  // Cloudflare Workers static-assets deployment for the static export.
+  // `npm run build` writes the site to ./out; this serves it as static assets
+  // (no Worker script). The _headers file in out/ sets content-types + CORS.
+  "name": "aboard",
+  "compatibility_date": "2025-06-01",
+  "assets": {
+    "directory": "./out"
+  }
+}
