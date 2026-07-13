@@ -1,16 +1,24 @@
 import { ImageResponse } from "next/og";
 import {
   getClaim,
+  getClaims,
   getDossierForClaim,
   getForecastsForClaim,
 } from "@/lib/graph";
 import { aggregate } from "@/lib/forecast";
+
+export function generateStaticParams() {
+  return getClaims().map((c) => ({ id: c.id }));
+}
 
 export const alt =
   // PLACEHOLDER: revise after audience decision in research/vision.md
   "aboard — claim detail";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+
+// Generate the images at build time (required by output: "export").
+export const dynamic = "force-static";
 
 const KIND_TOKENS = {
   symptom: { label: "SYMPTOM", fg: "#b91c1c", bg: "#fef2f2", bd: "#fecaca" },

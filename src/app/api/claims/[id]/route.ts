@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
-import { getClaim, graph } from "@/lib/graph";
+import { getClaim, getClaims, graph } from "@/lib/graph";
 import { fullClaimLD } from "@/lib/jsonld";
+import { siteBaseUrl } from "@/lib/site";
+
+// Render to static files at build time (required by output: "export").
+export const dynamic = "force-static";
+
+export function generateStaticParams() {
+  return getClaims().map((c) => ({ id: c.id }));
+}
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -11,8 +19,7 @@ export async function GET(
   if (!claim) {
     return NextResponse.json({ error: "claim not found" }, { status: 404 });
   }
-  const base = new URL(request.url).origin;
-  const body = fullClaimLD(claim, graph, base);
+  const body = fullClaimLD(claim, graph, siteBaseUrl());
   return NextResponse.json(body, {
     headers: {
       "Content-Type": "application/ld+json",

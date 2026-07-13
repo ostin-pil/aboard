@@ -1,0 +1,49 @@
+attachedToClaimId: ECM1
+pro:
+  thesis: Habitual egg and dietary-cholesterol consumption is a genuine, dose-dependent contributor to cardiovascular risk, not a nutritional non-issue.
+  steelmannedSummary: "There is a plausible mechanistic chain — dietary cholesterol raises serum LDL in a substantial minority of hyper-responders, and LDL is a well-established causal cardiovascular risk factor. The largest US pooled analysis with harmonized individual-level data (Zhong 2019, JAMA; 29,615 adults across six cohorts) found a monotone dose-response: each additional half-egg per day was associated with 6% higher CVD risk and 8% higher all-cause mortality, and the relationship held on absolute-risk terms. Many of the reassuring meta-analyses adjust for serum cholesterol or overall diet quality — but if eggs act on CVD *through* serum LDL, that adjustment removes the causal pathway and biases the estimate toward the null. The effect is concentrated where it is most plausible physiologically (people with diabetes and insulin resistance), which is a signal of a real biological effect, not a statistical artifact. Given cheap substitutes, the precautionary reading is warranted for at-risk groups."
+  keySources:
+    - label: Zhong et al. — Dietary Cholesterol or Egg Consumption and CVD/Mortality (JAMA)
+      url: https://pubmed.ncbi.nlm.nih.gov/30874756/
+      kind: paper
+      year: 2019
+      authors: Zhong, Van Horn, Cornelis, et al.
+      finding: Pooled individual-level analysis of six US cohorts; dose-response association of egg and dietary-cholesterol intake with incident CVD and all-cause mortality.
+    - label: Zhuang et al. — Egg/cholesterol and mortality; updated meta-analysis (Circulation)
+      url: https://www.ahajournals.org/doi/10.1161/CIRCULATIONAHA.121.057642
+      kind: paper
+      year: 2022
+      finding: Associations are stronger in some subgroups and adjustment sets, consistent with a real effect modified by metabolic status.
+  authoredBy:
+    agent: claude-opus-4-8
+    promptTitle: Steelman pro-thesis — epistack eggs v0.1
+    generatedAt: 2026-07-12T13:30:00Z
+con:
+  thesis: In the general population, moderate egg consumption is not a meaningful independent cardiovascular risk factor; apparent associations reflect confounding by dietary pattern and lifestyle.
+  steelmannedSummary: "The best-adjusted evidence is null. Drouin-Chartier (2020, BMJ) analysed three large US cohorts and an updated meta-analysis of 1.72 million participants and found no association between one egg per day and incident CVD after adjusting for lifestyle and dietary factors. Dose-response meta-analysis (Sabaté 2020, Eur J Nutrition) finds up to one egg/day unassociated with — and up to roughly six/week inversely associated with — CVD. The 2015 US Dietary Guidelines removed the 300 mg/day dietary-cholesterol cap precisely because the population-level evidence for harm did not hold up. Tellingly, in the very study most cited for harm (Zhong 2019), the dietary-cholesterol association became non-significant after adjusting for eggs and red meat — a fingerprint of confounding, since eggs travel with bacon, butter, and low-quality dietary patterns. Where eggs displace refined-carbohydrate breakfasts, the net effect may be neutral or favourable."
+  keySources:
+    - label: Drouin-Chartier et al. — Egg consumption and CVD; three US cohorts + meta-analysis (BMJ)
+      url: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7190072/
+      kind: paper
+      year: 2020
+      authors: Drouin-Chartier, et al.
+      finding: One egg/day not associated with incident CVD after adjustment; updated meta-analysis of 1,720,108 participants concordant.
+    - label: Sabaté et al. — Egg consumption and cardiovascular risk, dose-response meta-analysis (Eur J Nutrition)
+      url: https://link.springer.com/article/10.1007/s00394-020-02345-7
+      kind: paper
+      year: 2020
+      finding: Up to one egg/day not associated with CVD events; up to ~six/week inversely associated versus no consumption.
+  authoredBy:
+    agent: claude-opus-4-8
+    promptTitle: Steelman con-thesis — epistack eggs v0.1
+    generatedAt: 2026-07-12T13:30:00Z
+cruxes:
+  - statement: If individual-participant reanalyses with a harmonized, pre-registered confounder set (diet quality, red/processed meat, physical activity, socio-economic status) eliminate the egg–CVD association, the con thesis is supported; if a dose-response survives full adjustment, the pro thesis is supported.
+    impactScore: 0.85
+    uncertainty: 0.7
+  - statement: If eggs raise CVD chiefly by raising serum LDL, then meta-analyses adjusting for blood cholesterol are adjusting away the causal pathway and understate the effect (supports pro); if the null holds in analyses that do not adjust for the mediator, the con thesis is supported.
+    impactScore: 0.7
+    uncertainty: 0.65
+  - statement: If the association is concentrated in people with diabetes or insulin resistance and is absent in metabolically healthy adults, the general-population claim (pro) is not supported even though a real subgroup effect may exist.
+    impactScore: 0.65
+    uncertainty: 0.6

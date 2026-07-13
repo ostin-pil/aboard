@@ -7,6 +7,9 @@ export const alt =
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
+// Generate the image at build time (required by output: "export").
+export const dynamic = "force-static";
+
 export default async function Image() {
   const stats = {
     symptoms: graph.claims.filter((c) => c.kind === "symptom").length,
