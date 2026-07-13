@@ -183,6 +183,69 @@ committed in `package.json`. Corepack stops rewriting the field once a
 valid value is present, so the recurring diff is gone. If npm is
 upgraded, bump this value to the new `npm --version` in the same commit.
 
+---
+
+## 2026-07-13 — A build without `SITE_URL` emits JSON-LD that fails our own schema
+
+**Symptom.** `clients/validate.ts` rejects `/api/graph` and
+`/api/claims/<id>` from a default `npm run build`, with dozens of
+`@id — must match format "uri"` errors and a final
+`(root) — must match exactly one schema in oneOf`.
+
+**Cause.** Two rules disagree. `public/schema/v0.json` is the
+authoritative spec and requires `"format": "uri"` on every `@id`, which
+means an **absolute** IRI. But `src/lib/site.ts` returns `""` when the
+`SITE_URL` env var is unset, and `jsonld.ts` then emits **relative**
+IRIs (`/claims/L1` rather than `https://…/claims/L1`). Relative IRIs are
+legal JSON-LD — they resolve against the document base — but they are not
+legal against our own schema. The static-export migration (session 14)
+introduced the fallback; nothing reconciled it with the schema.
+
+**Workaround in place (session 15).** CI builds with
+`SITE_URL=http://localhost:3000`, so it validates the artifact the way a
+real deploy builds it, and the contract is genuinely checked. A local
+`npm run build` with no `SITE_URL` still produces output that would fail
+validation.
+
+**The real fix is a decision, not code.** Either the schema should accept
+relative IRIs (`"format": "uri-reference"`, published as a v0 change with
+`research/schema.md` in the same commit, per CLAUDE.md), or an unset
+`SITE_URL` should be a hard build error rather than a silent fallback.
+Do not paper over it by only ever building with the env var set. This is
+entangled with `plans/repo-hardening.md` §4 (the real vocab namespace is
+also still `https://aboard.example/vocab/`), which is blocked on choosing
+the canonical domain.
+
+Status: open. Blocked on the domain choice.
+
+---
+
+## 2026-07-13 — `npm run lint` has 5 pre-existing errors, so CI cannot gate on it
+
+**Symptom.** `npm run lint` exits non-zero: 5 errors, 12 warnings.
+
+**Cause.** React Compiler / `react-hooks` rules, all pre-existing:
+- `src/components/graph/ClaimGraphRF.tsx` — "Cannot access refs during
+  render" (×3, around the history/undo refs), plus "Existing memoization
+  could not be preserved".
+- `src/components/ThemeToggle.tsx` — "Calling setState synchronously
+  within an effect can trigger cascading renders".
+
+These are genuine refactors in interactive graph code, not cosmetic
+nits, and fixing them needs browser verification of the graph's
+undo/redo and drag behaviour — not something to bundle blind into an
+unrelated commit.
+
+**Workaround in place (session 15).** The CI `Lint` step runs with
+`continue-on-error: true`. It reports without blocking.
+
+**To close.** Fix the 5 errors, verify the graph in-browser (undo/redo,
+node drag, collapse), then delete `continue-on-error` from the lint step
+in `.github/workflows/ci.yml` so it becomes a hard gate. A permanently
+non-blocking lint step is a lint step everyone learns to ignore.
+
+Status: open.
+
 **Rejected alternative.** A parallel branch
 (`chore/session-10-corepack-autopin`, commit `ae36481`) set
 `COREPACK_ENABLE_AUTO_PIN=0` in `.claude/settings.json`. That only

@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            clients/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      # Non-blocking on purpose. The React Compiler rules currently report 5
+      # pre-existing errors in ClaimGraphRF.tsx and ThemeToggle.tsx (refs during
+      # render, memoization) that need real refactors plus browser verification.
+      # Tracked in knowledge/issues.md; flip this to a hard gate once it is green.
+      - name: Lint (non-blocking)
+        run: npm run lint
+        continue-on-error: true
+
+      # The build is the data gate: it runs the Zod loader plus the referential
+      # integrity checks over data/, so malformed or dangling data fails here by
+      # construction. This is what the MCP write path will depend on.
+      #
+      # SITE_URL is set because the v0 schema requires absolute `@id`s
+      # (format: uri). An unset SITE_URL emits relative IRIs, which fail the
+      # schema — so CI validates the artifact the way a deploy actually builds it.
+      # See knowledge/issues.md.
+      - name: Build
+        run: npm run build
+        env:
+          SITE_URL: http://localhost:3000
+
+      - name: Install client adapter
+        working-directory: clients
+        run: npm ci
+
+      # Static export, so there is no server to start — serve out/ and check the
+      # published JSON-LD against public/schema/v0.json, the authoritative spec.
+      - name: Serve the static export
+        run: |
+          python3 -m http.server 3000 --directory out &
+          echo $! > /tmp/http-server.pid
+          for _ in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/graph -o /dev/null; then
+              echo "static export is serving on :3000"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "static server did not come up on :3000" >&2
+          exit 1
+
+      - name: Validate /api/graph against the v0 schema
+        working-directory: clients
+        run: npx tsx validate.ts http://localhost:3000/api/graph
+
+      - name: Validate a single-claim endpoint
+        working-directory: clients
+        run: npx tsx validate.ts http://localhost:3000/api/claims/S2
+
+      - name: Stop the static server
+        if: always()
+        run: kill "$(cat /tmp/http-server.pid)" 2>/dev/null || true
