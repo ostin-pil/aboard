@@ -201,6 +201,14 @@ legal JSON-LD — they resolve against the document base — but they are not
 legal against our own schema. The static-export migration (session 14)
 introduced the fallback; nothing reconciled it with the schema.
 
+**The deployed site is NOT affected — verified.**
+`https://aboard.ostin-pil.workers.dev/api/graph` emits absolute `@id`s and
+validates clean. `SITE_URL` is set **in the Cloudflare dashboard**, not in
+`wrangler.jsonc` and not anywhere in this repo — so nothing you can grep
+for tells you it exists. Do not "fix" a live-site breakage that isn't
+there; check the deployed endpoint first. Only a local or CI build with
+no `SITE_URL` produces the bad output.
+
 **Workaround in place (session 15).** CI builds with
 `SITE_URL=http://localhost:3000`, so it validates the artifact the way a
 real deploy builds it, and the contract is genuinely checked. A local
