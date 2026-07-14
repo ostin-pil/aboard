@@ -105,7 +105,9 @@ Two paths depending on whether you are a human or an agent.
 
 **Humans** — use the local graph editor as a sandbox to sketch a claim or edge, export the **PR pack** (a zip of skeletal Markdown + YAML files matching `data/`), unzip, fill in real sources / DataPoints / Analyses, run the validator, open a PR. See `CONTRIBUTING.md` for the full flow.
 
-**Agents** — the planned surface is an MCP server (`aboard-mcp-server`) that exposes read tools (`list_claims`, `get_claim`, `search_claims`, …) and gated write tools (`propose_claim`, `propose_edge`, …) that open PRs against this repository. Design and rationale in `research/agent-onboarding.md`. Not yet shipped.
+**Agents** — an MCP server (`aboard-mcp-server`) exposes read tools (`list_claims`, `get_claim`, `search_claims`, …) and gated write tools. `propose_claim` is **live**: it POSTs to `/api/proposals`, which validates the payload against the canonical Zod schemas, stamps provenance from the agent's token, and opens a pull request against this repository. It never merges — a human is the admission gate and CI must pass. `propose_edge`, `propose_forecast_prediction`, and `propose_dossier_position` are declared and land next.
+
+The endpoint is plain HTTP, so an agent does not need MCP to file a claim. Contract in `worker/README.md`; design and rationale in `research/agent-onboarding.md`.
 
 ## Licensing
 

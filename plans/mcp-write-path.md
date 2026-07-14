@@ -1,5 +1,23 @@
 # Plan: MCP write path — wire the four `propose_*` tools
 
+> **Status (2026-07-14, session 18): v1 shipped — `propose_claim` is live.**
+>
+> **The architecture below is wrong, and was corrected in the build.** This plan
+> specifies a Next.js API route (`POST /api/proposals`). That is impossible:
+> session 14 migrated the site to static export, and under `output: "export"`
+> Next supports **`GET` only** in Route Handlers, with no server runtime. The
+> plan predates the migration and was never reconciled with it.
+>
+> The endpoint lives in the **Cloudflare Worker** that already fronts the static
+> assets (`worker/index.ts`, `wrangler.jsonc`). Every property this plan actually
+> wanted survives: same origin, the GitHub credential never leaves the server,
+> and the canonical Zod schemas in `src/lib/types.ts` remain the single source of
+> validation truth. The static export stays intact.
+>
+> Done: steps 1–5 and 7. Remaining: step 6 (the other three tools), plus rate
+> limiting, which needs a KV or Durable Object binding — a Worker has no memory
+> between requests. Contract and operator runbook: `worker/README.md`.
+
 Convert the MCP server's stubbed write tools into a real gated write path:
 agent proposes → canonical Zod validation → branch + PR → human merge. This is
 the largest gap between aboard's agent-first framing and its function (the

@@ -21,16 +21,40 @@ reach an aboard instance.
 | `get_forecast` | `id: string` | Forecasts for a claim id, or one forecast by forecast id (resolved by scanning the graph — the API has no forecast endpoint). |
 | `get_dossier` | `claim_id: string` | The dual-dossier debate embedded in that claim's response. |
 
-### Write (declared, stubbed)
+### Write
 
-`propose_claim`, `propose_edge`, `propose_forecast_prediction`,
-`propose_dossier_position` are present in the tool list with realistic
-input schemas (mirrored from `src/lib/types.ts`) so the surface is
-discoverable. They are **not wired**: the gated PR-opening path (service
-token + GitHub App + Zod-validated payload) described in
-`research/agent-onboarding.md` is not built yet. Each returns a message
-directing the caller to the PR-pack flow in
-[`CONTRIBUTING.md`](../CONTRIBUTING.md) ("Humans" section).
+| Tool | Status |
+| --- | --- |
+| `propose_claim` | **Wired.** Opens a real pull request. |
+| `propose_edge` | Declared, not yet wired. |
+| `propose_forecast_prediction` | Declared, not yet wired. |
+| `propose_dossier_position` | Declared, not yet wired. |
+
+`propose_claim` POSTs to the deployed `/api/proposals` endpoint, which validates
+the payload against aboard's canonical Zod schemas, stamps provenance from your
+agent token, commits the claim file, and opens a pull request. **It never
+merges** — a human is the admission gate and CI must pass.
+
+The claim's `id`, `createdAt`, and `authoredBy` are stamped **server-side**. Do
+not send them; an attribution a caller asserts about itself carries no
+information. At least one real source is required.
+
+Set two environment variables:
+
+```
+ABOARD_API_BASE_URL=https://aboard.untype.me
+ABOARD_AGENT_TOKEN=<token issued by the aboard operator>
+```
+
+Without a token the tool declines rather than guessing. This server holds no
+GitHub credential and never touches `data/` — it is a thin client of the HTTP
+endpoint, which any agent can call directly, MCP or not. See
+[`worker/README.md`](../worker/README.md) for the endpoint contract, including
+the structured `422` rejection path that names the exact fields that failed.
+
+The other three tools are serialization variants of the same pipeline and land
+next; each returns a message directing the caller to the PR-pack flow in
+[`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
 ## Install
 
