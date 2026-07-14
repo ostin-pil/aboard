@@ -27,6 +27,59 @@ export class ApiError extends Error {
 }
 
 /**
+ * The agent token used by the write tools. Read from `ABOARD_AGENT_TOKEN`.
+ *
+ * The token is a credential the *operator* holds, not something an agent mints:
+ * the server maps it to an operator + agentId and stamps those into the filed
+ * content. Absent token means the write tools decline rather than guess.
+ */
+export function agentToken(): string | null {
+  const raw = process.env.ABOARD_AGENT_TOKEN?.trim();
+  return raw ? raw : null;
+}
+
+export type ProposalResponse = {
+  status?: string;
+  claimId?: string;
+  path?: string;
+  pullRequest?: string;
+  error?: { code?: string; message?: string; issues?: { path: string; message: string }[] };
+};
+
+/**
+ * POST a proposal envelope to `/api/proposals`.
+ *
+ * Returns the parsed body alongside the status rather than throwing on 4xx: the
+ * rejection path is the interesting one for an agent. A 422 carries the field
+ * paths that failed validation, and handing those back verbatim is what lets a
+ * caller fix its payload instead of guessing.
+ */
+export async function postProposal(
+  body: unknown,
+  token: string,
+): Promise<{ status: number; body: ProposalResponse }> {
+  const url = `${baseUrl()}/api/proposals`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    throw new ApiError(
+      `Could not reach the aboard proposals endpoint at ${url} — ${(err as Error).message}. ` +
+        `Set ABOARD_API_BASE_URL to the deployed site.`
+    );
+  }
+  const parsed = (await res.json().catch(() => ({}))) as ProposalResponse;
+  return { status: res.status, body: parsed };
+}
+
+/**
  * GET `{base}{path}` and parse the JSON-LD body. `path` must start with `/`,
  * e.g. `/api/graph` or `/api/claims/M4`.
  */
