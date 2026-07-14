@@ -19,6 +19,7 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             clients/package-lock.json
+            mcp-server/package-lock.json
 
       - name: Install
         run: npm ci
@@ -49,6 +50,17 @@ jobs:
       # Setting SITE_URL here would hide a regression in exactly that default.
       - name: Build
         run: npm run build
+
+      # The write path spans three packages. The Worker bundles the canonical Zod
+      # schemas out of src/lib, and the MCP server is a client of the endpoint's
+      # contract, so a change to src/lib/types.ts can break either one without the
+      # app's own type-check noticing.
+      - name: Bundle the Worker (write path)
+        run: npx --yes wrangler@4 deploy --dry-run --outdir=/tmp/worker-build
+
+      - name: Type-check the MCP server
+        working-directory: mcp-server
+        run: npm ci && npm run typecheck
 
       - name: Install client adapter
         working-directory: clients

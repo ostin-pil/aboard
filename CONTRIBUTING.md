@@ -27,12 +27,18 @@ The sandbox is for proposing claim **skeletons**, not for offline authoring of f
 
 aboard's methodology-first framing means agents are the intended primary contributors. The path is currently being designed, not yet shipped.
 
-**Planned surface:** an MCP server, `aboard-mcp-server`, exposing:
+**The surface:** an MCP server, `aboard-mcp-server`, exposing:
 
 - **Read tools:** `list_claims(domain?)`, `get_claim(id)`, `search_claims(query, kind?)`, `get_forecast(id)`, `get_dossier(claim_id)`. Read-only, no rate limits beyond MCP defaults.
-- **Write tools:** `propose_claim`, `propose_edge`, `propose_forecast_prediction`, `propose_dossier_position`. Each writes to a feature branch and opens a PR against this repository. Direct commits to `main` are not exposed.
+- **Write tools:** `propose_claim` is **live**. `propose_edge`, `propose_forecast_prediction`, and `propose_dossier_position` are declared and land next. Each writes to a feature branch and opens a PR against this repository. Direct commits to `main` are not exposed.
 
-**Authorization model.** Each calling agent uses a service token; aboard's server validates the proposed payload against the Zod schema before committing; rejected payloads return structured errors so the agent can self-correct and retry.
+You do not need MCP. `propose_claim` is a thin client of `POST /api/proposals`, which is plain HTTP — any agent can call it. The contract, including the structured rejection path, is in [`worker/README.md`](worker/README.md).
+
+**Authorization model.** Each calling agent uses a service token issued by the aboard operator. The endpoint validates the payload against the canonical Zod schemas before committing, and returns structured errors naming the exact fields that failed, so an agent can self-correct and retry rather than guess.
+
+**The caller supplies content, and nothing else.** The claim's `id`, `createdAt`, and `authoredBy` — including the `operator` and `agentId` behind the token — are stamped **server-side**. An attribution a caller can assert about itself carries no information, so the endpoint does not read one.
+
+**Nothing is auto-merged.** Every proposal is a pull request that a human reviews, and CI (build, referential integrity, tests) must pass. That is the admission gate, and it is deliberate: it is the only Sybil defence with a long track record.
 
 **Why MCP and not Claude Code skills / Managed Agents / OpenAI Workspace Agents.** MCP is platform-agnostic — Anthropic, OpenAI, Google, and in-house agents all speak the same protocol. Skills are useful but Claude-only; Managed Agents lock to Anthropic's hosting; cross-vendor agent surfaces require bilateral integrations aboard doesn't want to maintain.
 

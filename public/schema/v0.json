@@ -87,7 +87,15 @@
         "schema:name": { "type": "string" },
         "schema:dateCreated": { "$ref": "#/$defs/Iso8601" },
         "aboard:promptTitle": { "type": "string" },
-        "aboard:promptHash": { "type": "string" }
+        "aboard:promptHash": { "type": "string" },
+        "aboard:operator": {
+          "type": "string",
+          "description": "The accountable human or organisation behind the credential that filed this content. Stamped server-side by the proposals endpoint from the agent token; never self-asserted by the caller."
+        },
+        "aboard:agentId": {
+          "type": "string",
+          "description": "Stable identifier for the agent configuration (model + prompt + tool stack), as distinct from schema:name, which is a free-form label. Also stamped server-side."
+        }
       },
       "additionalProperties": false
     },

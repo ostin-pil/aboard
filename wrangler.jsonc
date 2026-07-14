@@ -1,10 +1,30 @@
 {
-  // Cloudflare Workers static-assets deployment for the static export.
-  // `npm run build` writes the site to ./out; this serves it as static assets
-  // (no Worker script). The _headers file in out/ sets content-types + CORS.
+  // Cloudflare Workers deployment. `npm run build` writes the static export to
+  // ./out, which is served through the assets binding. The _headers file in out/
+  // sets content-types + CORS.
+  //
+  // The Worker script exists for one reason: the agent write path. aboard is a
+  // static export, so Next Route Handlers are GET-only and there is no server
+  // runtime — POST /api/proposals cannot be a Next route. It lives in the Worker
+  // instead: same origin, same deploy, and the GitHub credential never leaves the
+  // server. Every other path falls straight through to the assets binding.
   "name": "aboard",
   "compatibility_date": "2025-06-01",
+  "main": "worker/index.ts",
   "assets": {
-    "directory": "./out"
+    "directory": "./out",
+    "binding": "ASSETS"
+  },
+
+  "vars": {
+    "GITHUB_REPO": "ostin-pil/aboard",
+    "GITHUB_BASE_BRANCH": "main"
   }
+
+  // Secrets — set with `wrangler secret put`, never committed:
+  //   ABOARD_AGENT_TOKENS  JSON map: token -> { tokenId, operator, agent, agentId }
+  //   GITHUB_TOKEN         fine-grained PAT, contents + pull-requests, this repo only
+  //
+  // With neither set, /api/proposals answers 503 not_configured and the rest of
+  // the site is unaffected.
 }

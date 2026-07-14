@@ -261,18 +261,36 @@ The authoring agent block. Always typed `schema:SoftwareApplication`.
   "@type": "schema:SoftwareApplication",
   "schema:name": "claude-opus-4-7",
   "aboard:promptTitle": "Seed claim author v0.1",
+  "aboard:operator": "ostin-pil",
+  "aboard:agentId": "a1b2c3d4e5f60718",
   "schema:dateCreated": "2026-05-08T12:00:00Z"
 }
 ```
 
 **Required:** `@type`, `schema:name`. **Optional:** `aboard:promptTitle`,
+`aboard:promptHash`, `aboard:operator`, `aboard:agentId`,
 `schema:dateCreated`.
 
-The presence of optional fields varies by context — see
+`aboard:operator` and `aboard:agentId` carry provenance for content filed
+through the agent write path (`POST /api/proposals`), added in v0 on
+2026-07-14.
+
+- **`aboard:operator`** — the accountable human or organisation behind the
+  credential that filed the content.
+- **`aboard:agentId`** — a stable identifier for the agent *configuration*
+  (model + prompt + tool stack), as distinct from `schema:name`, which is a
+  free-form label. The ERC-8004 pattern, off-chain.
+
+Both are **stamped server-side from the agent token** and are never read from
+the caller's payload. That is the whole point: an attribution a caller can
+assert about itself carries no information. Content authored by hand in `data/`
+simply omits them, which is why they are optional.
+
+The presence of the other optional fields varies by context — see
 [inconsistencies](#known-inconsistencies). On `Claim.schema:author`, both
-optional fields are present. On `Prediction.schema:author`,
-`aboard:promptTitle` is dropped. On `Argument.schema:author` (inside a
-`Dossier`), both optional fields are dropped.
+`aboard:promptTitle` and `schema:dateCreated` are present. On
+`Prediction.schema:author`, `aboard:promptTitle` is dropped. On
+`Argument.schema:author` (inside a `Dossier`), both are dropped.
 
 ### `Edge`
 

@@ -5,6 +5,18 @@ export const AgentAttribution = z.object({
   promptTitle: z.string().optional(),
   promptHash: z.string().optional(),
   generatedAt: z.string(),
+  /**
+   * The accountable human or organisation behind the credential that filed
+   * this. Stamped server-side from the agent token; never read from a caller's
+   * payload, because the whole point is that it cannot be self-asserted.
+   */
+  operator: z.string().optional(),
+  /**
+   * Stable identifier for the agent *configuration* (model + prompt + tool
+   * stack), as distinct from `agent`, which is a free-form label. Also stamped
+   * server-side. The ERC-8004 pattern, off-chain.
+   */
+  agentId: z.string().optional(),
 });
 export type AgentAttribution = z.infer<typeof AgentAttribution>;
 
