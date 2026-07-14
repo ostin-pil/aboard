@@ -26,6 +26,11 @@ jobs:
       - name: Type-check
         run: npx tsc --noEmit
 
+      # A hard gate from the start, unlike lint: the suite is green today, and a
+      # gate that is optional on day one never becomes mandatory later.
+      - name: Test
+        run: npm test
+
       # Non-blocking on purpose. The React Compiler rules currently report 5
       # pre-existing errors in ClaimGraphRF.tsx and ThemeToggle.tsx (refs during
       # render, memoization) that need real refactors plus browser verification.
