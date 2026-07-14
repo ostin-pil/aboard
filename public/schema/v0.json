@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://aboard.example/schema/v0.json",
+  "$id": "https://aboard.untype.me/schema/v0.json",
   "title": "aboard claim-graph schema",
   "description": "Validates the JSON-LD responses served by the aboard API at /api/graph and /api/claims/{id}. Version v0 — pre-stable. See research/schema.md for the human-readable spec.",
   "type": "object",

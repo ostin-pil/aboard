@@ -26,7 +26,6 @@ export async function generateMetadata({
   if (!claim || !dossier) {
     return { title: "dossier not found" };
   }
-  // PLACEHOLDER: revise after audience decision in research/vision.md
   const description = `Steel-manned, non-convergent dossier on ${claim.id}: ${dossier.cruxes.length} crux${
     dossier.cruxes.length === 1 ? "" : "es"
   } ranked by impact × uncertainty.`;

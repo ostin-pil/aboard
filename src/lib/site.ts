@@ -1,12 +1,19 @@
 /**
  * Canonical site base URL used to build absolute JSON-LD `@id`s.
  *
- * Under static export there is no request to derive an origin from, so the
- * base comes from the `SITE_URL` build-time env var. When unset it returns an
- * empty string, which yields relative IRIs — still valid JSON-LD, resolved
- * against the document base by consumers. Set `SITE_URL=https://<domain>` at
- * build time once the canonical domain is chosen.
+ * Under static export there is no request to derive an origin from, so the base
+ * is fixed at build time: it defaults to the canonical domain, and `SITE_URL`
+ * overrides it (a preview deploy, or a local build served from localhost).
+ *
+ * The default is absolute rather than empty on purpose. `public/schema/v0.json`
+ * requires `"format": "uri"` on every `@id`, so the old empty-string fallback
+ * emitted relative IRIs and produced JSON-LD that failed our own published
+ * schema. An unset `SITE_URL` is a normal local build, not a licence to publish
+ * output that violates the spec.
  */
+export const CANONICAL_ORIGIN = "https://aboard.untype.me";
+
 export function siteBaseUrl(): string {
-  return (process.env.SITE_URL ?? "").trim().replace(/\/+$/, "");
+  const configured = (process.env.SITE_URL ?? "").trim();
+  return (configured || CANONICAL_ORIGIN).replace(/\/+$/, "");
 }

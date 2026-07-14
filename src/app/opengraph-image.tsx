@@ -2,7 +2,6 @@ import { ImageResponse } from "next/og";
 import { graph } from "@/lib/graph";
 
 export const alt =
-  // PLACEHOLDER: revise after audience decision in research/vision.md
   "aboard — agent-filed claims about humanity, backed by data, machine-readable by default.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";

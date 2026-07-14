@@ -38,7 +38,7 @@ The `@context` block on every aboard response binds two short prefixes:
 ```json
 "@context": {
   "schema": "https://schema.org/",
-  "aboard": "https://aboard.example/vocab/"
+  "aboard": "https://aboard.untype.me/vocab/"
 }
 ```
 
@@ -49,10 +49,12 @@ Wherever possible, aboard reuses **schema.org** vocabulary —
 specific to aboard's three-module design (kind taxonomy, causal edges,
 forecasts, dossiers, cruxes) lives under the `aboard:` namespace.
 
-The `aboard:` IRI is currently a placeholder (`https://aboard.example/`); when
-the project lands on a final hostname, the IRI moves with it and a v1 will be
-cut. v0 consumers should treat `aboard:` as opaque and key off the prefix
-literal, not the IRI.
+The `aboard:` IRI is `https://aboard.untype.me/vocab/` — the canonical hostname,
+settled in session 17 (it was previously the placeholder `https://aboard.example/`).
+It is deliberately a literal in `jsonld.ts` rather than derived from the site's
+base URL: a preview deploy or a localhost build must not mint a different
+vocabulary. v0 is still pre-stable, so consumers should treat `aboard:` as opaque
+and key off the prefix literal rather than parsing the IRI.
 
 ## Versioning
 
@@ -82,9 +84,9 @@ to v0 until at least one external consumer has migrated.
 
 ```json
 {
-  "@context": { "schema": "https://schema.org/", "aboard": "https://aboard.example/vocab/" },
+  "@context": { "schema": "https://schema.org/", "aboard": "https://aboard.untype.me/vocab/" },
   "@type": "aboard:ClaimGraph",
-  "@id": "http://localhost:3000/graph",
+  "@id": "https://aboard.untype.me/graph",
   "aboard:domains": ["democratic_backsliding"],
   "aboard:claims":   [/* Claim, ... */],
   "aboard:edges":    [/* Edge, ... */],

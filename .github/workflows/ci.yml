@@ -41,16 +41,14 @@ jobs:
 
       # The build is the data gate: it runs the Zod loader plus the referential
       # integrity checks over data/, so malformed or dangling data fails here by
-      # construction. This is what the MCP write path will depend on.
+      # construction. This is what the MCP write path depends on.
       #
-      # SITE_URL is set because the v0 schema requires absolute `@id`s
-      # (format: uri). An unset SITE_URL emits relative IRIs, which fail the
-      # schema — so CI validates the artifact the way a deploy actually builds it.
-      # See knowledge/issues.md.
+      # Deliberately built with no SITE_URL, so CI exercises the default path a
+      # contributor gets. siteBaseUrl() now defaults to the canonical origin, so
+      # that default emits absolute `@id`s and satisfies the schema's format: uri.
+      # Setting SITE_URL here would hide a regression in exactly that default.
       - name: Build
         run: npm run build
-        env:
-          SITE_URL: http://localhost:3000
 
       - name: Install client adapter
         working-directory: clients
