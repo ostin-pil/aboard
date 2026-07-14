@@ -52,6 +52,8 @@ function agentLD(agent: AgentAttribution) {
     "schema:name": agent.agent,
     ...(agent.promptTitle ? { "aboard:promptTitle": agent.promptTitle } : {}),
     ...(agent.promptHash ? { "aboard:promptHash": agent.promptHash } : {}),
+    ...(agent.operator ? { "aboard:operator": agent.operator } : {}),
+    ...(agent.agentId ? { "aboard:agentId": agent.agentId } : {}),
     "schema:dateCreated": agent.generatedAt,
   };
 }
