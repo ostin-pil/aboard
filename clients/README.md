@@ -48,7 +48,7 @@ npx tsx validate.ts http://localhost:3000/api/graph
 npx tsx validate.ts http://localhost:3000/api/claims/M4
 
 # remote deployment (works against any aboard instance)
-npx tsx validate.ts https://aboard.example.com/api/graph
+npx tsx validate.ts https://aboard.untype.me/api/graph
 ```
 
 Output:
@@ -72,7 +72,7 @@ npx tsx briefing.ts
 npx tsx briefing.ts > briefing.md
 
 # remote
-npx tsx briefing.ts https://aboard.example.com/api/graph > briefing.md
+npx tsx briefing.ts https://aboard.untype.me/api/graph > briefing.md
 ```
 
 The briefing covers: domain, all symptoms with confidence and source-count,

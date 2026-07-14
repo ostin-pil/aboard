@@ -31,7 +31,6 @@ export async function generateMetadata({
   if (!claim) {
     return { title: "claim not found" };
   }
-  // PLACEHOLDER: revise after audience decision in research/vision.md
   const description = `${kindLabel[claim.kind]} · ${claim.id} — confidence ${claim.confidence.toFixed(
     2
   )} · domain ${claim.domain}.`;

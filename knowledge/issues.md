@@ -215,16 +215,26 @@ real deploy builds it, and the contract is genuinely checked. A local
 `npm run build` with no `SITE_URL` still produces output that would fail
 validation.
 
-**The real fix is a decision, not code.** Either the schema should accept
-relative IRIs (`"format": "uri-reference"`, published as a v0 change with
-`research/schema.md` in the same commit, per CLAUDE.md), or an unset
-`SITE_URL` should be a hard build error rather than a silent fallback.
-Do not paper over it by only ever building with the env var set. This is
-entangled with `plans/repo-hardening.md` §4 (the real vocab namespace is
-also still `https://aboard.example/vocab/`), which is blocked on choosing
-the canonical domain.
+**The real fix was a decision, not code.** It needed the canonical domain,
+which also blocked `plans/repo-hardening.md` §4 (the vocab namespace was
+still the placeholder `https://aboard.example/vocab/`). One decision, two
+unblocks.
 
-Status: open. Blocked on the domain choice.
+**Resolution (2026-07-14, session 17).** The canonical domain is
+`aboard.untype.me`. `siteBaseUrl()` now **defaults** to
+`https://aboard.untype.me` instead of `""`, with `SITE_URL` still
+overriding it for preview deploys and localhost builds. A default
+`npm run build` therefore emits absolute `@id`s and validates clean
+against `public/schema/v0.json`. CI's `SITE_URL=http://localhost:3000`
+crutch was removed in the same commit, precisely so CI exercises the
+default path a contributor actually gets — setting the env var there
+would hide a regression in the thing that was broken.
+
+The schema was *not* relaxed to `uri-reference`. Absolute `@id`s are the
+right contract for a graph whose whole premise is that agents can
+dereference it.
+
+Status: resolved.
 
 ---
 

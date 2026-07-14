@@ -11,9 +11,13 @@ import type {
   Source,
 } from "./types";
 
+// The vocabulary IRI is a stable public identifier: it is embedded in every
+// claim we publish and in any consumer that caches the context. It is therefore
+// deliberately a literal, not derived from `siteBaseUrl()` — a preview deploy or
+// a localhost build must not mint a different vocabulary.
 const CONTEXT = {
   schema: "https://schema.org/",
-  aboard: "https://aboard.example/vocab/",
+  aboard: "https://aboard.untype.me/vocab/",
 };
 
 function sourceLD(s: Source) {
