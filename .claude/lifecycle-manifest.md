@@ -36,7 +36,7 @@ log_presence_regex: '^sessions/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_session.*\.md$'
 # build / test gate (run in order, abort on first failure)
 code_globs: ["*.ts", "*.tsx", "*.js"]
 build_commands: ["npx tsc --noEmit", "npm run build"]
-test_commands: []                    # no test suite yet; the type-check + build above are the gate
+test_commands: ["npm test"]          # vitest, unit tests over the pure lib modules
 subpkg_guard: none
 
 # merge
