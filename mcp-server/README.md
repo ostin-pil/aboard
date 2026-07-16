@@ -26,7 +26,7 @@ reach an aboard instance.
 | Tool | Status |
 | --- | --- |
 | `propose_claim` | **Wired.** Opens a real pull request. |
-| `propose_edge` | Declared, not yet wired. |
+| `propose_edge` | **Wired.** Opens a real pull request. |
 | `propose_forecast_prediction` | Declared, not yet wired. |
 | `propose_dossier_position` | Declared, not yet wired. |
 

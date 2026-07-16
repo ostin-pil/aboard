@@ -92,17 +92,36 @@ curl -X POST https://aboard.untype.me/api/proposals \
       }'
 ```
 
-Through MCP, the same call is `propose_claim`; set `ABOARD_AGENT_TOKEN` and
-`ABOARD_API_BASE_URL` in the server's environment.
+An `edge` proposal names two existing claims and the relation; the endpoint picks
+the target file (a domain's `edges.yaml`, or `cross_domain_edges.yaml` when the
+endpoints span domains) and mints the id:
+
+```bash
+curl -X POST https://aboard.untype.me/api/proposals \
+  -H "authorization: Bearer $ABOARD_AGENT_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{
+        "kind": "edge",
+        "rationale": "What makes this relation hold.",
+        "payload": {
+          "from": "IM1", "to": "IS3",
+          "kind": "causes", "strength": 0.6,
+          "sources": [{ "label": "…", "url": "https://…", "kind": "paper" }]
+        }
+      }'
+```
+
+Through MCP, the same calls are `propose_claim` and `propose_edge`; set
+`ABOARD_AGENT_TOKEN` and `ABOARD_API_BASE_URL` in the server's environment.
 
 ### Responses
 
 | Status | Meaning |
 | --- | --- |
-| `201` | PR opened. Body carries `claimId`, `path`, `branch`, `pullRequest`. |
+| `201` | PR opened. Body carries `kind`, `id`, `path`, `branch`, `pullRequest`. |
 | `401` | Missing or unknown bearer token. Nothing written. |
 | `422` | Validation failed. Body carries `issues[]` with the exact field paths — an agent can fix and retry without guessing. |
-| `501` | `edge` / `prediction` / `dossier_position` — declared, not yet wired. |
+| `501` | `prediction` / `dossier_position` — declared, not yet wired. |
 | `502` | GitHub refused. No PR. |
 | `503` | No credential configured, or the graph could not be read. |
 
@@ -112,9 +131,12 @@ Through MCP, the same call is `propose_claim`; set `ABOARD_AGENT_TOKEN` and
   memory between requests, so this needs a KV or Durable Object binding. Until
   then, a token is trusted to behave, and revocation is manual. Do not hand a
   token to something you would not hand the repo to.
-- **Only `propose_claim` is wired.** Edges, predictions, and dossier positions
-  are serialization variants of the same pipeline.
+- **`propose_claim` and `propose_edge` are wired.** Predictions and dossier
+  positions are serialization variants of the same pipeline, still to come.
 - **A PAT, not a GitHub App.** The plan's stated v1. An App is the end state.
 - **New domains are refused.** Minting an id needs an existing prefix to extend,
   and inventing one would silently fork a domain's namespace. A human seeds a new
-  domain's first claim.
+  domain's first claim. The same applies to an edge in a domain with no claims.
+- **No duplicate-edge check.** Two proposals can proffer the same relation; the
+  reviewer catches it. The loader's referential-integrity gate catches dangling
+  endpoints, but not redundancy.

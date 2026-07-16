@@ -18,9 +18,20 @@
  * merge. The caller supplies content; it does not supply identity, ids, or
  * timestamps. Those are stamped from the token it authenticated with.
  */
-import { ClaimPayload, ProposalEnvelope, buildClaim, type TokenIdentity } from "../src/lib/proposals";
-import { claimToMarkdown, claimPath } from "../src/lib/data/serialize";
-import type { Claim } from "../src/lib/types";
+import {
+  ClaimPayload,
+  EdgePayload,
+  ProposalEnvelope,
+  buildClaim,
+  buildEdge,
+  type TokenIdentity,
+} from "../src/lib/proposals";
+import {
+  claimToMarkdown,
+  claimPath,
+  appendEdgeToYaml,
+} from "../src/lib/data/serialize";
+import type { Claim, Edge } from "../src/lib/types";
 
 interface Env {
   /** Static assets binding — the built `out/` directory. */
@@ -46,6 +57,11 @@ function fail(status: number, code: string, message: string, extra: Record<strin
   return json({ error: { code, message, ...extra } }, status);
 }
 
+/** Zod issues → the compact, field-pathed shape the caller can act on. */
+function issuesOf(error: { issues: readonly { path: readonly PropertyKey[]; message: string }[] }) {
+  return error.issues.map((i) => ({ path: i.path.map(String).join("."), message: i.message }));
+}
+
 // --- auth ------------------------------------------------------------------
 
 function resolveIdentity(env: Env, request: Request): TokenIdentity | null {
@@ -60,50 +76,66 @@ function resolveIdentity(env: Env, request: Request): TokenIdentity | null {
     return null;
   }
 
-  const identity = table[match[1]];
-  return identity ?? null;
+  return table[match[1]] ?? null;
 }
 
 // --- the current graph, read from our own published API --------------------
 
+type Graph = {
+  claimIds: string[];
+  claimDomains: Map<string, string>;
+  claimIdsByDomain: Map<string, string[]>;
+  edgeIds: string[];
+};
+
 /**
- * Existing claim ids and domains, read from the deployed `/api/graph` asset.
+ * The current graph, read from the deployed `/api/graph` asset.
  *
  * The Worker has no filesystem, so `data/` is not reachable — but the built
- * graph is, and it is the same graph the loader produced. Reading ids from it is
- * what lets the server mint an id that collides with nothing.
+ * graph is, and it is the same graph the loader produced. Reading it is what
+ * lets the server mint ids that collide with nothing and check that an edge's
+ * endpoints exist.
  */
-async function readGraph(
-  env: Env,
-  request: Request,
-): Promise<{ ids: string[]; byDomain: Map<string, string[]> } | null> {
+async function readGraph(env: Env, request: Request): Promise<Graph | null> {
   const url = new URL("/api/graph", request.url);
   const res = await env.ASSETS.fetch(new Request(url.toString()));
   if (!res.ok) return null;
 
-  const body = (await res.json()) as { "aboard:claims"?: unknown };
+  const body = (await res.json()) as {
+    "aboard:claims"?: unknown;
+    "aboard:edges"?: unknown;
+  };
   const claims = body["aboard:claims"];
   if (!Array.isArray(claims)) return null;
 
-  const ids: string[] = [];
-  const byDomain = new Map<string, string[]>();
+  const claimIds: string[] = [];
+  const claimDomains = new Map<string, string>();
+  const claimIdsByDomain = new Map<string, string[]>();
 
   for (const entry of claims as Record<string, unknown>[]) {
-    // The JSON-LD `@id` is an absolute IRI (…/claims/<id>); the bare id is the
-    // last path segment.
-    const iri = typeof entry["@id"] === "string" ? entry["@id"] : "";
-    const id = iri.split("/").pop() ?? "";
+    const id = typeof entry["aboard:id"] === "string" ? entry["aboard:id"] : "";
     const domain = typeof entry["aboard:domain"] === "string" ? entry["aboard:domain"] : "";
     if (!id || !domain) continue;
-
-    ids.push(id);
-    byDomain.set(domain, [...(byDomain.get(domain) ?? []), id]);
+    claimIds.push(id);
+    claimDomains.set(id, domain);
+    claimIdsByDomain.set(domain, [...(claimIdsByDomain.get(domain) ?? []), id]);
   }
 
-  return { ids, byDomain };
+  const edges = body["aboard:edges"];
+  const edgeIds: string[] = [];
+  if (Array.isArray(edges)) {
+    for (const entry of edges as Record<string, unknown>[]) {
+      const id = typeof entry["aboard:id"] === "string" ? entry["aboard:id"] : "";
+      if (id) edgeIds.push(id);
+    }
+  }
+
+  return { claimIds, claimDomains, claimIdsByDomain, edgeIds };
 }
 
 // --- GitHub ----------------------------------------------------------------
+
+type GitHubContext = { repo: string; token: string; base: string };
 
 function toBase64(text: string): string {
   const bytes = new TextEncoder().encode(text);
@@ -112,7 +144,11 @@ function toBase64(text: string): string {
   return btoa(binary);
 }
 
-type GitHubContext = { repo: string; token: string; base: string };
+function fromBase64(b64: string): string {
+  const binary = atob(b64.replace(/\s/g, ""));
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
 
 async function gh(
   ctx: GitHubContext,
@@ -133,19 +169,44 @@ async function gh(
   return { ok: res.ok, status: res.status, body };
 }
 
+/** Current content + blob sha of a file on `ref`, or null if it does not exist. */
+async function getFile(
+  ctx: GitHubContext,
+  path: string,
+  ref: string,
+): Promise<{ content: string; sha: string } | null> {
+  const res = await gh(ctx, `/contents/${path}?ref=${encodeURIComponent(ref)}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`could not read ${path} (HTTP ${res.status})`);
+  const sha = typeof res.body.sha === "string" ? res.body.sha : "";
+  const encoded = typeof res.body.content === "string" ? res.body.content : "";
+  return { content: fromBase64(encoded), sha };
+}
+
+type ProposalSubmission = {
+  /** Slug for the branch name, e.g. the minted id lowercased. */
+  slug: string;
+  identity: TokenIdentity;
+  stamp: number;
+  path: string;
+  content: string;
+  /** Present ⇒ update an existing file; absent ⇒ create a new one. */
+  sha?: string;
+  commitMessage: string;
+  prTitle: string;
+  prBody: string;
+};
+
 /**
  * Branch → commit the file → open a PR. Never merges: a human is the admission
  * gate, and CI (build + referential integrity + tests) runs on the PR, so a
  * proposal that would break the graph cannot be merged even by mistake.
  */
-async function openProposalPR(
+async function submitProposalPR(
   ctx: GitHubContext,
-  claim: Claim,
-  rationale: string,
-  identity: TokenIdentity,
-  stamp: number,
+  s: ProposalSubmission,
 ): Promise<{ ok: true; url: string; branch: string } | { ok: false; detail: string }> {
-  const branch = `agent/${identity.tokenId}/${claim.id.toLowerCase()}-${stamp}`;
+  const branch = `agent/${s.identity.tokenId}/${s.slug}-${s.stamp}`;
 
   const baseRef = await gh(ctx, `/git/ref/heads/${ctx.base}`);
   if (!baseRef.ok) {
@@ -162,27 +223,22 @@ async function openProposalPR(
     return { ok: false, detail: `could not create branch ${branch} (HTTP ${created.status})` };
   }
 
-  const path = claimPath(claim);
-  const committed = await gh(ctx, `/contents/${path}`, {
+  const committed = await gh(ctx, `/contents/${s.path}`, {
     method: "PUT",
     body: JSON.stringify({
-      message: `feat(claims): propose ${claim.id} — ${claim.title}`,
-      content: toBase64(claimToMarkdown(claim)),
+      message: s.commitMessage,
+      content: toBase64(s.content),
       branch,
+      ...(s.sha ? { sha: s.sha } : {}),
     }),
   });
   if (!committed.ok) {
-    return { ok: false, detail: `could not commit ${path} (HTTP ${committed.status})` };
+    return { ok: false, detail: `could not commit ${s.path} (HTTP ${committed.status})` };
   }
 
   const pr = await gh(ctx, "/pulls", {
     method: "POST",
-    body: JSON.stringify({
-      title: `feat(claims): propose ${claim.id} — ${claim.title}`,
-      head: branch,
-      base: ctx.base,
-      body: prBody(claim, rationale, identity),
-    }),
+    body: JSON.stringify({ title: s.prTitle, head: branch, base: ctx.base, body: s.prBody }),
   });
   if (!pr.ok) return { ok: false, detail: `could not open PR (HTTP ${pr.status})` };
 
@@ -190,11 +246,24 @@ async function openProposalPR(
   return { ok: true, url, branch };
 }
 
-function prBody(claim: Claim, rationale: string, identity: TokenIdentity): string {
-  const sources = claim.sources
-    .map((s) => `- [${s.label}](${s.url})${s.kind ? ` — ${s.kind}` : ""}`)
-    .join("\n");
+function provenanceBlock(identity: TokenIdentity): string[] {
+  return [
+    `## Provenance`,
+    ``,
+    `Stamped server-side from the agent token; none of it is caller-asserted.`,
+    ``,
+    `- **operator** ${identity.operator}`,
+    `- **agent** ${identity.agent}`,
+    `- **agentId** \`${identity.agentId}\``,
+  ];
+}
 
+function sourcesList(sources: Claim["sources"]): string {
+  if (sources.length === 0) return "_None._";
+  return sources.map((s) => `- [${s.label}](${s.url})${s.kind ? ` — ${s.kind}` : ""}`).join("\n");
+}
+
+function claimPrBody(claim: Claim, rationale: string, identity: TokenIdentity): string {
   return [
     `Filed by an agent through \`POST /api/proposals\`. **Not auto-merged** — a human is the admission gate.`,
     ``,
@@ -213,15 +282,9 @@ function prBody(claim: Claim, rationale: string, identity: TokenIdentity): strin
     ``,
     `## Sources`,
     ``,
-    sources,
+    sourcesList(claim.sources),
     ``,
-    `## Provenance`,
-    ``,
-    `Stamped server-side from the agent token; none of it is caller-asserted.`,
-    ``,
-    `- **operator** ${identity.operator}`,
-    `- **agent** ${identity.agent}`,
-    `- **agentId** \`${identity.agentId}\``,
+    ...provenanceBlock(identity),
     ``,
     `## Reviewer checklist`,
     ``,
@@ -232,7 +295,163 @@ function prBody(claim: Claim, rationale: string, identity: TokenIdentity): strin
   ].join("\n");
 }
 
+function edgePrBody(
+  edge: Edge,
+  rationale: string,
+  identity: TokenIdentity,
+  crossDomain: boolean,
+): string {
+  return [
+    `Filed by an agent through \`POST /api/proposals\`. **Not auto-merged** — a human is the admission gate.`,
+    ``,
+    `## Rationale`,
+    ``,
+    rationale,
+    ``,
+    `## Edge`,
+    ``,
+    `- **id** \`${edge.id}\` (minted server-side)`,
+    `- **relation** \`${edge.fromId}\` **${edge.kind}** \`${edge.toId}\``,
+    `- **strength** ${edge.strength}`,
+    `- **scope** ${crossDomain ? "cross-domain" : "intra-domain"}`,
+    ``,
+    `## Sources`,
+    ``,
+    sourcesList(edge.sources),
+    ``,
+    ...provenanceBlock(identity),
+    ``,
+    `## Reviewer checklist`,
+    ``,
+    `- [ ] Both endpoints exist and the direction is right.`,
+    `- [ ] The relation kind and strength are defensible, not decorative.`,
+    `- [ ] The rationale (and any sources) actually support the relation.`,
+    `- [ ] CI is green (build, referential integrity, tests).`,
+  ].join("\n");
+}
+
 // --- the endpoint ----------------------------------------------------------
+
+async function handleClaim(
+  request: Request,
+  env: Env,
+  ctx: GitHubContext,
+  identity: TokenIdentity,
+  rawPayload: unknown,
+  rationale: string,
+): Promise<Response> {
+  const payload = ClaimPayload.safeParse(rawPayload);
+  if (!payload.success) {
+    return fail(422, "invalid_payload", "The claim payload failed validation.", {
+      issues: issuesOf(payload.error),
+    });
+  }
+
+  const graph = await readGraph(env, request);
+  if (!graph) return fail(503, "graph_unavailable", "Could not read the published graph.");
+
+  if (!graph.claimIdsByDomain.has(payload.data.domain)) {
+    return fail(422, "unknown_domain", `No such domain: "${payload.data.domain}".`, {
+      knownDomains: [...graph.claimIdsByDomain.keys()].sort(),
+    });
+  }
+
+  const built = buildClaim({
+    payload: payload.data,
+    identity,
+    existingIdsInDomain: graph.claimIdsByDomain.get(payload.data.domain) ?? [],
+    allExistingIds: graph.claimIds,
+    now: new Date().toISOString(),
+  });
+  if (!built.ok) return fail(422, "cannot_build_claim", built.error);
+
+  const result = await submitProposalPR(ctx, {
+    slug: built.claim.id.toLowerCase(),
+    identity,
+    stamp: Date.now(),
+    path: claimPath(built.claim),
+    content: claimToMarkdown(built.claim),
+    commitMessage: `feat(claims): propose ${built.claim.id} — ${built.claim.title}`,
+    prTitle: `feat(claims): propose ${built.claim.id} — ${built.claim.title}`,
+    prBody: claimPrBody(built.claim, rationale, identity),
+  });
+  if (!result.ok) return fail(502, "github_failed", `Could not open the proposal PR: ${result.detail}`);
+
+  return json(
+    {
+      status: "proposed",
+      kind: "claim",
+      id: built.claim.id,
+      path: claimPath(built.claim),
+      branch: result.branch,
+      pullRequest: result.url,
+      note: "Opened as a pull request. It is not merged: a human reviews it, and CI must pass.",
+    },
+    201,
+  );
+}
+
+async function handleEdge(
+  request: Request,
+  env: Env,
+  ctx: GitHubContext,
+  identity: TokenIdentity,
+  rawPayload: unknown,
+  rationale: string,
+): Promise<Response> {
+  const payload = EdgePayload.safeParse(rawPayload);
+  if (!payload.success) {
+    return fail(422, "invalid_payload", "The edge payload failed validation.", {
+      issues: issuesOf(payload.error),
+    });
+  }
+
+  const graph = await readGraph(env, request);
+  if (!graph) return fail(503, "graph_unavailable", "Could not read the published graph.");
+
+  const built = buildEdge({
+    payload: payload.data,
+    claimDomains: graph.claimDomains,
+    claimIdsByDomain: graph.claimIdsByDomain,
+    allEdgeIds: graph.edgeIds,
+  });
+  if (!built.ok) return fail(422, "cannot_build_edge", built.error);
+
+  // An edge joins an existing YAML list, so read the current file to append to
+  // it and to get the sha the update commit needs.
+  let existing: { content: string; sha: string } | null;
+  try {
+    existing = await getFile(ctx, built.path, ctx.base);
+  } catch (err) {
+    return fail(502, "github_failed", (err as Error).message);
+  }
+
+  const result = await submitProposalPR(ctx, {
+    slug: built.edge.id.toLowerCase(),
+    identity,
+    stamp: Date.now(),
+    path: built.path,
+    content: appendEdgeToYaml(existing?.content ?? "", built.edge),
+    sha: existing?.sha,
+    commitMessage: `feat(data): propose edge ${built.edge.id} (${built.edge.fromId} ${built.edge.kind} ${built.edge.toId})`,
+    prTitle: `feat(data): propose edge ${built.edge.id} — ${built.edge.fromId} ${built.edge.kind} ${built.edge.toId}`,
+    prBody: edgePrBody(built.edge, rationale, identity, built.crossDomain),
+  });
+  if (!result.ok) return fail(502, "github_failed", `Could not open the proposal PR: ${result.detail}`);
+
+  return json(
+    {
+      status: "proposed",
+      kind: "edge",
+      id: built.edge.id,
+      path: built.path,
+      branch: result.branch,
+      pullRequest: result.url,
+      note: "Opened as a pull request. It is not merged: a human reviews it, and CI must pass.",
+    },
+    201,
+  );
+}
 
 async function handleProposal(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") {
@@ -258,76 +477,24 @@ async function handleProposal(request: Request, env: Env): Promise<Response> {
   const envelope = ProposalEnvelope.safeParse(raw);
   if (!envelope.success) {
     return fail(422, "invalid_envelope", "The proposal envelope is malformed.", {
-      issues: envelope.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+      issues: issuesOf(envelope.error),
     });
   }
 
-  if (envelope.data.kind !== "claim") {
-    return fail(
-      501,
-      "not_implemented",
-      `Only \`claim\` proposals are wired today. \`${envelope.data.kind}\` is declared but not yet implemented.`,
-    );
-  }
+  const ctx: GitHubContext = {
+    repo: env.GITHUB_REPO,
+    token: env.GITHUB_TOKEN,
+    base: env.GITHUB_BASE_BRANCH ?? "main",
+  };
+  const { kind, payload, rationale } = envelope.data;
 
-  const payload = ClaimPayload.safeParse(envelope.data.payload);
-  if (!payload.success) {
-    // The agent-parseable rejection path: every issue carries the field that
-    // caused it, so a caller can fix and retry without guessing.
-    return fail(422, "invalid_payload", "The claim payload failed validation.", {
-      issues: payload.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
-    });
-  }
+  if (kind === "claim") return handleClaim(request, env, ctx, identity, payload, rationale);
+  if (kind === "edge") return handleEdge(request, env, ctx, identity, payload, rationale);
 
-  const graph = await readGraph(env, request);
-  if (!graph) {
-    return fail(503, "graph_unavailable", "Could not read the published graph to mint an id.");
-  }
-
-  const known = [...graph.byDomain.keys()].sort();
-  if (!graph.byDomain.has(payload.data.domain)) {
-    return fail(422, "unknown_domain", `No such domain: "${payload.data.domain}".`, {
-      knownDomains: known,
-    });
-  }
-
-  const built = buildClaim({
-    payload: payload.data,
-    identity,
-    existingIdsInDomain: graph.byDomain.get(payload.data.domain) ?? [],
-    allExistingIds: graph.ids,
-    now: new Date().toISOString(),
-  });
-  if (!built.ok) {
-    return fail(422, "cannot_build_claim", built.error);
-  }
-
-  const result = await openProposalPR(
-    {
-      repo: env.GITHUB_REPO,
-      token: env.GITHUB_TOKEN,
-      base: env.GITHUB_BASE_BRANCH ?? "main",
-    },
-    built.claim,
-    envelope.data.rationale,
-    identity,
-    Date.now(),
-  );
-
-  if (!result.ok) {
-    return fail(502, "github_failed", `Could not open the proposal PR: ${result.detail}`);
-  }
-
-  return json(
-    {
-      status: "proposed",
-      claimId: built.claim.id,
-      path: claimPath(built.claim),
-      branch: result.branch,
-      pullRequest: result.url,
-      note: "Opened as a pull request. It is not merged: a human reviews it, and CI must pass.",
-    },
-    201,
+  return fail(
+    501,
+    "not_implemented",
+    `\`${kind}\` is declared but not yet wired. \`claim\` and \`edge\` are implemented.`,
   );
 }
 

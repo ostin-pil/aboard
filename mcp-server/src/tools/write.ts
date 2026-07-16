@@ -67,6 +67,67 @@ const sourceSchema = z.object({
 const claimKind = z.enum(["symptom", "mechanism", "leverage_point"]);
 const edgeKind = z.enum(["causes", "moderates", "reduces", "evidences"]);
 
+/**
+ * POST a proposal and render the endpoint's reply for a human/agent reader.
+ * Shared by every write tool: the success and the structured-rejection paths
+ * are identical across proposal kinds, so they live in one place.
+ */
+async function fileProposal(
+  kind: "claim" | "edge",
+  payload: unknown,
+  rationale: string
+): Promise<TextResult> {
+  const token = agentToken();
+  if (!token) {
+    return text(
+      "No ABOARD_AGENT_TOKEN is set, so this server cannot file a proposal. The token " +
+        "is issued by the aboard operator and maps to the provenance stamped into the " +
+        "filed content. Without one, use the PR-pack flow in CONTRIBUTING.md.",
+      true
+    );
+  }
+
+  let result;
+  try {
+    result = await postProposal({ kind, payload, rationale }, token);
+  } catch (err) {
+    return text(err instanceof ApiError ? err.message : String(err), true);
+  }
+
+  const { status, body } = result;
+
+  if (status === 201 && body.pullRequest) {
+    return text(
+      [
+        `Proposed ${body.id} — pull request opened.`,
+        ``,
+        `  ${body.pullRequest}`,
+        ``,
+        `File: ${body.path}`,
+        `It is NOT merged. A human reviews it, and CI (build, referential integrity, tests) must pass.`,
+      ].join("\n")
+    );
+  }
+
+  // The rejection path is the useful one: hand back the exact field paths so the
+  // caller can fix its payload rather than guess.
+  const issues = body.error?.issues
+    ?.map((i) => `  - ${i.path || "(root)"}: ${i.message}`)
+    .join("\n");
+
+  return text(
+    [
+      `Proposal rejected (HTTP ${status}${body.error?.code ? `, ${body.error.code}` : ""}).`,
+      body.error?.message ?? "",
+      issues ? `\nFields that failed validation:\n${issues}` : "",
+      status === 401 ? `\nThe endpoint at ${baseUrl()} did not accept the token.` : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    true
+  );
+}
+
 export function registerWriteTools(server: McpServer): void {
   server.registerTool(
     "propose_claim",
@@ -94,79 +155,35 @@ export function registerWriteTools(server: McpServer): void {
           .describe("Why this claim belongs in the graph. Becomes the PR body."),
       },
     },
-    async ({ rationale, ...payload }): Promise<TextResult> => {
-      const token = agentToken();
-      if (!token) {
-        return text(
-          "No ABOARD_AGENT_TOKEN is set, so this server cannot file a proposal. The token " +
-            "is issued by the aboard operator and maps to the provenance stamped into the " +
-            "filed content. Without one, use the PR-pack flow in CONTRIBUTING.md.",
-          true
-        );
-      }
-
-      let result;
-      try {
-        result = await postProposal({ kind: "claim", payload, rationale }, token);
-      } catch (err) {
-        const message = err instanceof ApiError ? err.message : String(err);
-        return text(message, true);
-      }
-
-      const { status, body } = result;
-
-      if (status === 201 && body.pullRequest) {
-        return text(
-          [
-            `Proposed ${body.claimId} — pull request opened.`,
-            ``,
-            `  ${body.pullRequest}`,
-            ``,
-            `File: ${body.path}`,
-            `It is NOT merged. A human reviews it, and CI (build, referential integrity, tests) must pass.`,
-          ].join("\n")
-        );
-      }
-
-      // The rejection path is the useful one: hand back the exact field paths so
-      // the caller can fix its payload rather than guess.
-      const issues = body.error?.issues
-        ?.map((i) => `  - ${i.path || "(root)"}: ${i.message}`)
-        .join("\n");
-
-      return text(
-        [
-          `Proposal rejected (HTTP ${status}${body.error?.code ? `, ${body.error.code}` : ""}).`,
-          body.error?.message ?? "",
-          issues ? `\nFields that failed validation:\n${issues}` : "",
-          status === 401
-            ? `\nThe endpoint at ${baseUrl()} did not accept the token.`
-            : "",
-        ]
-          .filter(Boolean)
-          .join("\n"),
-        true
-      );
-    }
+    async ({ rationale, ...payload }): Promise<TextResult> =>
+      fileProposal("claim", payload, rationale)
   );
 
   server.registerTool(
     "propose_edge",
     {
-      title: "Propose edge (not wired)",
+      title: "Propose an edge",
       description:
-        "STUB. Would open a PR updating data/<domain>/edges.yaml (or " +
-        "cross_domain_edges.yaml). Currently returns the PR-pack flow instead.",
+        "Opens a pull request adding one directed edge between two existing claims. " +
+        "The edge id and its target file (a domain's edges.yaml, or cross_domain_edges.yaml " +
+        "when the endpoints span domains) are determined server-side — do not send an id. " +
+        "The PR is NEVER auto-merged: a human reviews it and CI must pass. Requires ABOARD_AGENT_TOKEN.",
       inputSchema: {
-        from: z.string().describe("Source claim id."),
-        to: z.string().describe("Target claim id."),
+        from: z.string().describe("Source claim id (must already exist)."),
+        to: z.string().describe("Target claim id (must already exist)."),
         kind: edgeKind,
         strength: z.number().min(0).max(1),
-        rationale: z.string(),
-        sources: z.array(sourceSchema).default([]),
+        rationale: z
+          .string()
+          .describe("What makes this relation hold. Required; becomes the PR body."),
+        sources: z
+          .array(sourceSchema)
+          .default([])
+          .describe("Optional evidence for the relation. URLs must resolve to real pages."),
       },
     },
-    async () => notWired()
+    async ({ rationale, ...payload }): Promise<TextResult> =>
+      fileProposal("edge", payload, rationale)
   );
 
   server.registerTool(

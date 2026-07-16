@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { Claim, ClaimKind, Source, type AgentAttribution } from "@/lib/types";
+import { Claim, ClaimKind, Edge, EdgeKind, Source, type AgentAttribution } from "@/lib/types";
 
 /**
- * The agent write path: what a caller may send, and how it becomes a Claim.
+ * The agent write path: what a caller may send, and how it becomes graph data.
  *
  * Everything here is pure — no network, no filesystem, no clock — so the Worker
  * that fronts it stays a thin shell (HTTP, auth lookup, GitHub calls) and the
@@ -28,6 +28,23 @@ export const ClaimPayload = z.object({
   sources: z.array(Source).min(1),
 });
 export type ClaimPayload = z.infer<typeof ClaimPayload>;
+
+/** What an agent sends for `propose_edge`. The edge `id` and its target file are
+ *  the server's to determine; the caller names the two endpoints and the relation. */
+export const EdgePayload = z.object({
+  from: z.string().min(1).describe("Source claim id."),
+  to: z.string().min(1).describe("Target claim id."),
+  kind: EdgeKind,
+  strength: z.number().min(0).max(1),
+  // Required here, though the stored Edge schema allows it to be absent: a
+  // proposed relation with no stated reason is not reviewable. The evidence, if
+  // any, goes in sources; the rationale is the argument for the relation.
+  rationale: z
+    .string()
+    .min(1, "An edge needs a rationale: what makes this relation hold?"),
+  sources: z.array(Source).default([]),
+});
+export type EdgePayload = z.infer<typeof EdgePayload>;
 
 export const PROPOSAL_KINDS = [
   "claim",
@@ -94,26 +111,33 @@ export function inferDomainPrefix(existingIdsInDomain: readonly string[]): strin
 }
 
 /**
- * Next free id for a claim of this kind in this domain.
+ * Next unused `<stem><n>` id, given every id already in use.
  *
- * Takes the max sequence number already used for the prefix+kind and adds one,
- * rather than counting: ids are never reused, so a deleted `S3` does not come
- * back and collide with the `S3` some consumer already cached.
+ * Takes the max sequence already used for the stem and adds one, rather than
+ * counting: ids are never reused, so a deleted `S3` does not come back and
+ * collide with the `S3` some consumer already cached. The stem is anchored, so
+ * stem `E` does not swallow `IE7` or `CE1`.
  */
+export function nextSequentialId(
+  stem: string,
+  existingIds: readonly string[],
+): string {
+  const pattern = new RegExp(`^${stem}(\\d+)$`);
+  let max = 0;
+  for (const id of existingIds) {
+    const m = pattern.exec(id);
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return `${stem}${max + 1}`;
+}
+
+/** Next free id for a claim of this kind in this domain. */
 export function mintClaimId(
   prefix: string,
   kind: z.infer<typeof ClaimKind>,
   allExistingIds: readonly string[],
 ): string {
-  const stem = `${prefix}${KIND_LETTER[kind]}`;
-  const pattern = new RegExp(`^${stem}(\\d+)$`);
-
-  let max = 0;
-  for (const id of allExistingIds) {
-    const m = pattern.exec(id);
-    if (m) max = Math.max(max, Number(m[1]));
-  }
-  return `${stem}${max + 1}`;
+  return nextSequentialId(`${prefix}${KIND_LETTER[kind]}`, allExistingIds);
 }
 
 // --- assembly --------------------------------------------------------------
@@ -186,4 +210,84 @@ export function buildClaim({
     };
   }
   return { ok: true, claim: parsed.data };
+}
+
+export type BuildEdgeInput = {
+  payload: EdgePayload;
+  /** claimId → its domain, for every claim in the graph. Endpoints are checked
+   *  against this, and it decides intra- vs cross-domain. */
+  claimDomains: ReadonlyMap<string, string>;
+  /** domain → its claim ids, to infer the domain's id prefix for an intra edge. */
+  claimIdsByDomain: ReadonlyMap<string, readonly string[]>;
+  /** every edge id in the graph, so the minted id collides with nothing. */
+  allEdgeIds: readonly string[];
+};
+
+export type BuildEdgeResult =
+  | { ok: true; edge: Edge; path: string; crossDomain: boolean }
+  | { ok: false; error: string };
+
+/**
+ * Turn a validated edge payload into a full Edge, and decide which file it
+ * belongs in. An edge within one domain lands in that domain's `edges.yaml`
+ * with an id on the domain's own prefix (`E`, `IE`, `ECE`); an edge spanning two
+ * domains lands in `cross_domain_edges.yaml` with a `CE` id.
+ *
+ * Edges carry no attribution in the schema — their provenance is the PR that
+ * files them — so unlike buildClaim this stamps only the id.
+ */
+export function buildEdge({
+  payload,
+  claimDomains,
+  claimIdsByDomain,
+  allEdgeIds,
+}: BuildEdgeInput): BuildEdgeResult {
+  const { from, to } = payload;
+
+  if (from === to) {
+    return { ok: false, error: `An edge cannot point a claim at itself ("${from}").` };
+  }
+  const fromDomain = claimDomains.get(from);
+  const toDomain = claimDomains.get(to);
+  if (!fromDomain) return { ok: false, error: `Unknown source claim "${from}".` };
+  if (!toDomain) return { ok: false, error: `Unknown target claim "${to}".` };
+
+  const crossDomain = fromDomain !== toDomain;
+  let stem: string;
+  let path: string;
+
+  if (crossDomain) {
+    stem = "CE";
+    path = "data/cross_domain_edges.yaml";
+  } else {
+    const prefix = inferDomainPrefix(claimIdsByDomain.get(fromDomain) ?? []);
+    if (prefix === null) {
+      return {
+        ok: false,
+        error: `Cannot infer the id prefix for domain "${fromDomain}" — it has no existing claims.`,
+      };
+    }
+    stem = `${prefix}E`;
+    path = `data/${fromDomain}/edges.yaml`;
+  }
+
+  const parsed = Edge.safeParse({
+    id: nextSequentialId(stem, allEdgeIds),
+    fromId: from,
+    toId: to,
+    kind: payload.kind,
+    strength: payload.strength,
+    rationale: payload.rationale,
+    sources: payload.sources,
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues
+        .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+        .join("; "),
+    };
+  }
+  return { ok: true, edge: parsed.data, path, crossDomain };
 }
