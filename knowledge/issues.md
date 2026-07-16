@@ -234,7 +234,21 @@ The schema was *not* relaxed to `uri-reference`. Absolute `@id`s are the
 right contract for a graph whose whole premise is that agents can
 dereference it.
 
-Status: resolved.
+**Follow-up (2026-07-16, session 19) — the `@id`s now point at a DEAD host.**
+Wiring `aboard.untype.me` as the Worker's custom domain (PR #32) had a side
+effect: adding `routes` to `wrangler.jsonc` disabled the `workers.dev`
+subdomain (Cloudflare does this unless you also set `workers_dev: true`). So
+`aboard.ostin-pil.workers.dev` now 404s, and the site serves on
+`aboard.untype.me`. But the `SITE_URL` **build variable** in the Cloudflare
+dashboard is still pinned to the old `workers.dev` URL, so it overrides the new
+default and the published `@id`s read `https://aboard.ostin-pil.workers.dev/...`
+— absolute (so still schema-valid) but pointing at a host that no longer
+resolves. **Maintainer action: delete the `SITE_URL` build variable** (Workers →
+aboard → Settings → Build); the next deploy then emits `aboard.untype.me` `@id`s
+from the code default. Optionally set `workers_dev: true` in `wrangler.jsonc` to
+bring the old URL back as a fallback.
+
+Status: resolved for the local/CI build; one dashboard step outstanding.
 
 ---
 

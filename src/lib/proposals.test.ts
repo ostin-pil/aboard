@@ -278,9 +278,11 @@ const validEdge = {
   to: "IS1",
   kind: "causes" as const,
   strength: 0.6,
-  rationale: "r > g compounds wealth stocks faster than the wage bill grows.",
   sources: [],
 };
+// The rationale rides the envelope, not the payload (like a claim's); buildEdge
+// takes it separately and stores it on the edge.
+const EDGE_RATIONALE = "r > g compounds wealth stocks faster than the wage bill grows.";
 
 describe("nextSequentialId", () => {
   it("takes the max for the stem and adds one", () => {
@@ -304,13 +306,14 @@ describe("EdgePayload", () => {
     expect(EdgePayload.safeParse(validEdge).success).toBe(true);
   });
 
-  it("requires a rationale — an unexplained relation is not reviewable", () => {
-    expect(EdgePayload.safeParse({ ...validEdge, rationale: "" }).success).toBe(false);
-  });
-
-  it("allows an edge with no sources (rationale-only, like the seed edges)", () => {
+  it("defaults sources to [] (a rationale-only edge, like the seed edges)", () => {
     const parsed = EdgePayload.parse({ ...validEdge, sources: undefined });
     expect(parsed.sources).toEqual([]);
+  });
+
+  it("does not carry a rationale — that rides the envelope, not the payload", () => {
+    const parsed = EdgePayload.parse({ ...validEdge, rationale: "ignored" });
+    expect(parsed).not.toHaveProperty("rationale");
   });
 
   it("does not accept a caller-supplied edge id", () => {
@@ -321,6 +324,7 @@ describe("EdgePayload", () => {
 
 describe("buildEdge", () => {
   const base = {
+    rationale: EDGE_RATIONALE,
     claimDomains: CLAIM_DOMAINS,
     claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
     allEdgeIds: ALL_EDGE_IDS,
@@ -395,13 +399,33 @@ describe("buildEdge", () => {
     expect(result.edge.kind).toBe("reduces");
     expect(result.edge.strength).toBe(0.4);
     expect(result.edge.sources).toHaveLength(1);
+    // the rationale comes from the envelope arg, not the payload
+    expect(result.edge.rationale).toBe(EDGE_RATIONALE);
     expect(Edge.safeParse(result.edge).success).toBe(true);
+  });
+
+  // Guards the seam the Worker actually runs: the envelope carries the
+  // rationale, the payload does not, and the built edge ends up with it. An
+  // earlier version required rationale *in* the payload, which the client never
+  // sends — every edge proposal 422'd until a live test caught it.
+  it("mirrors the Worker flow — envelope rationale, payload without it", () => {
+    const envelope = ProposalEnvelope.parse({
+      kind: "edge",
+      rationale: "why this relation holds",
+      payload: { from: "IM1", to: "IS1", kind: "causes", strength: 0.6 },
+    });
+    const payload = EdgePayload.parse(envelope.payload);
+    const result = buildEdge({ payload, ...base, rationale: envelope.rationale });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.edge.rationale).toBe("why this relation holds");
   });
 });
 
 describe("appendEdgeToYaml", () => {
   const built = buildEdge({
     payload: EdgePayload.parse(validEdge),
+    rationale: EDGE_RATIONALE,
     claimDomains: CLAIM_DOMAINS,
     claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
     allEdgeIds: ALL_EDGE_IDS,
@@ -452,6 +476,7 @@ describe("appendEdgeToYaml", () => {
         ...validEdge,
         sources: [{ label: "P", url: "https://example.org/p", kind: "paper" }],
       }),
+      rationale: EDGE_RATIONALE,
       claimDomains: CLAIM_DOMAINS,
       claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
       allEdgeIds: ALL_EDGE_IDS,

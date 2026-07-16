@@ -75,7 +75,7 @@ Not "aboard has the answer on eggs," because it deliberately does not. Rather: t
 
 ## Appendices (links, not counted toward the 10 pages)
 
-- **Live demo and graph:** https://aboard.ostin-pil.workers.dev, the egg case under domain `epistack_cases`, alongside the two civilizational domains.
+- **Live demo and graph:** https://aboard.untype.me, the egg case under domain `epistack_cases`, alongside the two civilizational domains.
 - **Machine-readable API:** `/api/graph` (full JSON-LD graph), `/api/claims/{id}` (single claim with edges, forecasts, and dossier).
 - **Schema:** `/schema/v0.json` (authoritative) and `research/schema.md` (human-readable).
 - **Egg-case sources (primary):** Zhong et al. 2019 (JAMA); Drouin-Chartier et al. 2020 (BMJ); Sabaté et al. 2020 (Eur J Nutrition); Zhuang et al. 2022 (Circulation); Harvard T.H. Chan Nutrition Source.
