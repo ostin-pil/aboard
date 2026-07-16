@@ -30,18 +30,14 @@ export const ClaimPayload = z.object({
 export type ClaimPayload = z.infer<typeof ClaimPayload>;
 
 /** What an agent sends for `propose_edge`. The edge `id` and its target file are
- *  the server's to determine; the caller names the two endpoints and the relation. */
+ *  the server's to determine; the caller names the two endpoints and the relation.
+ *  The rationale is not here — it rides the envelope (like a claim's), and for an
+ *  edge it is also stored as the edge's own `rationale`. */
 export const EdgePayload = z.object({
   from: z.string().min(1).describe("Source claim id."),
   to: z.string().min(1).describe("Target claim id."),
   kind: EdgeKind,
   strength: z.number().min(0).max(1),
-  // Required here, though the stored Edge schema allows it to be absent: a
-  // proposed relation with no stated reason is not reviewable. The evidence, if
-  // any, goes in sources; the rationale is the argument for the relation.
-  rationale: z
-    .string()
-    .min(1, "An edge needs a rationale: what makes this relation hold?"),
   sources: z.array(Source).default([]),
 });
 export type EdgePayload = z.infer<typeof EdgePayload>;
@@ -214,6 +210,9 @@ export function buildClaim({
 
 export type BuildEdgeInput = {
   payload: EdgePayload;
+  /** The relation's rationale, from the proposal envelope. Required there, so an
+   *  edge always gets one — stored on the edge and used as the PR body. */
+  rationale: string;
   /** claimId → its domain, for every claim in the graph. Endpoints are checked
    *  against this, and it decides intra- vs cross-domain. */
   claimDomains: ReadonlyMap<string, string>;
@@ -238,6 +237,7 @@ export type BuildEdgeResult =
  */
 export function buildEdge({
   payload,
+  rationale,
   claimDomains,
   claimIdsByDomain,
   allEdgeIds,
@@ -277,7 +277,7 @@ export function buildEdge({
     toId: to,
     kind: payload.kind,
     strength: payload.strength,
-    rationale: payload.rationale,
+    rationale,
     sources: payload.sources,
   });
 

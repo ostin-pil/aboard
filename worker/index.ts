@@ -411,6 +411,7 @@ async function handleEdge(
 
   const built = buildEdge({
     payload: payload.data,
+    rationale,
     claimDomains: graph.claimDomains,
     claimIdsByDomain: graph.claimIdsByDomain,
     allEdgeIds: graph.edgeIds,
