@@ -40,7 +40,8 @@ export function agentToken(): string | null {
 
 export type ProposalResponse = {
   status?: string;
-  claimId?: string;
+  kind?: string;
+  id?: string;
   path?: string;
   pullRequest?: string;
   error?: { code?: string; message?: string; issues?: { path: string; message: string }[] };

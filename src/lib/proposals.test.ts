@@ -1,15 +1,19 @@
 import { describe, it, expect } from "vitest";
 import matter from "gray-matter";
+import YAML from "yaml";
 import {
   ClaimPayload,
+  EdgePayload,
   ProposalEnvelope,
   inferDomainPrefix,
+  nextSequentialId,
   mintClaimId,
   buildClaim,
+  buildEdge,
   type TokenIdentity,
 } from "@/lib/proposals";
-import { claimToMarkdown, claimPath } from "@/lib/data/serialize";
-import { Claim } from "@/lib/types";
+import { claimToMarkdown, claimPath, appendEdgeToYaml } from "@/lib/data/serialize";
+import { Claim, Edge } from "@/lib/types";
 
 const identity: TokenIdentity = {
   tokenId: "bot-1",
@@ -246,5 +250,214 @@ describe("claimPath", () => {
     expect(claimPath({ id: "IM4", domain: "inequality" })).toBe(
       "data/inequality/claims/IM4.md",
     );
+  });
+});
+
+// --- edges -----------------------------------------------------------------
+
+// The real id sets from data/, so the tests pin the actual conventions:
+// intra-domain edges are <domainPrefix>E<n>, cross-domain edges are CE<n>.
+const CLAIM_DOMAINS = new Map<string, string>([
+  ["S1", "democratic_backsliding"],
+  ["M1", "democratic_backsliding"],
+  ["IS1", "inequality"],
+  ["IM1", "inequality"],
+  ["IL1", "inequality"],
+  ["ECS1", "epistack_cases"],
+  ["ECM1", "epistack_cases"],
+]);
+const CLAIM_IDS_BY_DOMAIN = new Map<string, readonly string[]>([
+  ["democratic_backsliding", ["S1", "M1", "L1"]],
+  ["inequality", ["IS1", "IM1", "IL1"]],
+  ["epistack_cases", ["ECS1", "ECM1", "ECL1"]],
+]);
+const ALL_EDGE_IDS = ["E1", "E12", "IE1", "IE7", "ECE1", "ECE2", "CE1", "CE3"];
+
+const validEdge = {
+  from: "IM1",
+  to: "IS1",
+  kind: "causes" as const,
+  strength: 0.6,
+  rationale: "r > g compounds wealth stocks faster than the wage bill grows.",
+  sources: [],
+};
+
+describe("nextSequentialId", () => {
+  it("takes the max for the stem and adds one", () => {
+    expect(nextSequentialId("E", ["E1", "E12", "E3"])).toBe("E13");
+  });
+
+  it("starts at 1 for an unused stem", () => {
+    expect(nextSequentialId("CE", [])).toBe("CE1");
+  });
+
+  // Anchoring matters: stem "E" must not swallow "IE7" or "CE1", or the
+  // democratic_backsliding edge sequence would leap past ids it does not own.
+  it("anchors the stem so one prefix does not consume another's ids", () => {
+    expect(nextSequentialId("E", ["E1", "IE7", "ECE2", "CE3"])).toBe("E2");
+    expect(nextSequentialId("CE", ["ECE2", "CE3"])).toBe("CE4");
+  });
+});
+
+describe("EdgePayload", () => {
+  it("accepts a well-formed edge", () => {
+    expect(EdgePayload.safeParse(validEdge).success).toBe(true);
+  });
+
+  it("requires a rationale — an unexplained relation is not reviewable", () => {
+    expect(EdgePayload.safeParse({ ...validEdge, rationale: "" }).success).toBe(false);
+  });
+
+  it("allows an edge with no sources (rationale-only, like the seed edges)", () => {
+    const parsed = EdgePayload.parse({ ...validEdge, sources: undefined });
+    expect(parsed.sources).toEqual([]);
+  });
+
+  it("does not accept a caller-supplied edge id", () => {
+    const parsed = EdgePayload.parse({ ...validEdge, id: "IE99" });
+    expect(parsed).not.toHaveProperty("id");
+  });
+});
+
+describe("buildEdge", () => {
+  const base = {
+    claimDomains: CLAIM_DOMAINS,
+    claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
+    allEdgeIds: ALL_EDGE_IDS,
+  };
+
+  it("mints an intra-domain id on the domain's prefix and targets its edges.yaml", () => {
+    const result = buildEdge({ payload: EdgePayload.parse(validEdge), ...base });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.crossDomain).toBe(false);
+    expect(result.edge.id).toBe("IE8");
+    expect(result.path).toBe("data/inequality/edges.yaml");
+  });
+
+  it("routes an edge that spans domains to cross_domain_edges.yaml with a CE id", () => {
+    const result = buildEdge({
+      payload: EdgePayload.parse({ ...validEdge, from: "IM1", to: "S1" }),
+      ...base,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.crossDomain).toBe(true);
+    expect(result.edge.id).toBe("CE4");
+    expect(result.path).toBe("data/cross_domain_edges.yaml");
+  });
+
+  it("handles the empty-prefix domain (democratic_backsliding → E<n>)", () => {
+    const result = buildEdge({
+      payload: EdgePayload.parse({ ...validEdge, from: "M1", to: "S1" }),
+      ...base,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.edge.id).toBe("E13");
+    expect(result.path).toBe("data/democratic_backsliding/edges.yaml");
+  });
+
+  it("refuses a self-loop", () => {
+    const result = buildEdge({
+      payload: EdgePayload.parse({ ...validEdge, from: "IM1", to: "IM1" }),
+      ...base,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("itself");
+  });
+
+  it("refuses an unknown source or target claim", () => {
+    const bad = buildEdge({ payload: EdgePayload.parse({ ...validEdge, from: "NOPE" }), ...base });
+    expect(bad.ok).toBe(false);
+    if (bad.ok) return;
+    expect(bad.error).toContain("source");
+
+    const bad2 = buildEdge({ payload: EdgePayload.parse({ ...validEdge, to: "GONE" }), ...base });
+    expect(bad2.ok).toBe(false);
+    if (bad2.ok) return;
+    expect(bad2.error).toContain("target");
+  });
+
+  it("carries the payload's relation, strength, rationale, and sources through", () => {
+    const result = buildEdge({
+      payload: EdgePayload.parse({
+        ...validEdge,
+        kind: "reduces",
+        strength: 0.4,
+        sources: [{ label: "P", url: "https://example.org/p", kind: "paper" }],
+      }),
+      ...base,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.edge.kind).toBe("reduces");
+    expect(result.edge.strength).toBe(0.4);
+    expect(result.edge.sources).toHaveLength(1);
+    expect(Edge.safeParse(result.edge).success).toBe(true);
+  });
+});
+
+describe("appendEdgeToYaml", () => {
+  const built = buildEdge({
+    payload: EdgePayload.parse(validEdge),
+    claimDomains: CLAIM_DOMAINS,
+    claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
+    allEdgeIds: ALL_EDGE_IDS,
+  });
+
+  const existing = [
+    "- id: IE1",
+    "  fromId: IM1",
+    "  toId: IS1",
+    "  kind: causes",
+    "  strength: 0.7",
+    "  rationale: An existing edge.",
+    "",
+  ].join("\n");
+
+  it("appends to an existing list, preserving what was there and adding the new edge", () => {
+    if (!built.ok) throw new Error("fixture");
+    const merged = appendEdgeToYaml(existing, built.edge);
+    const list = YAML.parse(merged);
+
+    expect(Array.isArray(list)).toBe(true);
+    expect(list).toHaveLength(2);
+    // the original edge is untouched
+    expect(list[0].id).toBe("IE1");
+    // the appended edge parses under the canonical Edge schema
+    expect(Edge.safeParse(list[1]).success).toBe(true);
+    expect(list[1].id).toBe("IE8");
+  });
+
+  it("starts a fresh list from an empty or `[]` file (a domain's first edge)", () => {
+    if (!built.ok) throw new Error("fixture");
+    for (const empty of ["", "   \n", "[]"]) {
+      const list = YAML.parse(appendEdgeToYaml(empty, built.edge));
+      expect(list).toHaveLength(1);
+      expect(list[0].id).toBe("IE8");
+    }
+  });
+
+  it("omits an empty sources line for a rationale-only edge", () => {
+    if (!built.ok) throw new Error("fixture");
+    const merged = appendEdgeToYaml("", built.edge);
+    expect(merged).not.toContain("sources");
+  });
+
+  it("keeps sources when the edge has them", () => {
+    const withSrc = buildEdge({
+      payload: EdgePayload.parse({
+        ...validEdge,
+        sources: [{ label: "P", url: "https://example.org/p", kind: "paper" }],
+      }),
+      claimDomains: CLAIM_DOMAINS,
+      claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
+      allEdgeIds: ALL_EDGE_IDS,
+    });
+    if (!withSrc.ok) throw new Error("fixture");
+    const list = YAML.parse(appendEdgeToYaml("", withSrc.edge));
+    expect(list[0].sources[0].url).toBe("https://example.org/p");
   });
 });
