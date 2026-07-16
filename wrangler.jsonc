@@ -16,6 +16,16 @@
     "binding": "ASSETS"
   },
 
+  // Custom domain for the Worker. On deploy, Cloudflare provisions the DNS
+  // record and cert automatically — provided the untype.me zone is in this
+  // account (its nameservers are Cloudflare's). After this lands and resolves,
+  // remove the SITE_URL build variable in the dashboard so siteBaseUrl() falls
+  // back to its canonical default (https://aboard.untype.me) and the JSON-LD
+  // @ids carry the real domain instead of the workers.dev origin.
+  "routes": [
+    { "pattern": "aboard.untype.me", "custom_domain": true }
+  ],
+
   "vars": {
     "GITHUB_REPO": "ostin-pil/aboard",
     "GITHUB_BASE_BRANCH": "main"
