@@ -243,12 +243,13 @@ subdomain (Cloudflare does this unless you also set `workers_dev: true`). So
 dashboard is still pinned to the old `workers.dev` URL, so it overrides the new
 default and the published `@id`s read `https://aboard.ostin-pil.workers.dev/...`
 — absolute (so still schema-valid) but pointing at a host that no longer
-resolves. **Maintainer action: delete the `SITE_URL` build variable** (Workers →
-aboard → Settings → Build); the next deploy then emits `aboard.untype.me` `@id`s
-from the code default. Optionally set `workers_dev: true` in `wrangler.jsonc` to
-bring the old URL back as a fallback.
+resolves. **Resolved (2026-07-17):** the `SITE_URL` build variable was deleted
+from the Cloudflare dashboard, and the next deploy picked up the code default —
+the live graph now emits `https://aboard.untype.me/...` `@id`s and validates
+clean. (Optional, not done: set `workers_dev: true` in `wrangler.jsonc` to bring
+the old workers.dev URL back as a fallback; nothing depends on it.)
 
-Status: resolved for the local/CI build; one dashboard step outstanding.
+Status: resolved.
 
 ---
 

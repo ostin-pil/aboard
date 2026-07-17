@@ -31,6 +31,7 @@ import {
   claimPath,
   appendEdgeToYaml,
 } from "../src/lib/data/serialize";
+import { isTransientStatus, withRetry } from "../src/lib/http-retry";
 import type { Claim, Edge } from "../src/lib/types";
 
 interface Env {
@@ -150,11 +151,9 @@ function fromBase64(b64: string): string {
   return new TextDecoder().decode(bytes);
 }
 
-async function gh(
-  ctx: GitHubContext,
-  path: string,
-  init: RequestInit = {},
-): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
+type GhResult = { ok: boolean; status: number; body: Record<string, unknown> };
+
+async function gh(ctx: GitHubContext, path: string, init: RequestInit = {}): Promise<GhResult> {
   const res = await fetch(`https://api.github.com/repos/${ctx.repo}${path}`, {
     ...init,
     headers: {
@@ -169,13 +168,28 @@ async function gh(
   return { ok: res.ok, status: res.status, body };
 }
 
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * A GitHub GET, retried through a transient 5xx/429 (the base-ref read that a
+ * live GitHub incident 503'd). Reads only — the mutating calls stay single-shot,
+ * since a 5xx on a POST/PUT is ambiguous and a blind retry could double-create.
+ */
+async function ghGet(ctx: GitHubContext, path: string): Promise<GhResult> {
+  return withRetry(() => gh(ctx, path), {
+    retries: 3,
+    transient: (r) => isTransientStatus(r.status),
+    sleep,
+  });
+}
+
 /** Current content + blob sha of a file on `ref`, or null if it does not exist. */
 async function getFile(
   ctx: GitHubContext,
   path: string,
   ref: string,
 ): Promise<{ content: string; sha: string } | null> {
-  const res = await gh(ctx, `/contents/${path}?ref=${encodeURIComponent(ref)}`);
+  const res = await ghGet(ctx, `/contents/${path}?ref=${encodeURIComponent(ref)}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`could not read ${path} (HTTP ${res.status})`);
   const sha = typeof res.body.sha === "string" ? res.body.sha : "";
@@ -208,7 +222,7 @@ async function submitProposalPR(
 ): Promise<{ ok: true; url: string; branch: string } | { ok: false; detail: string }> {
   const branch = `agent/${s.identity.tokenId}/${s.slug}-${s.stamp}`;
 
-  const baseRef = await gh(ctx, `/git/ref/heads/${ctx.base}`);
+  const baseRef = await ghGet(ctx, `/git/ref/heads/${ctx.base}`);
   if (!baseRef.ok) {
     return { ok: false, detail: `could not read base branch ${ctx.base} (HTTP ${baseRef.status})` };
   }
