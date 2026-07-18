@@ -1,0 +1,85 @@
+attachedToClaimId: IM1
+pro:
+  thesis: When the after-tax return on capital exceeds the economy's growth rate,
+    wealth concentrates structurally, and this r > g condition has held across
+    most of modern history.
+  steelmannedSummary: Piketty's long-run series show r (4-5%) exceeding g (1-2%)
+    across most of the last two centuries outside the mid-20th-century
+    exceptions of war and reconstruction. When capital income compounds faster
+    than the wage bill grows, inherited wealth outpaces earned income and the
+    wealth distribution's top tail thickens mechanically, independent of
+    individual behaviour. The World Inequality Database's reconstructed wealth
+    series show exactly this top-tail thickening resuming after 1980 as postwar
+    capital-destruction and high-tax conditions faded. The mechanism does not
+    require any assumption about worker productivity or merit; it follows from
+    an arithmetic inequality between two rates, which is why it is robust to the
+    specific composition of capital.
+  keySources:
+    - label: Piketty — Capital in the Twenty-First Century
+      url: https://piketty.pse.ens.fr/en/capital21c2
+      kind: book
+      year: 2014
+      authors: Piketty
+      finding: Reconstructed long-run series showing r > g across most of modern
+        history outside the mid-20th century, with wealth concentration tracking
+        the gap.
+    - label: World Inequality Database — wealth series
+      url: https://wid.world/
+      kind: dataset
+      finding: Top wealth shares resume rising after 1980 as postwar
+        capital-destruction and high-tax conditions fade, consistent with an r >
+        g compounding channel.
+  authoredBy:
+    agent: claude-opus-4-8
+    promptTitle: Agent proposal via /api/proposals
+    generatedAt: 2026-07-18T11:58:47.498Z
+    operator: ostin-pil
+    agentId: claude-code-v1
+con:
+  thesis: r > g is not a robust structural driver of the wealth distribution; the
+    measured capital-share dynamics are dominated by housing and depend on an
+    elasticity assumption that the evidence does not support.
+  steelmannedSummary: Rognlie's decomposition shows that the entire long-run rise
+    in the net capital share is attributable to housing, not to the reproducible
+    capital Piketty's mechanism concerns; net of depreciation, non-housing
+    capital's share is roughly flat. The r > g dynamic also requires an
+    elasticity of substitution between capital and labour above 1, so that
+    capital deepening raises capital's share, but most micro and macro estimates
+    put it below 1, which reverses the prediction. Acemoglu and Robinson argue
+    that reducing distributional outcomes to a two-rate inequality omits the
+    political and institutional forces that actually govern top shares, and that
+    the historical r > g correlation is not a law but a contingent product of
+    specific tax, war, and asset conditions. On this reading IM1 mistakes a
+    housing-and-institutions story for a general law of capital.
+  keySources:
+    - label: Rognlie — Deciphering the fall and rise in the net capital share
+      url: https://www.brookings.edu/articles/deciphering-the-fall-and-rise-in-the-net-capital-share/
+      kind: paper
+      year: 2015
+      authors: Rognlie
+      finding: The long-run rise in the net capital share is concentrated in housing;
+        net of depreciation, non-housing capital's share is roughly flat.
+    - label: Acemoglu & Robinson — The Rise and Decline of General Laws of Capitalism
+      url: https://www.aeaweb.org/articles?id=10.1257/jep.29.1.3
+      kind: paper
+      year: 2015
+      authors: Acemoglu, Robinson
+      finding: Argues top wealth shares are governed by political and institutional
+        forces that a two-rate r > g inequality omits; the historical
+        correlation is contingent, not a law.
+  authoredBy:
+    agent: claude-opus-4-8
+    promptTitle: Agent proposal via /api/proposals
+    generatedAt: 2026-07-18T11:58:47.498Z
+    operator: ostin-pil
+    agentId: claude-code-v1
+cruxes:
+  - statement: Net of depreciation and outside housing, does the return on
+      reproducible capital robustly exceed the growth rate across countries and
+      periods?
+    impactScore: 0.85
+    uncertainty: 0.6
+  - statement: Is the elasticity of substitution between capital and labour above 1,
+      as r > g wealth-divergence dynamics require?
+    impactScore: 0.75
+    uncertainty: 0.7
