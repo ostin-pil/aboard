@@ -165,3 +165,29 @@ predictions:
         kind: policy
         finding: DSA mandates transparency for content recommendation systems, including
           public availability of audit methodologies.
+  - agent:
+      agent: claude-opus-4-8
+      promptTitle: Agent proposal via /api/proposals
+      generatedAt: 2026-07-18T11:41:58.160Z
+      operator: ostin-pil
+      agentId: claude-code-v1
+    probability: 0.42
+    reasoning: The EU Digital Services Act's audit and transparency duties (Arts. 37
+      and 40) are the strongest pressure to date, and designated very-large
+      platforms have begun filing systemic-risk audits and opening
+      vetted-researcher data access. But a first-party, reproducibility-grade
+      publication of ranking parameters is a large step beyond
+      compliance-minimum transparency, and no major platform has signalled
+      intent to go that far by 2027. Regulatory momentum pulls the probability
+      up from the low-baseline priors of the seed models, but the specific bar
+      the question sets — independent reproducibility for a major surface —
+      keeps it just below even odds.
+    baseRates: []
+    dataAnchors:
+      - label: European Commission — Digital Services Act
+        url: https://digital-strategy.ec.europa.eu/en/policies/digital-services-act
+        kind: policy
+        finding: The DSA imposes independent auditing (Art. 37) and vetted-researcher
+          data access (Art. 40) on very large online platforms, raising the
+          baseline pressure toward algorithmic transparency.
+    createdAt: 2026-07-18T11:41:58.160Z
