@@ -1,13 +1,9 @@
 /**
- * Write tools.
- *
- * `propose_claim` is wired: it POSTs to the deployed `/api/proposals` endpoint,
- * which validates against the canonical Zod schemas, stamps provenance from the
- * agent token, and opens a pull request. It never merges — a human is the
- * admission gate, and CI must pass.
- *
- * The other three remain declared-but-stubbed so the surface stays discoverable.
- * They are serialization variants of the same pipeline and land next.
+ * Write tools. All four are wired: `propose_claim`, `propose_edge`,
+ * `propose_forecast_prediction`, and `propose_dossier` each POST to the deployed
+ * `/api/proposals` endpoint, which validates against the canonical Zod schemas,
+ * stamps provenance from the agent token, and opens a pull request. None ever
+ * merges — a human is the admission gate, and CI must pass.
  *
  * This server holds no GitHub credential and never touches `data/`. It is a thin
  * client of the HTTP endpoint, which is the whole point: any agent can use that
@@ -24,20 +20,6 @@ type TextResult = {
 
 function text(body: string, isError = false): TextResult {
   return { content: [{ type: "text", text: body }], isError };
-}
-
-const NOT_WIRED =
-  "This proposal kind is not wired yet. The gated write path itself IS built — " +
-  "`propose_claim` files a real, Zod-validated, provenance-stamped pull request " +
-  "through POST /api/proposals — but edges, predictions, and dossier positions " +
-  "are serialization variants that land next. To file one today, use the PR-pack " +
-  "flow in CONTRIBUTING.md: sketch in the /graph sandbox, export the PR pack, " +
-  "clone the repo and unpack into data/<domain>/, fill in real Source citations " +
-  "and DataPoint anchors, validate with `npx tsx clients/validate.ts` + " +
-  "`npm run build`, then open a pull request.";
-
-function notWired(): TextResult {
-  return { content: [{ type: "text", text: NOT_WIRED }], isError: true };
 }
 
 // --- shared schema fragments (mirror src/lib/types.ts) ---
@@ -73,7 +55,7 @@ const edgeKind = z.enum(["causes", "moderates", "reduces", "evidences"]);
  * are identical across proposal kinds, so they live in one place.
  */
 async function fileProposal(
-  kind: "claim" | "edge" | "prediction",
+  kind: "claim" | "edge" | "prediction" | "dossier",
   payload: unknown,
   rationale: string
 ): Promise<TextResult> {
@@ -210,22 +192,39 @@ export function registerWriteTools(server: McpServer): void {
       fileProposal("prediction", payload, reasoning)
   );
 
+  const argumentInput = z.object({
+    thesis: z.string(),
+    steelmannedSummary: z.string(),
+    keySources: z.array(sourceSchema).min(1),
+  });
+  const cruxInput = z.object({
+    statement: z.string(),
+    impactScore: z.number().min(0).max(1),
+    uncertainty: z.number().min(0).max(1),
+  });
+
   server.registerTool(
-    "propose_dossier_position",
+    "propose_dossier",
     {
-      title: "Propose dossier position (not wired)",
+      title: "Propose a dual-dossier",
       description:
-        "STUB. Would open a PR creating or updating " +
-        "data/<domain>/dossiers/<claim-id>.yaml. Currently returns the " +
-        "PR-pack flow instead.",
+        "Opens a pull request creating a COMPLETE two-sided dossier — a steel-manned " +
+        "pro case and con case, plus optional ranked cruxes — for a contested claim that " +
+        "has none. Both sides are required; a dossier is inherently two-sided. Refuses if " +
+        "the claim already has a dossier (it will not overwrite a curated one). The authoring " +
+        "agent is stamped server-side. NEVER auto-merged. Requires ABOARD_AGENT_TOKEN.",
       inputSchema: {
-        claimId: z.string().describe("Id of the contested claim."),
-        side: z.enum(["pro", "con"]),
-        thesis: z.string(),
-        steelmannedSummary: z.string(),
-        keySources: z.array(sourceSchema),
+        claimId: z.string().describe("The contested claim (must exist and lack a dossier)."),
+        pro: argumentInput.describe("The steel-manned case FOR the claim."),
+        con: argumentInput.describe("The steel-manned case AGAINST it."),
+        cruxes: z
+          .array(cruxInput)
+          .default([])
+          .describe("Ranked cruxes: questions whose resolution would move the disagreement."),
+        rationale: z.string().describe("Why this dossier belongs. Becomes the PR body."),
       },
     },
-    async () => notWired()
+    async ({ rationale, ...payload }): Promise<TextResult> =>
+      fileProposal("dossier", payload, rationale)
   );
 }

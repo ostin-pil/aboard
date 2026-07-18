@@ -5,6 +5,7 @@ import {
   ClaimPayload,
   EdgePayload,
   PredictionPayload,
+  DossierPayload,
   ProposalEnvelope,
   inferDomainPrefix,
   nextSequentialId,
@@ -12,6 +13,7 @@ import {
   buildClaim,
   buildEdge,
   buildPrediction,
+  buildDossier,
   type TokenIdentity,
 } from "@/lib/proposals";
 import {
@@ -19,8 +21,10 @@ import {
   claimPath,
   appendEdgeToYaml,
   appendPredictionToForecast,
+  dossierToYaml,
+  dossierPath,
 } from "@/lib/data/serialize";
-import { Claim, Edge, Forecast } from "@/lib/types";
+import { Claim, Edge, Forecast, Dossier } from "@/lib/types";
 
 const identity: TokenIdentity = {
   tokenId: "bot-1",
@@ -94,7 +98,7 @@ describe("ProposalEnvelope", () => {
   });
 
   it("knows the four proposal kinds", () => {
-    for (const kind of ["claim", "edge", "prediction", "dossier_position"]) {
+    for (const kind of ["claim", "edge", "prediction", "dossier"]) {
       expect(
         ProposalEnvelope.safeParse({ kind, payload: {}, rationale: "because" }).success,
       ).toBe(true);
@@ -626,5 +630,114 @@ describe("appendPredictionToForecast", () => {
     for (const line of existingFolded.split("\n")) {
       if (line.trim()) expect(out.has(line)).toBe(true); // every original line survives
     }
+  });
+});
+
+// --- dossiers --------------------------------------------------------------
+
+const argument = (thesis: string) => ({
+  thesis,
+  steelmannedSummary: `A steel-manned case: ${thesis}`,
+  keySources: [{ label: "A source", url: "https://example.org/s", kind: "paper" as const }],
+});
+
+const validDossier = {
+  claimId: "ECM1",
+  pro: argument("The mechanism is real."),
+  con: argument("The mechanism is not meaningful."),
+  cruxes: [{ statement: "Does a dose-response survive adjustment?", impactScore: 0.85, uncertainty: 0.7 }],
+};
+
+describe("DossierPayload", () => {
+  it("accepts a complete two-sided dossier", () => {
+    expect(DossierPayload.safeParse(validDossier).success).toBe(true);
+  });
+
+  it("rejects a one-sided dossier — both sides are required", () => {
+    const { con: _con, ...oneSided } = validDossier;
+    expect(DossierPayload.safeParse(oneSided).success).toBe(false);
+  });
+
+  it("requires each side to cite at least one source", () => {
+    const noSources = { ...validDossier, pro: { ...validDossier.pro, keySources: [] } };
+    expect(DossierPayload.safeParse(noSources).success).toBe(false);
+  });
+
+  it("defaults cruxes to []", () => {
+    const { cruxes: _c, ...noCruxes } = validDossier;
+    expect(DossierPayload.parse(noCruxes).cruxes).toEqual([]);
+  });
+});
+
+describe("buildDossier", () => {
+  const base = { identity, now: "2026-07-18T12:00:00.000Z" };
+
+  it("stamps authoredBy on BOTH sides and builds a valid dossier", () => {
+    const result = buildDossier({
+      payload: DossierPayload.parse(validDossier),
+      claimExists: true,
+      dossierExists: false,
+      ...base,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.dossier.attachedToClaimId).toBe("ECM1");
+    expect(result.dossier.pro.authoredBy.operator).toBe("ostin-pil");
+    expect(result.dossier.con.authoredBy.agentId).toBe("a1b2c3d4e5f60718");
+    expect(result.dossier.cruxes).toHaveLength(1);
+    expect(Dossier.safeParse(result.dossier).success).toBe(true);
+  });
+
+  it("refuses a claim that does not exist", () => {
+    const result = buildDossier({
+      payload: DossierPayload.parse(validDossier),
+      claimExists: false,
+      dossierExists: false,
+      ...base,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("Unknown claim");
+  });
+
+  // The whole point of the reframe: never clobber a curated dossier.
+  it("refuses to overwrite a claim that already has a dossier", () => {
+    const result = buildDossier({
+      payload: DossierPayload.parse(validDossier),
+      claimExists: true,
+      dossierExists: true,
+      ...base,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain("already has a dossier");
+    expect(result.error).toContain("will not overwrite");
+  });
+});
+
+describe("dossierToYaml", () => {
+  const built = buildDossier({
+    payload: DossierPayload.parse(validDossier),
+    identity,
+    claimExists: true,
+    dossierExists: false,
+    now: "2026-07-18T12:00:00.000Z",
+  });
+
+  it("round-trips: serialize → parse → validates under the Dossier schema", () => {
+    if (!built.ok) throw new Error("fixture");
+    const yaml = dossierToYaml(built.dossier);
+    const reparsed = Dossier.safeParse(YAML.parse(yaml));
+    expect(reparsed.success).toBe(true);
+    if (!reparsed.success) return;
+    expect(reparsed.data).toEqual(built.dossier);
+  });
+});
+
+describe("dossierPath", () => {
+  it("targets the layout in CLAUDE.md", () => {
+    expect(dossierPath("ECM1", "epistack_cases")).toBe(
+      "data/epistack_cases/dossiers/ECM1.yaml",
+    );
   });
 });

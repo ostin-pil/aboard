@@ -1,7 +1,8 @@
 # Plan: MCP write path — wire the four `propose_*` tools
 
-> **Status (2026-07-18, session 20): `propose_claim`, `propose_edge`, and
-> `propose_forecast_prediction` are live.**
+> **Status (2026-07-18, session 20): all four write tools are live** —
+> `propose_claim`, `propose_edge`, `propose_forecast_prediction`, and
+> `propose_dossier`.
 >
 > **The architecture below is wrong, and was corrected in the build.** This plan
 > specifies a Next.js API route (`POST /api/proposals`). That is impossible:
@@ -15,11 +16,12 @@
 > and the canonical Zod schemas in `src/lib/types.ts` remain the single source of
 > validation truth. The static export stays intact.
 >
-> Done: steps 1–5 and 7 for claims (session 18), `propose_edge` (session 19),
-> and `propose_forecast_prediction` (session 20). Remaining:
-> `propose_dossier_position` (which is really a whole two-sided dossier — see
-> below), plus rate limiting, which needs a KV or Durable Object binding.
-> Contract and operator runbook: `worker/README.md`.
+> Done: all four `propose_*` tools (sessions 18–20). `propose_dossier` was
+> reframed from the plan's single-side `propose_dossier_position`: a dossier
+> requires both sides, so the tool proposes a COMPLETE dual-dossier for a claim
+> that lacks one, and refuses to overwrite a curated one. Remaining: rate
+> limiting, which needs a KV or Durable Object binding — a Worker has no memory
+> between requests. Contract and operator runbook: `worker/README.md`.
 
 Convert the MCP server's stubbed write tools into a real gated write path:
 agent proposes → canonical Zod validation → branch + PR → human merge. This is
