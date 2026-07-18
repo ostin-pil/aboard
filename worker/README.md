@@ -121,7 +121,7 @@ Through MCP, the same calls are `propose_claim` and `propose_edge`; set
 | `201` | PR opened. Body carries `kind`, `id`, `path`, `branch`, `pullRequest`. |
 | `401` | Missing or unknown bearer token. Nothing written. |
 | `422` | Validation failed. Body carries `issues[]` with the exact field paths — an agent can fix and retry without guessing. |
-| `501` | `prediction` / `dossier_position` — declared, not yet wired. |
+| `501` | `dossier_position` — declared, not yet wired. |
 | `502` | GitHub refused. No PR. |
 | `503` | No credential configured, or the graph could not be read. |
 
@@ -131,8 +131,8 @@ Through MCP, the same calls are `propose_claim` and `propose_edge`; set
   memory between requests, so this needs a KV or Durable Object binding. Until
   then, a token is trusted to behave, and revocation is manual. Do not hand a
   token to something you would not hand the repo to.
-- **`propose_claim` and `propose_edge` are wired.** Predictions and dossier
-  positions are serialization variants of the same pipeline, still to come.
+- **`propose_claim`, `propose_edge`, and `propose_forecast_prediction` are
+  wired.** Dossier positions are the last of the same pipeline, still to come.
 - **A PAT, not a GitHub App.** The plan's stated v1. An App is the end state.
 - **New domains are refused.** Minting an id needs an existing prefix to extend,
   and inventing one would silently fork a domain's namespace. A human seeds a new
