@@ -22,10 +22,12 @@ import {
   ClaimPayload,
   EdgePayload,
   PredictionPayload,
+  DossierPayload,
   ProposalEnvelope,
   buildClaim,
   buildEdge,
   buildPrediction,
+  buildDossier,
   type TokenIdentity,
 } from "../src/lib/proposals";
 import {
@@ -33,9 +35,11 @@ import {
   claimPath,
   appendEdgeToYaml,
   appendPredictionToForecast,
+  dossierToYaml,
+  dossierPath,
 } from "../src/lib/data/serialize";
 import { isTransientStatus, withRetry } from "../src/lib/http-retry";
-import type { Claim, Edge, Prediction } from "../src/lib/types";
+import type { Claim, Dossier, Edge, Prediction } from "../src/lib/types";
 
 interface Env {
   /** Static assets binding — the built `out/` directory. */
@@ -92,6 +96,8 @@ type Graph = {
   edgeIds: string[];
   /** forecastId → the domain of the claim it is attached to (its file's domain). */
   forecastDomains: Map<string, string>;
+  /** claim ids that already have a dossier — so a new one is not proposed over them. */
+  claimsWithDossier: Set<string>;
 };
 
 /**
@@ -111,6 +117,7 @@ async function readGraph(env: Env, request: Request): Promise<Graph | null> {
     "aboard:claims"?: unknown;
     "aboard:edges"?: unknown;
     "aboard:forecasts"?: unknown;
+    "aboard:dossiers"?: unknown;
   };
   const claims = body["aboard:claims"];
   if (!Array.isArray(claims)) return null;
@@ -151,7 +158,24 @@ async function readGraph(env: Env, request: Request): Promise<Graph | null> {
     }
   }
 
-  return { claimIds, claimDomains, claimIdsByDomain, edgeIds, forecastDomains };
+  const dossiers = body["aboard:dossiers"];
+  const claimsWithDossier = new Set<string>();
+  if (Array.isArray(dossiers)) {
+    for (const entry of dossiers as Record<string, unknown>[]) {
+      const attached = entry["aboard:attachedTo"] as { "@id"?: string } | undefined;
+      const claimId = typeof attached?.["@id"] === "string" ? attached["@id"].split("/").pop() ?? "" : "";
+      if (claimId) claimsWithDossier.add(claimId);
+    }
+  }
+
+  return {
+    claimIds,
+    claimDomains,
+    claimIdsByDomain,
+    edgeIds,
+    forecastDomains,
+    claimsWithDossier,
+  };
 }
 
 // --- GitHub ----------------------------------------------------------------
@@ -396,6 +420,34 @@ function predictionPrBody(
   ].join("\n");
 }
 
+function dossierPrBody(dossier: Dossier, rationale: string, identity: TokenIdentity): string {
+  return [
+    `Filed by an agent through \`POST /api/proposals\`. **Not auto-merged** — a human is the admission gate.`,
+    ``,
+    `## Rationale`,
+    ``,
+    rationale,
+    ``,
+    `## Dossier on \`${dossier.attachedToClaimId}\``,
+    ``,
+    `**Pro —** ${dossier.pro.thesis}`,
+    ``,
+    `**Con —** ${dossier.con.thesis}`,
+    ``,
+    `${dossier.cruxes.length} ranked crux${dossier.cruxes.length === 1 ? "" : "es"}; ` +
+      `${dossier.pro.keySources.length + dossier.con.keySources.length} cited sources across both sides.`,
+    ``,
+    ...provenanceBlock(identity),
+    ``,
+    `## Reviewer checklist`,
+    ``,
+    `- [ ] Both sides are genuinely steel-manned, not a strawman paired with a favourite.`,
+    `- [ ] Every keySource is real and supports its side.`,
+    `- [ ] The cruxes are the questions that would actually move the disagreement.`,
+    `- [ ] CI is green (build, referential integrity, tests).`,
+  ].join("\n");
+}
+
 // --- the endpoint ----------------------------------------------------------
 
 async function handleClaim(
@@ -592,6 +644,62 @@ async function handlePrediction(
   );
 }
 
+async function handleDossier(
+  request: Request,
+  env: Env,
+  ctx: GitHubContext,
+  identity: TokenIdentity,
+  rawPayload: unknown,
+  rationale: string,
+): Promise<Response> {
+  const payload = DossierPayload.safeParse(rawPayload);
+  if (!payload.success) {
+    return fail(422, "invalid_payload", "The dossier payload failed validation.", {
+      issues: issuesOf(payload.error),
+    });
+  }
+
+  const graph = await readGraph(env, request);
+  if (!graph) return fail(503, "graph_unavailable", "Could not read the published graph.");
+
+  const built = buildDossier({
+    payload: payload.data,
+    identity,
+    claimExists: graph.claimDomains.has(payload.data.claimId),
+    dossierExists: graph.claimsWithDossier.has(payload.data.claimId),
+    now: new Date().toISOString(),
+  });
+  if (!built.ok) return fail(422, "cannot_build_dossier", built.error);
+
+  const domain = graph.claimDomains.get(payload.data.claimId) ?? "";
+  const path = dossierPath(payload.data.claimId, domain);
+
+  const result = await submitProposalPR(ctx, {
+    slug: `${payload.data.claimId.toLowerCase()}-dossier`,
+    identity,
+    stamp: Date.now(),
+    path,
+    content: dossierToYaml(built.dossier),
+    commitMessage: `feat(dossier): propose a dual-dossier on ${payload.data.claimId}`,
+    prTitle: `feat(dossier): propose a dual-dossier on ${payload.data.claimId}`,
+    prBody: dossierPrBody(built.dossier, rationale, identity),
+  });
+  if (!result.ok) return fail(502, "github_failed", `Could not open the proposal PR: ${result.detail}`);
+
+  return json(
+    {
+      status: "proposed",
+      kind: "dossier",
+      id: payload.data.claimId,
+      path,
+      branch: result.branch,
+      pullRequest: result.url,
+      note: "Opened as a pull request. It is not merged: a human reviews it, and CI must pass.",
+    },
+    201,
+  );
+}
+
 async function handleProposal(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") {
     return fail(405, "method_not_allowed", "POST a proposal envelope to this endpoint.");
@@ -630,12 +738,9 @@ async function handleProposal(request: Request, env: Env): Promise<Response> {
   if (kind === "claim") return handleClaim(request, env, ctx, identity, payload, rationale);
   if (kind === "edge") return handleEdge(request, env, ctx, identity, payload, rationale);
   if (kind === "prediction") return handlePrediction(request, env, ctx, identity, payload, rationale);
+  if (kind === "dossier") return handleDossier(request, env, ctx, identity, payload, rationale);
 
-  return fail(
-    501,
-    "not_implemented",
-    `\`${kind}\` is declared but not yet wired. \`claim\`, \`edge\`, and \`prediction\` are implemented.`,
-  );
+  return fail(501, "not_implemented", `\`${kind}\` is declared but not wired.`);
 }
 
 export default {

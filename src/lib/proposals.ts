@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   Claim,
   ClaimKind,
+  Dossier,
   Edge,
   EdgeKind,
   Prediction,
@@ -63,11 +64,36 @@ export const PredictionPayload = z.object({
 });
 export type PredictionPayload = z.infer<typeof PredictionPayload>;
 
+/** One steel-manned side of a dossier. The `authoredBy` is stamped server-side. */
+const ArgumentPayload = z.object({
+  thesis: z.string().min(1),
+  steelmannedSummary: z.string().min(1),
+  keySources: z.array(Source).min(1),
+});
+
+const CruxPayload = z.object({
+  statement: z.string().min(1),
+  impactScore: z.number().min(0).max(1),
+  uncertainty: z.number().min(0).max(1),
+});
+
+/** What an agent sends for `propose_dossier`: a COMPLETE dual-dossier for a claim
+ *  that has none. A dossier requires both sides, so a one-sided proposal cannot
+ *  form a valid one — the caller supplies both, and the server refuses to
+ *  overwrite an existing dossier. */
+export const DossierPayload = z.object({
+  claimId: z.string().min(1),
+  pro: ArgumentPayload,
+  con: ArgumentPayload,
+  cruxes: z.array(CruxPayload).default([]),
+});
+export type DossierPayload = z.infer<typeof DossierPayload>;
+
 export const PROPOSAL_KINDS = [
   "claim",
   "edge",
   "prediction",
-  "dossier_position",
+  "dossier",
 ] as const;
 
 export const ProposalEnvelope = z.object({
@@ -370,4 +396,75 @@ export function buildPrediction({
     };
   }
   return { ok: true, prediction: parsed.data, forecastId: payload.forecastId };
+}
+
+export type BuildDossierInput = {
+  payload: DossierPayload;
+  identity: TokenIdentity;
+  /** Whether the target claim exists in the graph. */
+  claimExists: boolean;
+  /** Whether the target claim already has a dossier (refuse — don't overwrite). */
+  dossierExists: boolean;
+  now: string;
+};
+
+export type BuildDossierResult =
+  | { ok: true; dossier: Dossier }
+  | { ok: false; error: string };
+
+/**
+ * Turn a validated payload into a complete Dossier, stamping the authoring agent
+ * on both sides. A dossier is a whole two-sided artifact — this only ever creates
+ * one where none exists; it refuses to overwrite a curated dossier, and refuses a
+ * claim that does not exist.
+ */
+export function buildDossier({
+  payload,
+  identity,
+  claimExists,
+  dossierExists,
+  now,
+}: BuildDossierInput): BuildDossierResult {
+  if (!claimExists) {
+    return { ok: false, error: `Unknown claim "${payload.claimId}".` };
+  }
+  if (dossierExists) {
+    return {
+      ok: false,
+      error:
+        `Claim "${payload.claimId}" already has a dossier. The write path creates a ` +
+        `dossier where none exists; it will not overwrite a curated one.`,
+    };
+  }
+
+  const authoredBy: AgentAttribution = {
+    agent: identity.agent,
+    promptTitle: "Agent proposal via /api/proposals",
+    operator: identity.operator,
+    agentId: identity.agentId,
+    generatedAt: now,
+  };
+  const side = (a: DossierPayload["pro"]) => ({
+    thesis: a.thesis,
+    steelmannedSummary: a.steelmannedSummary,
+    keySources: a.keySources,
+    authoredBy,
+  });
+
+  const parsed = Dossier.safeParse({
+    attachedToClaimId: payload.claimId,
+    pro: side(payload.pro),
+    con: side(payload.con),
+    cruxes: payload.cruxes,
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues
+        .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+        .join("; "),
+    };
+  }
+  return { ok: true, dossier: parsed.data };
 }

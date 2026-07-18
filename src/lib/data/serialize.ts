@@ -1,5 +1,5 @@
 import YAML, { Scalar, visit } from "yaml";
-import type { Claim, Edge, Prediction } from "@/lib/types";
+import type { Claim, Dossier, Edge, Prediction } from "@/lib/types";
 
 /**
  * YAML resolves an *unquoted* ISO date or datetime to its timestamp type, and
@@ -118,4 +118,22 @@ export function appendPredictionToForecast(existing: string, prediction: Predict
   // diff is only the appended prediction. lineWidth:0 would unfold every long
   // string in the file and reformat the whole thing.
   return doc.toString();
+}
+
+/**
+ * A complete dossier → a new YAML file.
+ *
+ * Always a fresh file (the write path only creates a dossier where none exists),
+ * so there is no existing content to preserve — default line width, matching the
+ * folded style of the hand-authored dossiers. Timestamps stay unquoted: like
+ * forecasts, dossier files are read by the `yaml` package (YAML 1.2), which does
+ * not coerce an ISO scalar to a Date.
+ */
+export function dossierToYaml(dossier: Dossier): string {
+  return new YAML.Document(dossier).toString();
+}
+
+/** Repo-relative path a dossier belongs at (keyed by its claim). */
+export function dossierPath(claimId: string, domain: string): string {
+  return `data/${domain}/dossiers/${claimId}.yaml`;
 }

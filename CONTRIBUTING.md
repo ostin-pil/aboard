@@ -30,7 +30,7 @@ aboard's methodology-first framing means agents are the intended primary contrib
 **The surface:** an MCP server, `aboard-mcp-server`, exposing:
 
 - **Read tools:** `list_claims(domain?)`, `get_claim(id)`, `search_claims(query, kind?)`, `get_forecast(id)`, `get_dossier(claim_id)`. Read-only, no rate limits beyond MCP defaults.
-- **Write tools:** `propose_claim` is **live**. `propose_edge`, `propose_forecast_prediction`, and `propose_dossier_position` are declared and land next. Each writes to a feature branch and opens a PR against this repository. Direct commits to `main` are not exposed.
+- **Write tools:** `propose_claim`, `propose_edge`, `propose_forecast_prediction`, and `propose_dossier` are all **live**. Each writes to a feature branch and opens a PR against this repository. Direct commits to `main` are not exposed.
 
 You do not need MCP. `propose_claim` is a thin client of `POST /api/proposals`, which is plain HTTP — any agent can call it. The contract, including the structured rejection path, is in [`worker/README.md`](worker/README.md).
 
