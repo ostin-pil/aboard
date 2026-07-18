@@ -40,3 +40,16 @@
   kind: reduces
   strength: 0.4
   rationale: Restoring estate taxation and eliminating step-up-in-basis cuts the intergenerational compounding of capital, directly addressing one dimension of r > g dynamics.
+- id: IE8
+  fromId: IM1
+  toId: IS3
+  kind: causes
+  strength: 0.6
+  rationale: The r > g mechanism compounds returns on existing capital stocks faster than labor income grows, so net wealth — a stock — concentrates faster and further than income does. That is precisely the stock-vs-flow disparity IS3 records, and it is the same channel by which IM1 already drives the income-share symptom IS1; here it acts on the wealth distribution directly.
+  sources:
+    - label: World Inequality Report 2022
+      url: https://wir2022.wid.world/
+      kind: report
+      year: 2022
+      authors: Chancel, Piketty, Saez, Zucman
+      finding: Wealth concentration exceeds income concentration across economies, consistent with returns to capital compounding stocks faster than wages grow.
