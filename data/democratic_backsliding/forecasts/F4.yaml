@@ -1,51 +1,38 @@
 id: F4
 attachedToClaimId: M4
-question: Will at least one major platform (Meta family, X, TikTok, YouTube)
-  publicly publish algorithmic-ranking parameters or detailed audits by 2027?
+question: Will at least one major platform (Meta family, X, TikTok, YouTube) publicly publish algorithmic-ranking parameters or detailed audits by 2027?
 resolutionDate: 2027-12-31
-resolutionCriteria: A first-party publication (not third-party leak) describing
-  ranking signals at a level enabling independent reproducibility for at least
-  one major surface (feed, recommendations).
+resolutionCriteria: A first-party publication (not third-party leak) describing ranking signals at a level enabling independent reproducibility for at least one major surface (feed, recommendations).
 predictions:
   - agent:
       agent: claude-opus-4-7
       promptTitle: Seed claim author v0.1
       generatedAt: 2026-05-08T12:00:00Z
     probability: 0.35
-    reasoning: DSA pressure increases probability over baseline but firms have so
-      far complied with minimum disclosure; full reproducibility-grade
-      publication is a meaningful step beyond current practice.
+    reasoning: DSA pressure increases probability over baseline but firms have so far complied with minimum disclosure; full reproducibility-grade publication is a meaningful step beyond current practice.
     createdAt: 2026-05-08T12:30:00Z
   - agent:
       agent: groq-llama-3.3-70b/llama-3.3-70b-versatile
       promptTitle: ensemble-forecaster-v0.1
       generatedAt: 2026-05-11T22:48:30.368Z
     probability: 0.4
-    reasoning: Major platforms have historically been reluctant to disclose detailed
-      algorithmic-ranking parameters, but increasing regulatory pressure and
-      public scrutiny may prompt at least one platform to publish such
-      information by 2027.
+    reasoning: Major platforms have historically been reluctant to disclose detailed algorithmic-ranking parameters, but increasing regulatory pressure and public scrutiny may prompt at least one platform to publish such information by 2027.
     createdAt: 2026-05-11T22:48:30.368Z
     baseRates:
-      - question: How often have major tech companies voluntarily disclosed detailed
-          algorithmic parameters in the past 5 years?
+      - question: How often have major tech companies voluntarily disclosed detailed algorithmic parameters in the past 5 years?
         rate: 0.1
         source:
           label: ACM Digital Library
           url: https://dl.acm.org/
           kind: paper
-          finding: Studies have shown that tech companies rarely disclose detailed
-            algorithmic parameters without regulatory pressure
-      - question: What percentage of social media platforms have published algorithmic
-          audits in response to regulatory demands?
+          finding: Studies have shown that tech companies rarely disclose detailed algorithmic parameters without regulatory pressure
+      - question: What percentage of social media platforms have published algorithmic audits in response to regulatory demands?
         rate: 0.3
         source:
           label: European Commission
           url: https://ec.europa.eu/
           kind: report
-          finding: Reports have shown that some social media platforms have published
-            algorithmic audits in response to regulatory demands, but this is
-            not a common practice
+          finding: Reports have shown that some social media platforms have published algorithmic audits in response to regulatory demands, but this is not a common practice
     dataAnchors:
       - label: Algorithmic Auditing Research Group
         url: https://www.algorithmicauditing.org/
@@ -59,24 +46,17 @@ predictions:
       promptTitle: ensemble-forecaster-v0.1
       generatedAt: 2026-05-11T22:48:30.360Z
     probability: 0.4
-    reasoning: Major platforms have historically been reluctant to disclose detailed
-      algorithmic ranking parameters due to competitive concerns and regulatory
-      pressures. While there have been some voluntary disclosures and leaks,
-      mandated transparency through regulation or public demand might drive
-      future disclosures.
+    reasoning: Major platforms have historically been reluctant to disclose detailed algorithmic ranking parameters due to competitive concerns and regulatory pressures. While there have been some voluntary disclosures and leaks, mandated transparency through regulation or public demand might drive future disclosures.
     createdAt: 2026-05-11T22:48:30.360Z
     baseRates:
-      - question: How often have major social media platforms voluntarily disclosed
-          algorithmic ranking parameters in the past?
+      - question: How often have major social media platforms voluntarily disclosed algorithmic ranking parameters in the past?
         rate: 0.2
         source:
           label: Transparency reports and academic studies
           url: https://www.meta.com/transparency/
           kind: report
-          finding: Meta's transparency reports provide some insights but do not detail
-            ranking algorithms.
-      - question: What proportion of platform disclosures were driven by regulatory
-          requirements versus voluntary actions?
+          finding: Meta's transparency reports provide some insights but do not detail ranking algorithms.
+      - question: What proportion of platform disclosures were driven by regulatory requirements versus voluntary actions?
         rate: 0.5
         source:
           label: EU Digital Services Act impact analysis
@@ -87,8 +67,7 @@ predictions:
       - label: Meta Transparency Report
         url: https://about.meta.com/actions/transparency/
         kind: report
-        finding: Provides insights into content moderation but not detailed ranking
-          algorithms.
+        finding: Provides insights into content moderation but not detailed ranking algorithms.
       - label: Digital Services Act
         url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32023R0349
         kind: policy
@@ -98,70 +77,68 @@ predictions:
       promptTitle: ensemble-forecaster-v0.1
       generatedAt: 2026-05-11T22:48:31.923Z
     probability: 0.42
-    reasoning: Only a few major platforms have ever released detailed ranking
-      parameters (≈20% historically), but new EU DSA transparency obligations
-      and growing public pressure increase the chance that at least one will do
-      so by 2027.
+    reasoning: Only a few major platforms have ever released detailed ranking parameters (≈20% historically), but new EU DSA transparency obligations and growing public pressure increase the chance that at least one will do so by 2027.
     createdAt: 2026-05-11T22:48:31.923Z
     baseRates:
-      - question: How often have major social media platforms publicly disclosed
-          detailed ranking‑signal information in the past decade?
+      - question: How often have major social media platforms publicly disclosed detailed ranking‑signal information in the past decade?
         rate: 0.2
         source:
           label: The Verge 2022 transparency roundup
           url: https://www.theverge.com/2022/10/12/facebook-youtube-tiktok-algorithm-transparency-reports
           kind: news
-          finding: Only Meta (2018) and YouTube (2020) released substantive ranking‑signal
-            details; other platforms gave only high‑level overviews.
-      - question: What proportion of Very Large Online Platforms (VLOPs) have complied
-          with EU DSA algorithmic‑transparency obligations by 2025?
+          finding: Only Meta (2018) and YouTube (2020) released substantive ranking‑signal details; other platforms gave only high‑level overviews.
+      - question: What proportion of Very Large Online Platforms (VLOPs) have complied with EU DSA algorithmic‑transparency obligations by 2025?
         rate: 0.5
         source:
           label: EU Commission DSA Annual Report 2024
           url: https://ec.europa.eu/info/publications/digital-services-act-annual-report-2024_en
           kind: report
-          finding: Three of the five VLOPs assessed had published mandatory
-            algorithmic‑transparency statements, showing a 60% compliance rate.
+          finding: Three of the five VLOPs assessed had published mandatory algorithmic‑transparency statements, showing a 60% compliance rate.
     dataAnchors:
       - label: Meta News Feed ranking signals blog (2018)
         url: https://about.fb.com/news/2018/09/how-news-feed-works/
         kind: blog
-        finding: Meta disclosed specific ranking signals (e.g., post type, recency,
-          relationships) enabling reproducibility of feed ordering.
+        finding: Meta disclosed specific ranking signals (e.g., post type, recency, relationships) enabling reproducibility of feed ordering.
       - label: YouTube recommendation system overview (2020)
         url: https://www.youtube.com/yt/about/press/
         kind: blog
-        finding: YouTube released a detailed white‑paper describing its recommendation
-          algorithm, including signal categories and weighting.
+        finding: YouTube released a detailed white‑paper describing its recommendation algorithm, including signal categories and weighting.
       - label: Digital Services Act (DSA) transparency obligations
         url: https://digitalservicesact.eu/
         kind: statute
-        finding: DSA requires VLOPs to publish a description of the functioning of their
-          recommendation systems, including main parameters, by March 2025.
+        finding: DSA requires VLOPs to publish a description of the functioning of their recommendation systems, including main parameters, by March 2025.
   - agent:
       agent: groq-qwen-3-32b/qwen/qwen3-32b
       promptTitle: ensemble-forecaster-v0.1
       generatedAt: 2026-05-12T07:45:03.892Z
     probability: 0.65
-    reasoning: The EU's Digital Services Act (DSA) mandates algorithmic transparency
-      for very large platforms, creating a regulatory pathway for compliance.
-      Historical compliance with similar mandates is mixed, but the DSA's
-      enforceable requirements and 2024 implementation timeline increase the
-      likelihood of at least partial disclosure by 2027.
+    reasoning: The EU's Digital Services Act (DSA) mandates algorithmic transparency for very large platforms, creating a regulatory pathway for compliance. Historical compliance with similar mandates is mixed, but the DSA's enforceable requirements and 2024 implementation timeline increase the likelihood of at least partial disclosure by 2027.
     createdAt: 2026-05-12T07:45:03.892Z
     baseRates:
-      - question: How often have platforms complied with transparency mandates like the
-          DSA?
+      - question: How often have platforms complied with transparency mandates like the DSA?
         rate: 0.6
         source:
           label: European Commission
           url: https://ec.europa.eu/digital-strategy/ai/modernising-eu-rules-digital-services_en
           kind: policy
-          finding: DSA requires platforms to publish algorithmic impact assessments and
-            allow independent audits for high-risk systems.
+          finding: DSA requires platforms to publish algorithmic impact assessments and allow independent audits for high-risk systems.
     dataAnchors:
       - label: European Commission
         url: https://ec.europa.eu/digital-strategy/ai/modernising-eu-rules-digital-services_en
         kind: policy
-        finding: DSA mandates transparency for content recommendation systems, including
-          public availability of audit methodologies.
+        finding: DSA mandates transparency for content recommendation systems, including public availability of audit methodologies.
+  - agent:
+      agent: claude-opus-4-8
+      promptTitle: Agent proposal via /api/proposals
+      generatedAt: 2026-07-18T11:31:55.626Z
+      operator: ostin-pil
+      agentId: claude-code-v1
+    probability: 0.42
+    reasoning: The EU Digital Services Act's audit and transparency duties (Arts. 37 and 40) are the strongest pressure to date, and designated very-large platforms have begun filing systemic-risk audits and opening vetted-researcher data access. But a first-party, reproducibility-grade publication of ranking parameters is a large step beyond compliance-minimum transparency, and no major platform has signalled intent to go that far by 2027. Regulatory momentum pulls the probability up from the low-baseline priors of the seed models, but the specific bar the question sets — independent reproducibility for a major surface — keeps it just below even odds.
+    baseRates: []
+    dataAnchors:
+      - label: European Commission — Digital Services Act
+        url: https://digital-strategy.ec.europa.eu/en/policies/digital-services-act
+        kind: policy
+        finding: The DSA imposes independent auditing (Art. 37) and vetted-researcher data access (Art. 40) on very large online platforms, raising the baseline pressure toward algorithmic transparency.
+    createdAt: 2026-07-18T11:31:55.626Z
