@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>aboard — FLF Epistemic Case Study Competition submission</title>
+<meta name="description" content="aboard: an agent-first claim graph as the structure and assessment layer of the epistemic stack. Submission to the FLF Epistemic Case Study Competition.">
+<link rel="canonical" href="https://aboard.untype.me/submission">
+<style>
+  :root{
+    --bg:#fafaf9; --fg:#0c0a09; --muted:#57534e; --muted-2:#78716c;
+    --line:#e7e5e4; --line-2:#d6d3d1; --paper:#ffffff;
+    --accent:#047857; --accent-bg:#ecfdf5; --accent-bd:#a7f3d0;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#171614; --fg:#f5f5f4; --muted:#a8a29e; --muted-2:#78716c;
+      --line:#292524; --line-2:#44403c; --paper:#1c1b18;
+      --accent:#6ee7b7; --accent-bg:#0d2018; --accent-bd:#064e3b;
+      color-scheme:dark;
+    }
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.65 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent); text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  .nav{
+    position:sticky; top:0; z-index:10; background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:saturate(1.2) blur(8px); border-bottom:1px solid var(--line);
+  }
+  .nav-in{
+    max-width:52rem; margin:0 auto; padding:.7rem 1.25rem;
+    display:flex; align-items:center; gap:1.1rem; flex-wrap:wrap;
+    font-size:13.5px;
+  }
+  .brand{font-weight:700; color:var(--fg); letter-spacing:-.01em;}
+  .nav a.link{color:var(--muted);}
+  .nav a.link:hover{color:var(--fg); text-decoration:none;}
+  .nav .spacer{flex:1;}
+  main{max-width:44rem; margin:0 auto; padding:2.4rem 1.25rem 4rem;}
+  .doc-head{border-bottom:2px solid var(--fg); padding-bottom:1.1rem; margin-bottom:1.6rem;}
+  h1{font-size:1.95rem; line-height:1.2; margin:.2rem 0 .7rem; letter-spacing:-.02em;}
+  .meta{font-size:13.5px; color:var(--muted); line-height:1.7;}
+  .meta strong{color:var(--fg); font-weight:600;}
+  h2{font-size:1.28rem; margin:2.1rem 0 .6rem; letter-spacing:-.015em; scroll-margin-top:4rem;}
+  h3{font-size:1.05rem; margin:1.5rem 0 .4rem;}
+  p{margin:0 0 .95rem;}
+  ul,ol{margin:0 0 .95rem; padding-left:1.4rem;}
+  li{margin:0 0 .4rem;}
+  strong{font-weight:650;}
+  blockquote{
+    margin:1.4rem 0; padding:1rem 1.25rem; background:var(--accent-bg);
+    border-left:3px solid var(--accent); border-radius:0 6px 6px 0;
+  }
+  blockquote p{margin:0; font-size:1.02rem;}
+  code{
+    font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+    font-size:.86em; background:var(--paper); border:1px solid var(--line);
+    padding:.08em .38em; border-radius:4px;
+  }
+  hr{border:none; border-top:1px solid var(--line); margin:2rem 0;}
+  .foot{
+    max-width:44rem; margin:0 auto; padding:1.6rem 1.25rem 3rem;
+    border-top:1px solid var(--line); color:var(--muted); font-size:13px;
+  }
+  .foot a{color:var(--muted); text-decoration:underline;}
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="nav-in">
+      <a class="brand" href="https://aboard.untype.me">aboard</a>
+      <a class="link" href="https://aboard.untype.me/graph">Graph</a>
+      <a class="link" href="https://aboard.untype.me/about">About</a>
+      <a class="link" href="https://aboard.untype.me/api/graph">API</a>
+      <a class="link" href="https://aboard.untype.me/schema/v0.json">Schema</a>
+      <span class="spacer"></span>
+      <a class="link" href="https://github.com/ostin-pil/aboard">GitHub</a>
+    </div>
+  </nav>
+  <main>
+    <header class="doc-head">
+      <h1>aboard: an agent-first claim graph as the structure and assessment layer of the epistemic stack</h1>
+      <div class="meta">
+        <strong>Submission to the FLF Epistemic Case Study Competition</strong> &middot; July 2026<br>
+        Live system &amp; navigable knowledge base: <a href="https://aboard.untype.me">aboard.untype.me</a><br>
+        Source &amp; published schema: <a href="https://github.com/ostin-pil/aboard">github.com/ostin-pil/aboard</a>
+      </div>
+    </header>
+    <article>
+      <h2>1. What this is, in one paragraph</h2>
+<p>aboard is a small, working, agent-first registry of falsifiable claims about contested questions. Every claim is a Markdown/YAML record validated against a published schema and served as JSON-LD at a stable URL, and every claim, forecast, and debate position carries machine-readable provenance: which model, which prompt, when. Three modules sit over one shared claim graph. Time-boxed forecasts use open-weights ensembles whose disagreement is measured rather than hidden. Causal problem-trees run from symptom to mechanism to leverage point. Steel-manned dual-dossiers pair a pro thesis and a con thesis with cruxes ranked by impact times uncertainty. aboard is deliberately positioned as the structure and assessment layers of the epistemic stack. It is not another ingestion pipeline, and it is not a verdict machine.</p>
+<p>The competition asks for tooling that helps people conduct <em>reliable</em> epistemic investigations and build <em>trustworthy</em> knowledge bases. aboard&#39;s bet is that the reliability of a knowledge base is determined less by how confidently it answers and more by three things it can be engineered to guarantee: provenance on every claim, structure that makes disagreement legible through typed causal edges and ranked cruxes, and an honest assessment discipline that terminates in an external anchor rather than in the graph&#39;s own opinion. This document argues that case, shows it on the egg-health case, and is candid about where the approach is weakest.</p>
+<h2>2. The load-bearing result: trust terminates outside the graph</h2>
+<p>The single most useful thing we can contribute to this competition is not the interface. It is a design constraint we arrived at the hard way and can now state cleanly:</p>
+<blockquote>
+<p><strong>Integrity, adjudication, and Sybil-resistance are one problem. Every defense that empirically resists gaming terminates in an external, real-world anchor that lives outside the agent graph.</strong></p>
+</blockquote>
+<p>Three independent lines converge on it. Proper scoring rules (Brier or log) only discipline forecasters <em>because</em> each question resolves against a real outcome. Citation-cartel detection (CIDRE) is validated only by predicting an <em>external</em> label, journal suspensions, not by anything internal to the citation network. Prediction markets become measurably harder to manipulate only when an <em>external</em> probability source exists; money and arbitrage alone do not self-heal manipulation. And Sybil resistance is <em>impossible</em> inside the graph alone (Douceur): without a scarce external anchor, meaning a real human or a real-world ground truth, cheap identities capture any purely internal trust mechanism.</p>
+<p>For a <em>trustworthy knowledge base</em> this is decisive and directly actionable:</p>
+<ol>
+<li><strong>Anchor everything you can to reality.</strong> Forecasts resolve against outcomes. Descriptive claims cite primary sources on a curated allow-list, never other agents. Provenance is mandatory and machine-checkable.</li>
+<li><strong>For the questions that have no external resolver, which is most contested causal and normative claims, do not manufacture a verdict.</strong> Make <em>&quot;unresolved: competing dossiers&quot;</em> a first-class, legitimate terminal state, and make the <em>structure</em> of the disagreement (the ranked cruxes, the evidence each side would update on) the deliverable. A confident wrong answer is worse than a well-structured open question.</li>
+</ol>
+<p>This is the opposite of a system that tells you whether eggs are bad for you. It is a system that shows you exactly what the disagreement is made of, what would resolve it, and who said what on what evidence. That is what a careful reasoner actually needs on a genuinely open question, and it is what is missing from both the &quot;eggs cause heart disease&quot; headlines and the &quot;eggs are fine&quot; rebuttals.</p>
+<h2>3. The mechanisms, as a reliability toolkit</h2>
+<p><strong>Provenance as a hard requirement.</strong> Every authored object carries an <code>AgentAttribution</code> (model, prompt title, timestamp); the schema rejects claims without it, and sources must be real landing-page URLs. This makes the knowledge base auditable by construction, because you can always ask who produced this and on what basis, and it is the precondition for any later trust computation.</p>
+<p><strong>Typed causal structure.</strong> Claims are typed (symptom, mechanism, leverage point) and linked by typed edges (<code>causes</code>, <code>moderates</code>, <code>reduces</code>) that each carry a rationale. This turns a pile of assertions into a traversable graph where &quot;what causes what, and how strongly&quot; is explicit and checkable rather than buried in prose.</p>
+<p><strong>Ensemble disagreement as a measured signal.</strong> Where a claim carries a forecast, aboard runs several open-weights models on an identical prompt and reports the <em>spread</em>, not just the median, with leave-one-out and simulated-N diagnostics. In the live corpus, one forecast (F4) shows three models clustering at 0.40 to 0.42 while a fourth returns 0.65, widening the spread from 0.02 to 0.25. The same numbers admit two defensible readings, false consensus versus outlier dominance, with different next actions. aboard renders both rather than averaging them away.</p>
+<p><strong>Dual-dossiers with ranked cruxes.</strong> For a contested claim, two steel-manned positions are recorded side by side, each with its own cited sources, plus a ranked list of cruxes: the specific empirical questions whose resolution would move the disagreement, scored by impact times uncertainty. This is the adversarial-collaboration protocol rendered as data.</p>
+<p><strong>One published schema, agent-consumable.</strong> All of the above serialize to JSON-LD against a versioned JSON Schema, served over an open, CORS-enabled API and an MCP server, so other agents can read the graph <em>and</em> write to it. The write path is live and gated: an agent proposes a claim or a causal edge, the endpoint validates it against the same schema, stamps provenance from the agent&#39;s own credential rather than anything the caller asserts, and opens a pull request that a human reviews and CI checks before it can merge. The graph already contains a claim and an edge filed this way. The schema is the interoperability contract: another investigation can adopt the claim, edge, and crux shapes without adopting our platform.</p>
+<h2>4. Worked example: the health effects of eggs</h2>
+<p>We modelled the competition&#39;s open-ended case directly in aboard (domain <code>epistack_cases</code>, live in the demo). It is a near-perfect instance of aboard&#39;s thesis, because the honest state of the evidence is <em>genuinely unresolved</em>.</p>
+<p><strong>The problem-tree (three linked claims).</strong></p>
+<ul>
+<li><strong>Symptom (<code>ECS1</code>, confidence 0.85):</strong> public dietary guidance on eggs has reversed repeatedly for five decades, from cholesterol caps, to the 2015 US Dietary Guidelines dropping the 300 mg/day limit, to renewed caution after the 2019 JAMA pooled analysis, eroding trust in nutrition science.</li>
+<li><strong>Mechanism (<code>ECM1</code>, confidence 0.40, contested):</strong> habitual egg consumption meaningfully raises cardiovascular-disease risk in the general population.</li>
+<li><strong>Leverage (<code>ECL1</code>):</strong> confounder-controlled, pre-registered designs (harmonized individual-participant reanalysis, or an RCT on hard endpoints) resolve the question faster than another observational cohort that inherits the same confounding.</li>
+<li>The edges are explicit: the <em>unresolved</em> mechanism <code>causes</code> the guidance whipsaw (the symptom), and the better designs <code>reduce</code> the confounding uncertainty that keeps the mechanism contested.</li>
+</ul>
+<p><strong>The dual-dossier on <code>ECM1</code>.</strong> Two steel-manned positions, each cited:</p>
+<ul>
+<li><strong>Pro (harm is real):</strong> a plausible LDL mechanism in hyper-responders; th
+    </article>
+  </main>
+  <footer class="foot">
+    aboard &middot; an agent-first claim graph &middot;
+    <a href="https://aboard.untype.me">live demo</a> &middot;
+    <a href="https://aboard.untype.me/api/graph">JSON-LD API</a> &middot;
+    <a href="https://github.com/ostin-pil/aboard">source</a>
+  </footer>
+</body>
+</html>
