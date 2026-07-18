@@ -94,6 +94,11 @@ function ClaimGraphRFInner({
   onZoom,
   onReady,
 }: Props) {
+  // React Compiler is not enabled here (no reactCompiler in next.config), so this
+  // preview rule flags a manual memo it cannot prove it could preserve. The memo
+  // is intentional and correct: seed the initial React Flow state once from
+  // persisted or freshly-built engine data.
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const initial = useMemo(() => {
     const persisted = loadPersisted();
     if (persisted) {
@@ -139,8 +144,15 @@ function ClaimGraphRFInner({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
-  nodesRef.current = nodes;
-  edgesRef.current = edges;
+  // Mirror the latest nodes/edges into refs so the stable callbacks below (undo,
+  // persist, id-minting) read current state without being recreated on every
+  // change. Written in an effect, not during render: a ref must not be mutated
+  // while rendering, and these are only read from event handlers that run after
+  // commit, so the one-commit lag is immaterial.
+  useEffect(() => {
+    nodesRef.current = nodes;
+    edgesRef.current = edges;
+  });
 
   const historyRef = useRef<{ stack: { nodes: GraphNode[]; edges: ClaimEdge[] }[]; idx: number }>({
     stack: [{ nodes: initial.nodes, edges: initial.edges }],
@@ -149,6 +161,19 @@ function ClaimGraphRFInner({
 
   const rf = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
+
+  // Center point for a newly-created node, in flow coords. A callback the modal
+  // invokes at save time, not a value read during the parent's render, so no
+  // ref/layout is touched while rendering.
+  const getDefaultNodePosition = useCallback((): { x: number; y: number } => {
+    const wrap = wrapperRef.current;
+    if (!wrap) return { x: 0, y: 0 };
+    const r = wrap.getBoundingClientRect();
+    return rf.screenToFlowPosition({
+      x: r.left + r.width / 2 - 120,
+      y: r.top + r.height / 2 - 40,
+    });
+  }, [rf]);
 
   const closeEdgePopoverTimer = useRef<number | null>(null);
   const cancelCloseEdgePopover = useCallback(() => {
@@ -1060,15 +1085,7 @@ function ClaimGraphRFInner({
           existingRowsCount={existingRowsCount}
           availableDomains={availableDomains}
           defaultDomain={activeDomain !== "all" ? activeDomain : undefined}
-          defaultPosition={(() => {
-            const wrap = wrapperRef.current;
-            if (!wrap) return { x: 0, y: 0 };
-            const r = wrap.getBoundingClientRect();
-            return rf.screenToFlowPosition({
-              x: r.left + r.width / 2 - 120,
-              y: r.top + r.height / 2 - 40,
-            });
-          })()}
+          getDefaultPosition={getDefaultNodePosition}
         />
       )}
       {editingEdge && (

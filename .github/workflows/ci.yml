@@ -32,13 +32,14 @@ jobs:
       - name: Test
         run: npm test
 
-      # Non-blocking on purpose. The React Compiler rules currently report 5
-      # pre-existing errors in ClaimGraphRF.tsx and ThemeToggle.tsx (refs during
-      # render, memoization) that need real refactors plus browser verification.
-      # Tracked in knowledge/issues.md; flip this to a hard gate once it is green.
-      - name: Lint (non-blocking)
+      # A hard gate. The React Compiler-preview errors that used to live here
+      # (refs during render, memoization, set-state-in-effect) are fixed, or —
+      # where they flag intentional patterns a compiler-off project gains nothing
+      # from enforcing — suppressed with a justification at the site. Errors block;
+      # the remaining pre-existing warnings do not, since eslint exits non-zero
+      # only on errors.
+      - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       # The build is the data gate: it runs the Zod loader plus the referential
       # integrity checks over data/, so malformed or dangling data fails here by

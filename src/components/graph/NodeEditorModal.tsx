@@ -12,7 +12,8 @@ type Props = {
   existingRowsCount: (row: 1 | 2 | 3) => number;
   availableDomains: string[];
   defaultDomain?: string;
-  defaultPosition: { x: number; y: number };
+  /** Read at save time (not render), so the parent never touches layout mid-render. */
+  getDefaultPosition: () => { x: number; y: number };
 };
 
 const ROW_BY_KIND: Record<EngineNode["kind"], 1 | 2 | 3> = {
@@ -33,7 +34,7 @@ export function NodeEditorModal({
   existingRowsCount,
   availableDomains,
   defaultDomain,
-  defaultPosition,
+  getDefaultPosition,
 }: Props) {
   const isNew = !node;
   const [kind, setKind] = useState<EngineNode["kind"]>(node?.data.kind ?? "mechanism");
@@ -64,7 +65,7 @@ export function NodeEditorModal({
       const draft: ClaimNode = {
         id,
         type: "claim",
-        position: defaultPosition,
+        position: getDefaultPosition(),
         data: {
           kind,
           title: title.trim() || "untitled claim",
