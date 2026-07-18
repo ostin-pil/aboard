@@ -46,7 +46,12 @@ export function ThemeToggle() {
   const [eff, setEff] = useState<"light" | "dark">("light");
 
   useEffect(() => {
+    // Client-only theme init after hydration: the stored mode and the system
+    // preference are unknowable during SSR, so state starts at a neutral default
+    // and is corrected here on mount. Setting state in this effect is intentional
+    // — it is the one render that reconciles with the client environment.
     const m = getStored();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMode(m);
     setEff(effective(m));
     if (window.matchMedia) {
