@@ -121,16 +121,37 @@ Through MCP, the same calls are `propose_claim` and `propose_edge`; set
 | `201` | PR opened. Body carries `kind`, `id`, `path`, `branch`, `pullRequest`. |
 | `401` | Missing or unknown bearer token. Nothing written. |
 | `422` | Validation failed. Body carries `issues[]` with the exact field paths — an agent can fix and retry without guessing. |
+| `429` | Too many proposals from this credential in the current window. Body carries `retryAfterSeconds`; a `Retry-After` header repeats it. Nothing written. |
 | `501` | An unknown proposal kind. All four (`claim`, `edge`, `prediction`, `dossier`) are wired. |
 | `502` | GitHub refused. No PR. |
 | `503` | No credential configured, or the graph could not be read. |
 
+## Rate limiting
+
+A flood brake sits in front of the GitHub work, keyed per credential
+(`proposal:<tokenId>`), so one leaked or runaway token cannot open an unbounded
+burst of PRs. It uses the native Workers Rate Limiting binding
+(`PROPOSAL_LIMITER` in `wrangler.jsonc`) — no namespace to provision, and
+`wrangler deploy` is all it takes. Over the limit returns `429` with a
+`Retry-After` header; the check runs after auth, so an unauthenticated caller
+still gets `401`.
+
+It **fails open**: if the binding is absent or errors, proposals are allowed.
+The limiter is defense-in-depth ahead of a human-gated queue, not the admission
+gate, so a limiter hiccup must never reject a legitimate proposal.
+
+Two honest bounds, both from the binding's design (`src/lib/rate-limit.ts` has
+the detail): the window is a per-minute burst cap, not a per-hour/day quota (the
+binding's `period` is restricted to 10 or 60 seconds — a longer quota would need
+KV or a Durable Object), and it is per-Cloudflare-location and eventually
+consistent, so the effective cap is approximate. That is the right shape for
+capping blast radius; it is not exact accounting.
+
 ## Known gaps
 
-- **No rate limiting.** The plan calls for a per-token counter; a Worker has no
-  memory between requests, so this needs a KV or Durable Object binding. Until
-  then, a token is trusted to behave, and revocation is manual. Do not hand a
-  token to something you would not hand the repo to.
+- **Revocation is manual.** A token is trusted to behave within its rate; to
+  revoke, delete its line from `ABOARD_AGENT_TOKENS`. Do not hand a token to
+  something you would not hand the repo to.
 - **All four write tools are wired** (`propose_claim`, `propose_edge`,
   `propose_forecast_prediction`, `propose_dossier`).
 - **A PAT, not a GitHub App.** The plan's stated v1. An App is the end state.
