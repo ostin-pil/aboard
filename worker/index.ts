@@ -39,6 +39,7 @@ import {
   dossierPath,
 } from "../src/lib/data/serialize";
 import { isTransientStatus, withRetry } from "../src/lib/http-retry";
+import { withinRateLimit, type RateLimiter } from "../src/lib/rate-limit";
 import type { Claim, Dossier, Edge, Prediction } from "../src/lib/types";
 
 interface Env {
@@ -52,7 +53,14 @@ interface Env {
   GITHUB_REPO?: string;
   /** Branch proposals target. Defaults to "main". */
   GITHUB_BASE_BRANCH?: string;
+  /** Native Workers rate-limit binding, keyed per credential. Optional: when
+   *  unbound the write path still works (the limiter fails open). */
+  PROPOSAL_LIMITER?: RateLimiter;
 }
+
+/** Mirrors the `period` on the PROPOSAL_LIMITER binding in wrangler.jsonc; used
+ *  only for the `Retry-After` hint. Keep the two in sync. */
+const RATE_LIMIT_PERIOD_S = 60;
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
 
@@ -708,6 +716,23 @@ async function handleProposal(request: Request, env: Env): Promise<Response> {
   const identity = resolveIdentity(env, request);
   if (!identity) {
     return fail(401, "unauthorized", "A valid `Authorization: Bearer <token>` is required.");
+  }
+
+  // Flood brake: cap proposals per credential before touching GitHub. Keyed by
+  // the token's stable handle, so one leaked or runaway token cannot open an
+  // unbounded burst of PRs. Fails open (see withinRateLimit).
+  if (!(await withinRateLimit(env.PROPOSAL_LIMITER, `proposal:${identity.tokenId}`))) {
+    const body = {
+      error: {
+        code: "rate_limited",
+        message: "Too many proposals from this credential; retry shortly.",
+        retryAfterSeconds: RATE_LIMIT_PERIOD_S,
+      },
+    };
+    return new Response(JSON.stringify(body, null, 2), {
+      status: 429,
+      headers: { ...JSON_HEADERS, "retry-after": String(RATE_LIMIT_PERIOD_S) },
+    });
   }
 
   if (!env.GITHUB_TOKEN || !env.GITHUB_REPO) {

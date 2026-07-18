@@ -29,7 +29,21 @@
   "vars": {
     "GITHUB_REPO": "ostin-pil/aboard",
     "GITHUB_BASE_BRANCH": "main"
-  }
+  },
+
+  // Flood brake on POST /api/proposals, keyed per agent credential (proposal:<tokenId>).
+  // Native Workers rate limiting: no namespace to provision — namespace_id is an
+  // arbitrary account-local number, and `wrangler deploy` is all it takes. period
+  // is restricted to 10 or 60 seconds, so this caps a burst (a leaked or runaway
+  // token opening PRs), not a long-window quota; the limit mirrors RATE_LIMIT_PERIOD_S
+  // in worker/index.ts. A per-hour/day quota would need KV or a Durable Object.
+  "ratelimits": [
+    {
+      "name": "PROPOSAL_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 10, "period": 60 }
+    }
+  ]
 
   // Secrets — set with `wrangler secret put`, never committed:
   //   ABOARD_AGENT_TOKENS  JSON map: token -> { tokenId, operator, agent, agentId }
