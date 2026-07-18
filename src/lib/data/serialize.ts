@@ -1,5 +1,5 @@
 import YAML, { Scalar, visit } from "yaml";
-import type { Claim, Edge } from "@/lib/types";
+import type { Claim, Edge, Prediction } from "@/lib/types";
 
 /**
  * YAML resolves an *unquoted* ISO date or datetime to its timestamp type, and
@@ -87,5 +87,30 @@ function edgeYamlListItem(edge: Edge): string {
 
   const doc = new YAML.Document([bare]);
   quoteTimestamps(doc);
+  return doc.toString(STRINGIFY);
+}
+
+/**
+ * Append a prediction to an existing forecast file's `predictions` list,
+ * returning the new content.
+ *
+ * A prediction joins a list *nested inside* the forecast object, so this parses
+ * with the document API and adds one node to that list rather than reformatting
+ * the file: the eemeli/yaml document preserves the original nodes' style, so the
+ * diff is the appended prediction and nothing else.
+ *
+ * Timestamps are NOT quoted here, unlike a claim's: forecast files are read by
+ * the `yaml` package (YAML 1.2), which does not coerce an ISO scalar to a Date,
+ * and the hand-authored files leave them unquoted. Matching that keeps the diff
+ * clean.
+ */
+export function appendPredictionToForecast(existing: string, prediction: Prediction): string {
+  const doc = YAML.parseDocument(existing);
+  const preds = doc.get("predictions");
+  if (YAML.isSeq(preds)) {
+    preds.add(doc.createNode(prediction));
+  } else {
+    doc.set("predictions", doc.createNode([prediction]));
+  }
   return doc.toString(STRINGIFY);
 }

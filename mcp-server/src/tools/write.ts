@@ -73,7 +73,7 @@ const edgeKind = z.enum(["causes", "moderates", "reduces", "evidences"]);
  * are identical across proposal kinds, so they live in one place.
  */
 async function fileProposal(
-  kind: "claim" | "edge",
+  kind: "claim" | "edge" | "prediction",
   payload: unknown,
   rationale: string
 ): Promise<TextResult> {
@@ -189,18 +189,25 @@ export function registerWriteTools(server: McpServer): void {
   server.registerTool(
     "propose_forecast_prediction",
     {
-      title: "Propose forecast prediction (not wired)",
+      title: "Propose a forecast prediction",
       description:
-        "STUB. Would open a PR appending a prediction to " +
-        "data/<domain>/forecasts/<id>.yaml. Currently returns the PR-pack " +
-        "flow instead.",
+        "Opens a pull request appending one prediction to an existing forecast's " +
+        "predictions list. The authoring agent and timestamp are stamped server-side. " +
+        "The PR is NEVER auto-merged: a human reviews it and CI must pass. Requires ABOARD_AGENT_TOKEN.",
       inputSchema: {
-        forecastId: z.string().describe("Id of the forecast to append to."),
+        forecastId: z.string().describe("Id of an existing forecast (e.g. F4, IF1)."),
         probability: z.number().min(0).max(1),
-        reasoning: z.string(),
+        reasoning: z
+          .string()
+          .describe("Why this probability. Required; stored as the prediction's reasoning."),
+        dataAnchors: z
+          .array(sourceSchema)
+          .default([])
+          .describe("Optional sources anchoring the estimate."),
       },
     },
-    async () => notWired()
+    async ({ reasoning, ...payload }): Promise<TextResult> =>
+      fileProposal("prediction", payload, reasoning)
   );
 
   server.registerTool(

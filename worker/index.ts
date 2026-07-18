@@ -21,18 +21,21 @@
 import {
   ClaimPayload,
   EdgePayload,
+  PredictionPayload,
   ProposalEnvelope,
   buildClaim,
   buildEdge,
+  buildPrediction,
   type TokenIdentity,
 } from "../src/lib/proposals";
 import {
   claimToMarkdown,
   claimPath,
   appendEdgeToYaml,
+  appendPredictionToForecast,
 } from "../src/lib/data/serialize";
 import { isTransientStatus, withRetry } from "../src/lib/http-retry";
-import type { Claim, Edge } from "../src/lib/types";
+import type { Claim, Edge, Prediction } from "../src/lib/types";
 
 interface Env {
   /** Static assets binding — the built `out/` directory. */
@@ -87,6 +90,8 @@ type Graph = {
   claimDomains: Map<string, string>;
   claimIdsByDomain: Map<string, string[]>;
   edgeIds: string[];
+  /** forecastId → the domain of the claim it is attached to (its file's domain). */
+  forecastDomains: Map<string, string>;
 };
 
 /**
@@ -105,6 +110,7 @@ async function readGraph(env: Env, request: Request): Promise<Graph | null> {
   const body = (await res.json()) as {
     "aboard:claims"?: unknown;
     "aboard:edges"?: unknown;
+    "aboard:forecasts"?: unknown;
   };
   const claims = body["aboard:claims"];
   if (!Array.isArray(claims)) return null;
@@ -131,7 +137,21 @@ async function readGraph(env: Env, request: Request): Promise<Graph | null> {
     }
   }
 
-  return { claimIds, claimDomains, claimIdsByDomain, edgeIds };
+  // A forecast's file lives in the domain of the claim it is attached to, so its
+  // domain is that claim's domain.
+  const forecasts = body["aboard:forecasts"];
+  const forecastDomains = new Map<string, string>();
+  if (Array.isArray(forecasts)) {
+    for (const entry of forecasts as Record<string, unknown>[]) {
+      const id = typeof entry["aboard:id"] === "string" ? entry["aboard:id"] : "";
+      const attached = entry["aboard:attachedTo"] as { "@id"?: string } | undefined;
+      const claimId = typeof attached?.["@id"] === "string" ? attached["@id"].split("/").pop() ?? "" : "";
+      const domain = claimDomains.get(claimId);
+      if (id && domain) forecastDomains.set(id, domain);
+    }
+  }
+
+  return { claimIds, claimDomains, claimIdsByDomain, edgeIds, forecastDomains };
 }
 
 // --- GitHub ----------------------------------------------------------------
@@ -344,6 +364,38 @@ function edgePrBody(
   ].join("\n");
 }
 
+function predictionPrBody(
+  forecastId: string,
+  prediction: Prediction,
+  rationale: string,
+  identity: TokenIdentity,
+): string {
+  return [
+    `Filed by an agent through \`POST /api/proposals\`. **Not auto-merged** — a human is the admission gate.`,
+    ``,
+    `## Reasoning`,
+    ``,
+    rationale,
+    ``,
+    `## Prediction`,
+    ``,
+    `- **forecast** \`${forecastId}\``,
+    `- **probability** ${prediction.probability}`,
+    ...(prediction.dataAnchors.length > 0
+      ? [``, `## Data anchors`, ``, sourcesList(prediction.dataAnchors)]
+      : []),
+    ``,
+    ...provenanceBlock(identity),
+    ``,
+    `## Reviewer checklist`,
+    ``,
+    `- [ ] The probability is defensible and the reasoning supports it.`,
+    `- [ ] Any data anchors are real and load.`,
+    `- [ ] The prediction sharpens the ensemble spread rather than padding it.`,
+    `- [ ] CI is green (build, referential integrity, tests).`,
+  ].join("\n");
+}
+
 // --- the endpoint ----------------------------------------------------------
 
 async function handleClaim(
@@ -468,6 +520,78 @@ async function handleEdge(
   );
 }
 
+async function handlePrediction(
+  request: Request,
+  env: Env,
+  ctx: GitHubContext,
+  identity: TokenIdentity,
+  rawPayload: unknown,
+  rationale: string,
+): Promise<Response> {
+  const payload = PredictionPayload.safeParse(rawPayload);
+  if (!payload.success) {
+    return fail(422, "invalid_payload", "The prediction payload failed validation.", {
+      issues: issuesOf(payload.error),
+    });
+  }
+
+  const graph = await readGraph(env, request);
+  if (!graph) return fail(503, "graph_unavailable", "Could not read the published graph.");
+
+  const built = buildPrediction({
+    payload: payload.data,
+    reasoning: rationale,
+    identity,
+    knownForecastIds: new Set(graph.forecastDomains.keys()),
+    now: new Date().toISOString(),
+  });
+  if (!built.ok) {
+    return fail(422, "cannot_build_prediction", built.error, {
+      knownForecasts: [...graph.forecastDomains.keys()].sort(),
+    });
+  }
+
+  const domain = graph.forecastDomains.get(built.forecastId);
+  const path = `data/${domain}/forecasts/${built.forecastId}.yaml`;
+
+  let existing: { content: string; sha: string } | null;
+  try {
+    existing = await getFile(ctx, path, ctx.base);
+  } catch (err) {
+    return fail(502, "github_failed", (err as Error).message);
+  }
+  if (!existing) {
+    return fail(502, "github_failed", `Forecast file ${path} not found on ${ctx.base}.`);
+  }
+
+  const stamp = Date.now();
+  const result = await submitProposalPR(ctx, {
+    slug: `${built.forecastId.toLowerCase()}-prediction`,
+    identity,
+    stamp,
+    path,
+    content: appendPredictionToForecast(existing.content, built.prediction),
+    sha: existing.sha,
+    commitMessage: `feat(forecast): propose a prediction on ${built.forecastId} (p=${built.prediction.probability})`,
+    prTitle: `feat(forecast): propose a prediction on ${built.forecastId} (p=${built.prediction.probability})`,
+    prBody: predictionPrBody(built.forecastId, built.prediction, rationale, identity),
+  });
+  if (!result.ok) return fail(502, "github_failed", `Could not open the proposal PR: ${result.detail}`);
+
+  return json(
+    {
+      status: "proposed",
+      kind: "prediction",
+      id: built.forecastId,
+      path,
+      branch: result.branch,
+      pullRequest: result.url,
+      note: "Opened as a pull request. It is not merged: a human reviews it, and CI must pass.",
+    },
+    201,
+  );
+}
+
 async function handleProposal(request: Request, env: Env): Promise<Response> {
   if (request.method !== "POST") {
     return fail(405, "method_not_allowed", "POST a proposal envelope to this endpoint.");
@@ -505,11 +629,12 @@ async function handleProposal(request: Request, env: Env): Promise<Response> {
 
   if (kind === "claim") return handleClaim(request, env, ctx, identity, payload, rationale);
   if (kind === "edge") return handleEdge(request, env, ctx, identity, payload, rationale);
+  if (kind === "prediction") return handlePrediction(request, env, ctx, identity, payload, rationale);
 
   return fail(
     501,
     "not_implemented",
-    `\`${kind}\` is declared but not yet wired. \`claim\` and \`edge\` are implemented.`,
+    `\`${kind}\` is declared but not yet wired. \`claim\`, \`edge\`, and \`prediction\` are implemented.`,
   );
 }
 

@@ -1,5 +1,13 @@
 import { z } from "zod";
-import { Claim, ClaimKind, Edge, EdgeKind, Source, type AgentAttribution } from "@/lib/types";
+import {
+  Claim,
+  ClaimKind,
+  Edge,
+  EdgeKind,
+  Prediction,
+  Source,
+  type AgentAttribution,
+} from "@/lib/types";
 
 /**
  * The agent write path: what a caller may send, and how it becomes graph data.
@@ -41,6 +49,19 @@ export const EdgePayload = z.object({
   sources: z.array(Source).default([]),
 });
 export type EdgePayload = z.infer<typeof EdgePayload>;
+
+/** What an agent sends for `propose_forecast_prediction`. The forecaster's
+ *  `reasoning` rides the envelope (like an edge's rationale); the `agent` and
+ *  `createdAt` are stamped server-side. */
+export const PredictionPayload = z.object({
+  forecastId: z.string().min(1).describe("Id of an existing forecast to append to."),
+  probability: z.number().min(0).max(1),
+  dataAnchors: z
+    .array(Source)
+    .default([])
+    .describe("Optional sources anchoring the estimate."),
+});
+export type PredictionPayload = z.infer<typeof PredictionPayload>;
 
 export const PROPOSAL_KINDS = [
   "claim",
@@ -290,4 +311,63 @@ export function buildEdge({
     };
   }
   return { ok: true, edge: parsed.data, path, crossDomain };
+}
+
+export type BuildPredictionInput = {
+  payload: PredictionPayload;
+  /** The forecaster's reasoning, from the proposal envelope. */
+  reasoning: string;
+  identity: TokenIdentity;
+  /** Every forecast id in the graph, to reject an append to one that doesn't exist. */
+  knownForecastIds: ReadonlySet<string>;
+  /** ISO-8601, injected rather than read from a clock. */
+  now: string;
+};
+
+export type BuildPredictionResult =
+  | { ok: true; prediction: Prediction; forecastId: string }
+  | { ok: false; error: string };
+
+/**
+ * Turn a validated prediction payload into a full Prediction, stamping the
+ * authoring agent and the timestamp. The forecast it attaches to must exist —
+ * predictions only ever append to a forecast a human already opened.
+ */
+export function buildPrediction({
+  payload,
+  reasoning,
+  identity,
+  knownForecastIds,
+  now,
+}: BuildPredictionInput): BuildPredictionResult {
+  if (!knownForecastIds.has(payload.forecastId)) {
+    return { ok: false, error: `Unknown forecast "${payload.forecastId}".` };
+  }
+
+  const agent: AgentAttribution = {
+    agent: identity.agent,
+    promptTitle: "Agent proposal via /api/proposals",
+    operator: identity.operator,
+    agentId: identity.agentId,
+    generatedAt: now,
+  };
+
+  const parsed = Prediction.safeParse({
+    agent,
+    probability: payload.probability,
+    reasoning,
+    baseRates: [],
+    dataAnchors: payload.dataAnchors,
+    createdAt: now,
+  });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues
+        .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+        .join("; "),
+    };
+  }
+  return { ok: true, prediction: parsed.data, forecastId: payload.forecastId };
 }

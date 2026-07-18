@@ -4,16 +4,23 @@ import YAML from "yaml";
 import {
   ClaimPayload,
   EdgePayload,
+  PredictionPayload,
   ProposalEnvelope,
   inferDomainPrefix,
   nextSequentialId,
   mintClaimId,
   buildClaim,
   buildEdge,
+  buildPrediction,
   type TokenIdentity,
 } from "@/lib/proposals";
-import { claimToMarkdown, claimPath, appendEdgeToYaml } from "@/lib/data/serialize";
-import { Claim, Edge } from "@/lib/types";
+import {
+  claimToMarkdown,
+  claimPath,
+  appendEdgeToYaml,
+  appendPredictionToForecast,
+} from "@/lib/data/serialize";
+import { Claim, Edge, Forecast } from "@/lib/types";
 
 const identity: TokenIdentity = {
   tokenId: "bot-1",
@@ -484,5 +491,109 @@ describe("appendEdgeToYaml", () => {
     if (!withSrc.ok) throw new Error("fixture");
     const list = YAML.parse(appendEdgeToYaml("", withSrc.edge));
     expect(list[0].sources[0].url).toBe("https://example.org/p");
+  });
+});
+
+// --- predictions -----------------------------------------------------------
+
+const PREDICTION_REASONING =
+  "DSA pressure raises the odds, but reproducibility-grade disclosure is a big step beyond current practice.";
+
+describe("PredictionPayload", () => {
+  it("accepts forecastId + probability, defaults dataAnchors", () => {
+    const parsed = PredictionPayload.parse({ forecastId: "F4", probability: 0.4 });
+    expect(parsed.dataAnchors).toEqual([]);
+  });
+
+  it("does not carry reasoning — that rides the envelope", () => {
+    const parsed = PredictionPayload.parse({ forecastId: "F4", probability: 0.4, reasoning: "x" });
+    expect(parsed).not.toHaveProperty("reasoning");
+  });
+
+  it("rejects a probability outside 0..1", () => {
+    expect(PredictionPayload.safeParse({ forecastId: "F4", probability: 2 }).success).toBe(false);
+  });
+});
+
+describe("buildPrediction", () => {
+  const base = {
+    reasoning: PREDICTION_REASONING,
+    identity,
+    knownForecastIds: new Set(["F4", "IF1"]),
+    now: "2026-07-18T12:00:00.000Z",
+  };
+
+  it("stamps the agent and timestamp, and takes reasoning from the envelope", () => {
+    const result = buildPrediction({
+      payload: PredictionPayload.parse({ forecastId: "F4", probability: 0.4 }),
+      ...base,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.forecastId).toBe("F4");
+    expect(result.prediction.probability).toBe(0.4);
+    expect(result.prediction.reasoning).toBe(PREDICTION_REASONING);
+    expect(result.prediction.createdAt).toBe("2026-07-18T12:00:00.000Z");
+    expect(result.prediction.agent.operator).toBe("ostin-pil");
+    expect(result.prediction.agent.agentId).toBe("a1b2c3d4e5f60718");
+  });
+
+  it("refuses a prediction on a forecast that does not exist", () => {
+    const result = buildPrediction({
+      payload: PredictionPayload.parse({ forecastId: "F999", probability: 0.4 }),
+      ...base,
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toContain('Unknown forecast "F999"');
+  });
+});
+
+describe("appendPredictionToForecast", () => {
+  const forecastText = [
+    "id: F4",
+    "attachedToClaimId: M4",
+    "question: Will a platform publish ranking parameters by 2027?",
+    "resolutionDate: 2027-12-31",
+    "resolutionCriteria: A first-party reproducibility-grade publication.",
+    "predictions:",
+    "  - agent:",
+    "      agent: claude-opus-4-7",
+    "      generatedAt: 2026-05-08T12:00:00Z",
+    "    probability: 0.35",
+    "    reasoning: An existing prediction.",
+    "    createdAt: 2026-05-08T12:30:00Z",
+    "",
+  ].join("\n");
+
+  const built = buildPrediction({
+    payload: PredictionPayload.parse({ forecastId: "F4", probability: 0.4 }),
+    reasoning: PREDICTION_REASONING,
+    identity,
+    knownForecastIds: new Set(["F4"]),
+    now: "2026-07-18T12:00:00.000Z",
+  });
+
+  it("appends into predictions[] and the whole forecast still parses under the schema", () => {
+    if (!built.ok) throw new Error("fixture");
+    const merged = appendPredictionToForecast(forecastText, built.prediction);
+    const parsed = Forecast.safeParse(YAML.parse(merged));
+
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.predictions).toHaveLength(2);
+    // existing prediction untouched
+    expect(parsed.data.predictions[0].probability).toBe(0.35);
+    // appended prediction present with the server-stamped provenance
+    expect(parsed.data.predictions[1].probability).toBe(0.4);
+    expect(parsed.data.predictions[1].agent.operator).toBe("ostin-pil");
+    expect(parsed.data.predictions[1].reasoning).toBe(PREDICTION_REASONING);
+  });
+
+  it("preserves the existing forecast body (diff is only the appended block)", () => {
+    if (!built.ok) throw new Error("fixture");
+    const merged = appendPredictionToForecast(forecastText, built.prediction);
+    // everything up to the original last line is unchanged, byte for byte
+    expect(merged.startsWith(forecastText.trimEnd())).toBe(true);
   });
 });
