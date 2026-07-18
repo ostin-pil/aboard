@@ -596,4 +596,35 @@ describe("appendPredictionToForecast", () => {
     // everything up to the original last line is unchanged, byte for byte
     expect(merged.startsWith(forecastText.trimEnd())).toBe(true);
   });
+
+  // The real forecast files fold their long strings across lines. Re-serializing
+  // with lineWidth:0 would unfold every one and reformat the whole file; this
+  // fixture has genuinely folded content and asserts none of it changes.
+  it("preserves existing folded long strings, not just short ones", () => {
+    if (!built.ok) throw new Error("fixture");
+    const existingFolded = YAML.stringify({
+      id: "F4",
+      attachedToClaimId: "M4",
+      question: `Will a platform ${"publish detailed ranking parameters ".repeat(4)}by 2027?`,
+      resolutionDate: "2027-12-31",
+      resolutionCriteria: `A first-party ${"reproducibility-grade publication ".repeat(4)}for one surface.`,
+      predictions: [
+        {
+          agent: { agent: "seed", generatedAt: "2026-05-08T12:00:00Z" },
+          probability: 0.35,
+          reasoning: `Regulatory pressure ${"raises the baseline but the bar is high ".repeat(4)}on balance.`,
+          baseRates: [],
+          dataAnchors: [],
+          createdAt: "2026-05-08T12:30:00Z",
+        },
+      ],
+    });
+    expect(existingFolded).toMatch(/\n {2}\S/); // sanity: it really did fold across lines
+
+    const merged = appendPredictionToForecast(existingFolded, built.prediction);
+    const out = new Set(merged.split("\n"));
+    for (const line of existingFolded.split("\n")) {
+      if (line.trim()) expect(out.has(line)).toBe(true); // every original line survives
+    }
+  });
 });

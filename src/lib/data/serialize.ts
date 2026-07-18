@@ -112,5 +112,10 @@ export function appendPredictionToForecast(existing: string, prediction: Predict
   } else {
     doc.set("predictions", doc.createNode([prediction]));
   }
-  return doc.toString(STRINGIFY);
+  // Default line width, NOT the STRINGIFY lineWidth:0 the claim/edge writers use.
+  // The forecast files were written with the yaml package's default folding, so
+  // re-serializing that way reproduces every existing line byte-for-byte and the
+  // diff is only the appended prediction. lineWidth:0 would unfold every long
+  // string in the file and reformat the whole thing.
+  return doc.toString();
 }
