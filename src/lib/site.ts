@@ -17,3 +17,12 @@ export function siteBaseUrl(): string {
   const configured = (process.env.SITE_URL ?? "").trim();
   return (configured || CANONICAL_ORIGIN).replace(/\/+$/, "");
 }
+
+/**
+ * Bare host for display (no scheme, no trailing slash) — the URL label printed
+ * on OG cards. Derived from the same base as everything else so a card can
+ * never advertise a domain the build does not serve.
+ */
+export function siteHost(): string {
+  return siteBaseUrl().replace(/^https?:\/\//, "");
+}

@@ -6,6 +6,7 @@ import {
   getForecastsForClaim,
 } from "@/lib/graph";
 import { aggregate } from "@/lib/forecast";
+import { siteHost } from "@/lib/site";
 
 export function generateStaticParams() {
   return getClaims().map((c) => ({ id: c.id }));
@@ -173,7 +174,7 @@ export default async function Image({
             zIndex: 1,
           }}
         >
-          {`aboard.dev/claims/${claim.id}`}
+          {`${siteHost()}/claims/${claim.id}`}
         </div>
       </div>
     ),

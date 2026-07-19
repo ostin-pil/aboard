@@ -10,15 +10,14 @@ import type {
   Forecast,
   Source,
 } from "./types";
+import { JSONLD_CONTEXT } from "./vocab";
 
 // The vocabulary IRI is a stable public identifier: it is embedded in every
 // claim we publish and in any consumer that caches the context. It is therefore
 // deliberately a literal, not derived from `siteBaseUrl()` — a preview deploy or
-// a localhost build must not mint a different vocabulary.
-const CONTEXT = {
-  schema: "https://schema.org/",
-  aboard: "https://aboard.untype.me/vocab/",
-};
+// a localhost build must not mint a different vocabulary. It lives in `vocab.ts`
+// so the client-side export publishes the same context this does.
+const CONTEXT = JSONLD_CONTEXT;
 
 function sourceLD(s: Source) {
   return {

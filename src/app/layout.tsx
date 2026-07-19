@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { siteBaseUrl } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,6 +19,11 @@ const SITE_DESCRIPTION =
   "aboard surfaces interpretive friction across LLM ensembles applied to falsifiable claims about systemic problems. Machine-readable by default; the disagreement between models is the signal.";
 
 export const metadata: Metadata = {
+  // Without this, the Metadata API resolves the file-convention OG images
+  // against http://localhost:3000 at build time and every social unfurl in
+  // production 404s. `SITE_URL` does not cover it — that only feeds JSON-LD
+  // `@id`s; the Metadata API reads this and nothing else.
+  metadataBase: new URL(siteBaseUrl()),
   title: {
     default: "aboard / v0",
     template: "%s — aboard",
