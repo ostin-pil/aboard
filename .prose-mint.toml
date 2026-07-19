@@ -1,0 +1,24 @@
+# prose-mint config — repo root.
+#
+# Discovery walks UP from each scanned file and stops at the first config found,
+# so this governs everything except the trees that ship their own override
+# (`plans/`, `sessions/`). Only stated keys change; everything else falls back
+# to the shipped default.
+#
+# See `.claude/rules/prose-style.md` for what is gated and why.
+
+[scope]
+# The `bulk` surface walks directories; keep it on prose we actually author.
+# `Claude Design Screens/` is imported mockup HTML, `out/` is build output, and
+# the worktrees are transient checkouts of this same repo.
+exclude = [
+  # Leading `*` matters: globs are fnmatch'd against the whole path string, so a
+  # bare `node_modules/*` would miss `clients/node_modules/…` and
+  # `mcp-server/node_modules/…`, which are the ones that actually exist here.
+  "*node_modules/*",
+  "out/*",
+  ".next/*",
+  "Claude Design Screens/*",
+  ".claude/worktrees/*",
+  ".archive/*",
+]

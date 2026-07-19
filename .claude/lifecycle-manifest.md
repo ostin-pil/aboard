@@ -43,8 +43,8 @@ subpkg_guard: none
 merge_strategy: merge                # aboard lands PRs as merge commits
 
 # prose gate (optional; none disables the step)
-prose_gate: none                     # prose-mint is installed but not enforced as a gate
-prose_rule: none
+prose_gate: bin/check-prose.sh       # prose-mint wrapper; resolve via `git rev-parse --show-toplevel`
+prose_rule: .claude/rules/prose-style.md
 
 # code review (optional; none disables the step)
 code_reviewer: none                  # use /code-review ad hoc

@@ -1,0 +1,21 @@
+# prose-mint override for `plans/`.
+#
+# Hard wrapping at ~76 columns is the deliberate house style for plan docs —
+# every file in this directory does it, and it predates prose-mint. The default
+# `hard-wrap` detector flags the convention itself, which is noise here, so the
+# category is switched off for this tree by omitting it from `enabled`.
+#
+# Everything else still runs. This is a wrapping exemption, not a licence for
+# the other tells.
+
+[structural]
+enabled = [
+  "em-dash",
+  "ascii-arrow",
+  "not-X-but-Y",
+  "no-X-no-Y-just-Z",
+  "this-isnt-about-X",
+  "not-only-but",
+  "bold-colon-opener",
+  "ai-attribution",
+]

@@ -1,0 +1,20 @@
+# prose-mint override for `sessions/`.
+#
+# Same reasoning as `plans/`: session logs are hard-wrapped at ~76 columns by
+# convention, so the `hard-wrap` detector would flag the house style on every
+# log. Switched off for this tree by omitting it from `enabled`; every other
+# category still runs.
+#
+# See `.claude/rules/prose-style.md`.
+
+[structural]
+enabled = [
+  "em-dash",
+  "ascii-arrow",
+  "not-X-but-Y",
+  "no-X-no-Y-just-Z",
+  "this-isnt-about-X",
+  "not-only-but",
+  "bold-colon-opener",
+  "ai-attribution",
+]
