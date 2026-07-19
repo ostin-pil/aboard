@@ -4,6 +4,7 @@ import {
   getClaimsWithDossiers,
   getDossierForClaim,
 } from "@/lib/graph";
+import { siteHost } from "@/lib/site";
 
 export function generateStaticParams() {
   return getClaimsWithDossiers().map((c) => ({ claimId: c.id }));
@@ -114,7 +115,9 @@ export default async function Image({
           <span>
             {dossier.cruxes.length} crux{dossier.cruxes.length === 1 ? "" : "es"} ranked
           </span>
-          <span>aboard.dev/dossiers/{claim.id}</span>
+          <span>
+            {siteHost()}/dossiers/{claim.id}
+          </span>
         </div>
       </div>
     ),

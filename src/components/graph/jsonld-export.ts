@@ -1,3 +1,4 @@
+import { GRAPH_VERSION, JSONLD_CONTEXT } from "@/lib/vocab";
 import { canonicalEndpoints, type ClaimEdge, type ClaimNode } from "./types";
 
 export function exportClientJSONLD(
@@ -5,12 +6,17 @@ export function exportClientJSONLD(
   edges: ClaimEdge[],
   domain: string | undefined
 ): string {
+  // Same context object the API serializers publish (`src/lib/vocab.ts`), so a
+  // graph copied out of the editor carries the same vocabulary as one fetched
+  // from `/api/graph`. The document *shape* below is still the editor's own
+  // sandbox dialect (`filedBy`/`relations`), which does not conform to
+  // `public/schema/v0.json` — reconciling that is a separate refactor.
   const out = {
-    "@context": "https://aboard.dev/schema/v0",
+    "@context": JSONLD_CONTEXT,
     "@id": `aboard:domain/${domain ?? "graph"}`,
     "@type": "ClaimGraph",
     domain: domain ?? null,
-    version: "v0",
+    version: GRAPH_VERSION,
     lastUpdated: new Date().toISOString(),
     claims: nodes.map((n) => ({
       "@id": "aboard:claim/" + n.id,
