@@ -52,6 +52,13 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Absolute URLs are computed by the Metadata API at build time, so neither
+      # the type-checker nor the schema validator can see them: a missing
+      # metadataBase silently pointed every OG image at localhost across 32 of 33
+      # pages. This asserts over the built HTML, the only place it shows.
+      - name: Check built URLs
+        run: npm run check:built-urls
+
       # The write path spans three packages. The Worker bundles the canonical Zod
       # schemas out of src/lib, and the MCP server is a client of the endpoint's
       # contract, so a change to src/lib/types.ts can break either one without the
