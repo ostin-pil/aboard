@@ -3,9 +3,13 @@ import { isClaimNode, orderParentsFirst } from "./types";
 
 // A transient overlay handle ("full-target") only exists during a
 // connection drag; an edge persisted against it dangles forever and
-// React Flow logs error #008. Drop any full-* handle on load.
+// React Flow logs error #008. Drop any full-* handle on load — and any
+// stringified nullish value ("null"/"undefined"), which can reach here
+// through a persist round-trip and dangles the same way.
 const cleanHandle = (h?: string) =>
-  h && !h.startsWith("full-") ? h : undefined;
+  h && h !== "null" && h !== "undefined" && !h.startsWith("full-")
+    ? h
+    : undefined;
 
 const STORE_KEY = "aboard.graph.v3";
 const LEGACY_STORE_KEYS = ["aboard.graph.v2"];
