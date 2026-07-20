@@ -25,6 +25,7 @@ order they could be picked up; pick any.
 | [editor-mode-posture.md](editor-mode-posture.md) | ~3 hr (Posture 2) / ~12+ hr (Posture 3) | Yes — three postures to choose between | None |
 | [open-weights-forecaster.md](open-weights-forecaster.md) | ~4–6 hr for the M2/F2 prototype | Yes — inference provider, model roster, aggregation rule | None |
 | [organic-traffic-dual-ux.md](organic-traffic-dual-ux.md) | ~3–4 days across phases | Light — content negotiation vs parallel URLs, crawler stance | Audit batches 1–2 (`code-quality-audit.md`), agent-surface refresh |
+| [graph-state-integrity.md](graph-state-integrity.md) | ~half-day (mostly QA) | Light — inline persistence, seed-hash scope, notify vs nuke | None (audit batch 1 merged) |
 
 Suggested order (2026-07-11 review): FLF entry first (hard deadline; carries
 the deploy + LICENSE), then integrity-foundations → repo-hardening →
