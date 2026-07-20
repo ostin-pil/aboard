@@ -100,18 +100,21 @@ function ClaimGraphRFInner({
   // persisted or freshly-built engine data.
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const initial = useMemo(() => {
+    // Inline is a read-only display of canonical data/: it has no edit
+    // affordances and nothing worth persisting. The persisted sandbox belongs
+    // to fullbleed (/graph); reading it here put a visitor's editor state —
+    // other domains, deleted seeds, collapsed groups — on the landing page,
+    // and let its group chevrons write back to the shared key. Build fresh.
+    if (mode === "inline") return engineToRF(data, mode);
     const persisted = loadPersisted();
     if (persisted) {
       const hydrated = hydrateFromPersisted(persisted);
-      // Self-heal on schema drift: fullbleed mode must contain at
-      // least one domainGroup node. A persisted snapshot pre-dating a
-      // structural refactor (e.g. before multi-domain landed) would
-      // rehydrate into an inert graph — drop it and rebuild from
-      // data/. Load-bearing; do not remove without replacing with a
-      // smarter drift check. See knowledge/issues.md.
-      const schemaOk =
-        mode !== "fullbleed" || hydrated.nodes.some(isGroupNode);
-      if (schemaOk) return hydrated;
+      // Self-heal on schema drift: a fullbleed snapshot must contain at least
+      // one domainGroup node. A snapshot pre-dating a structural refactor (e.g.
+      // before multi-domain landed) would rehydrate into an inert graph — drop
+      // it and rebuild from data/. Load-bearing; do not remove without
+      // replacing with a smarter drift check. See knowledge/issues.md.
+      if (hydrated.nodes.some(isGroupNode)) return hydrated;
       clearPersisted();
     }
     return engineToRF(data, mode);
