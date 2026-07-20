@@ -16,6 +16,38 @@ recorded objection, that it "relies on devs remembering to bump", is what
 
 Effort: roughly half a day, most of it QA. Prereq: none (batch 1 merged).
 
+**Browser pass, 2026-07-20.** A manual repro on current `main` confirmed E1 and
+E4 and surfaced two findings the static audit could not see (N1, N2 in §6).
+E1 is bidirectional, not read-only, and E4 is worse than "undraggable pill":
+the group wedges and the expand toggle stops responding, recoverable only by
+`reset`. Both corrections are folded in below.
+
+## 0. N1 first — the graph must render client-only (MED, new)
+
+The single highest-leverage change, and the one the others sit on. There is no
+mounted gate anywhere (`grep` for `ssr:`/`dynamic(`/`mounted` across the canvas
+files is empty), so under `output: "export"` the graph is prerendered to static
+HTML at build time. But its initial state is derived from `localStorage`
+(`loadPersisted`), which is `undefined` on the server. So the server renders the
+`engineToRF(data)` tree and the client renders the persisted tree, and any
+visitor with a saved sandbox hydration-mismatches on every load, in production.
+This was live in the browser pass: a React "tree hydrated but some
+attributes … didn't match" error on `/`, plus a React-Flow-internal
+`AriaLiveMessage` style mismatch (`width:"1px"` server vs `width:1` client)
+that is present even without persisted state.
+
+Fix: render `<ClaimGraphCanvas>` client-only via a `mounted` flag
+(`useState(false)` set true in a `useEffect`) that returns a sized placeholder
+until mounted, or `next/dynamic(..., { ssr: false })`. The surrounding page
+(header, counts, prose) stays server-rendered, so no SEO is lost; the canvas
+is an interactive SVG, not indexable content. This eliminates the mismatch on
+both `/` and `/graph`, and it shrinks the blast radius of E1 and E2: there is no
+longer an SSR'd localStorage tree to disagree with anything.
+
+E1's own fix (§1) still stands: even client-side, inline must not read the
+sandbox. N1 removes the hydration failure mode; §1 removes the wrong-content
+failure mode. They are different bugs with the same smell.
+
 ## 1. E1 — the landing page must never show the editor sandbox (HIGH)
 
 `ClaimGraphRF.tsx:102-118` calls `loadPersisted()` unconditionally, and the
@@ -32,6 +64,19 @@ ever edited on `/graph` sees their scratch state there instead: all domains,
 fullbleed coordinates, deleted seed claims, collapsed groups. The header
 counts alongside it are still computed from `engineData`, so the page
 contradicts itself.
+
+**Bidirectional, not read-only.** The browser pass showed this is worse than a
+stale read. `hydrateFromPersisted` reconstructs `domainGroup` nodes from the
+snapshot, and the group header chevron (`toggleDomainCollapse`, which calls
+`persist()`) is *not* gated on `editable`. Inline is normally safe only because
+`engine-to-rf.ts:51` builds no groups in inline mode, so no chevron renders. But
+once a fullbleed snapshot injects group nodes into the inline graph, chevrons
+appear on the landing page and clicking one writes back to the shared key. The
+pass also logged `[React Flow] Couldn't create edge for target handle "null",
+edge IS1->M2#causes#24` on `/`, where `IS1` is an `inequality` claim that cannot
+exist in the `democratic_backsliding` landing graph, so the sandbox's
+cross-domain edges are being rendered against an inline layout that has no such
+handles. Concrete proof of E1, and of why inline must not touch the store.
 
 Fix: do not read persisted state in inline mode at all.
 
@@ -103,24 +148,54 @@ the meta strip, "new claims have been published since your last visit; reset
 to rebuild", next to the existing `reset`. That reuses the `reset()` path
 already at `ClaimGraphRF.tsx:371`.
 
-## 4. E4 — re-measure groups after undo and redo (MED)
+## 4. E4 — replay collapse side-effects on undo and redo (MED, elevated)
 
-`undo` and `redo` (`ClaimGraphRF.tsx:347-366`) restore group `style.width` and
-`style.height` through `setNodes` without calling `updateNodeInternals`. The
-collapse path 25 lines earlier does exactly that, with a comment explaining why
-(`:322-330`): React Flow does not re-measure on its own, so cached `measured`
-dims go stale and the collapsed pill becomes undraggable. Undoing a collapse
-therefore reintroduces the bug `knowledge/issues.md` already records.
-`updateNodeInternals` is even in `buildInstance`'s dependency array
-(`:390`) while being unused in its body, which is the tell.
+The audit framed this as "the collapsed pill becomes undraggable." The browser
+pass found worse: a series of collapse/expand then undo/redo wedges the group so
+the **expand toggle stops responding**, recoverable only by `reset`. Elevate the
+observed severity accordingly.
 
-Fix: after the `setNodes`/`setEdges` pair in both handlers, re-measure in a
-`requestAnimationFrame` every group whose `style` differs between the outgoing
-and incoming snapshots (or simply every group node, since there are few and the
-call is idempotent). Fold it into the existing `requestAnimationFrame(persist)`
-rather than adding a second frame.
+`undo` and `redo` (`ClaimGraphRF.tsx:347-366`) restore nodes and edges through
+`setNodes`/`setEdges` from a raw history snapshot. The live collapse path
+(`toggleDomainCollapse`, `:225-330`) does three things beyond mutating state:
+it recomputes group bounds on the expand branch (`recomputeGroupBounds`,
+`:256`), and it re-measures and re-persists in a `requestAnimationFrame`
+(`updateNodeInternals`, `:322-330`, with a comment explaining exactly why).
+Undo and redo replay none of it. The snapshot itself is fine: `snapshot()`
+(`:206-218`) carries `style` by reference, but the collapse path always builds a
+*fresh* style object (`:238-244`), so the historical dims round-trip correctly.
+The failure is the un-replayed post-processing: stale `measured` dims mean the
+chevron's clickable region no longer matches where it renders, which is the
+wedge. `updateNodeInternals` is even in `buildInstance`'s dependency array
+(`:390`) while unused in its body, which is the tell.
 
-## 5. Route error boundary (section D)
+Fix: after the `setNodes`/`setEdges` pair in both handlers, replay the same
+post-processing the live toggle uses, `recomputeGroupBounds` for any group
+whose restored `collapsed` flag is false and then `updateNodeInternals` for
+every group node, inside the existing `requestAnimationFrame(persist)` rather
+than a second frame. Re-measuring alone (the audit's one-liner) is likely
+sufficient for the pill, but the observed wedge argues for replaying bounds
+too; verify against the exact repro below before deciding the smaller fix is
+enough.
+
+## 5. N2 — harden `cleanHandle` against stringified null (LOW, new)
+
+`persist.ts:7-8` drops transient `full-*` handles on load but passes any other
+truthy string through, including the literal `"null"`:
+
+```ts
+const cleanHandle = (h?: string) => (h && !h.startsWith("full-") ? h : undefined);
+```
+
+The browser pass logged React Flow error #008 for a `target handle "null"`.
+Fresh-built edges carry no handle (`engine-to-rf.ts:127-139` sets neither), so a
+stringified `"null"`/`"undefined"` can only enter through the persisted
+round-trip or a connection whose handle serialized as the string. One line:
+also reject `"null"` and `"undefined"`. Mostly subsumed by E1 for the landing
+page, but it hardens the fullbleed path too, and it is trivially unit-testable
+alongside the E2 fixtures.
+
+## 6. Route error boundary (section D)
 
 Add `src/app/graph/error.tsx`. Upgraded from nice-to-have by E2: without it a
 render-phase throw takes out the whole route with the default Next error
@@ -147,28 +222,44 @@ validation rather than replacing it.
 ## Verification
 
 Browser QA is the gate here; the unit tests cover the parts that can be
-covered.
+covered. **Run the browser checks in an extension-free window** (incognito with
+extensions disabled). The 2026-07-20 pass ran with Dark Reader active, which
+injected `data-darkreader-inline-fill` attributes and produced its own hydration
+noise; that is the extension mutating the DOM before React hydrates, not an
+aboard bug, and it masks the real signal. React's own message lists this cause.
 
-1. **E1 repro, before and after.** On `/graph`, delete a seed claim and add a
-   node; return to `/`. Before: the landing graph shows the edit. After: it
-   shows the canonical board, and the node count matches the header.
-2. **E2 fixtures as unit tests.** Feed `loadPersisted`/`hydrateFromPersisted`
+1. **N1 hydration.** In a clean window, load `/` and `/graph` with the console
+   open, both with and without a saved sandbox. Before: a "tree hydrated but …
+   didn't match" error (and a React-Flow `AriaLiveMessage` style diff even with
+   no sandbox). After the client-only render: no hydration error from the graph
+   subtree in either state.
+2. **E1 repro, before and after.** On `/graph`, delete a seed claim and add a
+   node; return to `/`. Before: the landing graph shows the edit, and the
+   console logs `[React Flow] Couldn't create edge … handle "null"` for an
+   `IS1->…` edge (an inequality claim on the backsliding landing page). After:
+   `/` shows the canonical board, node count matches the header, no such log.
+3. **E2 fixtures as unit tests.** Feed `loadPersisted`/`hydrateFromPersisted`
    a corrupt payload set (`edges: {}`, `nodes: [null]`, a malformed element
    at index 3, valid JSON of the wrong shape, non-JSON) and assert each
    returns null (or a rebuilt graph) and never throws. These are the
    "persisted-state tests" from the audit's section C.
-3. **E3.** With a snapshot saved, bump `schemaVersion` and reload: snapshot
+4. **E3.** With a snapshot saved, bump `schemaVersion` and reload: snapshot
    dropped, graph rebuilt. Separately, add a claim to `data/`, rebuild, and
    reload with an existing snapshot: edits kept, notice shown, `reset`
    rebuilds.
-4. **E4.** Collapse a group, undo, and drag the group: it drags. Redo, drag
-   the pill: it drags. This is a manual check; React Flow's measurement is not
-   observable from vitest.
-5. **Boundary.** Write a deliberately corrupt value to `aboard.graph.v3` by
+5. **E4, the exact repro that failed.** On `/graph`, collapse a group, then
+   run a short collapse/expand plus undo/redo sequence. Before: the group
+   wedges: the expand chevron stops responding and only `reset` recovers.
+   After: every collapse survives undo and redo, the group expands on click,
+   and both the group and the collapsed pill drag tracking the cursor 1:1.
+   Manual; React Flow's measurement is not observable from vitest.
+6. **N2.** Unit-test `cleanHandle("null")` and `cleanHandle("undefined")`
+   return undefined, alongside the E2 fixtures.
+7. **Boundary.** Write a deliberately corrupt value to `aboard.graph.v3` by
    hand, load `/graph`: the boundary renders with a working recovery action
    rather than a white screen. Then confirm §2 means this path is not reached
    in the first place.
-6. `npx tsc --noEmit`, `npm test`, `npm run build`, `npm run lint` all clean.
+8. `npx tsc --noEmit`, `npm test`, `npm run build`, `npm run lint` all clean.
 
 ## Out of scope
 
