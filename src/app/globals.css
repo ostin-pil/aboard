@@ -350,6 +350,11 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 }
 .ag-rf-inline .react-flow { background-image: none; background-color: transparent; }
 
+/* Placeholder held while the client-only graph mounts (ClaimGraphCanvas).
+   Fills the wrapper box with the graph's own surface so there is no flash. */
+.ag-canvas-loading { width: 100%; height: 100%; background-color: var(--bg); }
+.ag-inline .ag-canvas-loading { background-color: transparent; }
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="dark"]) .ag-rf-root .react-flow {
     background-image: radial-gradient(circle, color-mix(in srgb, var(--grid-dot) calc(var(--grid-dot-alpha) * 100%), transparent) 0.9px, transparent 1px);
