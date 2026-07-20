@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { ClaimEdge, GraphNode } from "./types";
 import { isClaimNode, orderParentsFirst } from "./types";
 
@@ -14,94 +15,173 @@ const cleanHandle = (h?: string) =>
 const STORE_KEY = "aboard.graph.v3";
 const LEGACY_STORE_KEYS = ["aboard.graph.v2"];
 
-type PersistedClaim = {
-  kind: "claim";
-  id: string;
-  position: { x: number; y: number };
-  parentId?: string;
-  data: Extract<GraphNode, { type: "claim" }>["data"];
-  hidden?: boolean;
-};
-type PersistedGroup = {
-  kind: "domainGroup";
-  id: string;
-  position: { x: number; y: number };
-  data: Extract<GraphNode, { type: "domainGroup" }>["data"];
-  style?: { width?: number | undefined; height?: number | undefined };
-};
-type Persisted = {
-  nodes: (PersistedClaim | PersistedGroup)[];
-  edges: {
-    id: string;
-    source: string;
-    target: string;
-    sourceHandle?: string;
-    targetHandle?: string;
-    data: ClaimEdge["data"];
-    hidden?: boolean;
-  }[];
-};
+// Bump when the persisted shape changes incompatibly. A stored payload whose
+// version differs is unusable and dropped on load — local edits cannot survive
+// a shape change. (Content drift, a data/ change under an unchanged shape, is a
+// separate, non-destructive signal; see seedHash.)
+export const STORE_SCHEMA_VERSION = 1;
 
-export function loadPersisted(): Persisted | null {
+// Runtime model of the persisted payload. Only the structure
+// hydrateFromPersisted depends on is constrained; node and edge `data` stay
+// loose, because a wrong leaf renders oddly at worst, while content drift is
+// caught by seedHash rather than by validating every field here. Replaces the
+// old hand-rolled truthiness checks, which inspected only nodes[0] and never
+// looked at edges at all (so `{nodes:[],edges:{}}` slipped through and threw in
+// the render-phase hydrate).
+const position = z.object({ x: z.number(), y: z.number() });
+const looseData = z.record(z.string(), z.unknown());
+const persistedNode = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("claim"),
+    id: z.string(),
+    position,
+    parentId: z.string().optional(),
+    data: looseData,
+    hidden: z.boolean().optional(),
+  }),
+  z.object({
+    kind: z.literal("domainGroup"),
+    id: z.string(),
+    position,
+    data: looseData,
+    style: z
+      .object({ width: z.number().optional(), height: z.number().optional() })
+      .optional(),
+    hidden: z.boolean().optional(),
+  }),
+]);
+const persistedEdge = z.object({
+  id: z.string(),
+  source: z.string(),
+  target: z.string(),
+  sourceHandle: z.string().optional(),
+  targetHandle: z.string().optional(),
+  data: looseData,
+  hidden: z.boolean().optional(),
+});
+const persistedSchema = z.object({
+  schemaVersion: z.number(),
+  seedHash: z.string(),
+  nodes: z.array(persistedNode),
+  edges: z.array(persistedEdge),
+});
+
+type Persisted = z.infer<typeof persistedSchema>;
+
+/**
+ * Stable, cheap hash of the canonical seed's claim identities (`id:kind`).
+ * Detects claims added to or removed from `data/` since a sandbox was saved,
+ * without firing on the positions or bodies the user is free to edit. FNV-1a
+ * over the sorted id:kind list.
+ */
+export function computeSeedHash(nodes: GraphNode[]): string {
+  const key = nodes
+    .filter(isClaimNode)
+    .map((n) => `${n.id}:${n.data.kind}`)
+    .sort()
+    .join("|");
+  let h = 2166136261;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0).toString(36);
+}
+
+/**
+ * Load the persisted sandbox, validated. Returns null (and clears the key) on
+ * anything unusable: unreadable storage, non-JSON, a shape the schema rejects,
+ * or a schemaVersion mismatch. On success reports `seedDrift` — whether the
+ * stored seed differs from the current canonical one — so the caller can offer
+ * a refresh without discarding the user's edits.
+ */
+export function loadPersisted(
+  expectedSeedHash: string
+): { persisted: Persisted; seedDrift: boolean } | null {
   if (typeof window === "undefined") return null;
+
+  let raw: string | null = null;
   try {
     for (const k of LEGACY_STORE_KEYS) {
       try { window.localStorage.removeItem(k); } catch { /* non-fatal */ }
     }
-    const raw = window.localStorage.getItem(STORE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Persisted;
-    if (!parsed?.nodes || !parsed?.edges) return null;
-    const first = parsed.nodes[0];
-    if (first && (!first.position || !first.data || !first.kind)) return null;
-    return parsed;
+    raw = window.localStorage.getItem(STORE_KEY);
   } catch {
+    return null; // storage unavailable; nothing to clear
+  }
+  if (!raw) return null;
+
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    clearPersisted();
     return null;
   }
+
+  const result = persistedSchema.safeParse(json);
+  if (!result.success) {
+    // Corrupt, or a pre-versioning payload — unusable shape. Drop and rebuild.
+    clearPersisted();
+    return null;
+  }
+  if (result.data.schemaVersion !== STORE_SCHEMA_VERSION) {
+    // Schema drift: the stored shape predates the current one. Silent drop.
+    clearPersisted();
+    return null;
+  }
+  return {
+    persisted: result.data,
+    seedDrift: result.data.seedHash !== expectedSeedHash,
+  };
 }
 
-export function savePersisted(nodes: GraphNode[], edges: ClaimEdge[]) {
+export function savePersisted(
+  nodes: GraphNode[],
+  edges: ClaimEdge[],
+  seedHash: string
+) {
   if (typeof window === "undefined") return;
   try {
     const slim: Persisted = {
+      schemaVersion: STORE_SCHEMA_VERSION,
+      seedHash,
       nodes: orderParentsFirst(nodes).map((n) => {
         if (isClaimNode(n)) {
-          const out: PersistedClaim = {
-            kind: "claim",
+          return {
+            kind: "claim" as const,
             id: n.id,
             position: n.position,
             data: n.data,
+            ...(n.parentId ? { parentId: n.parentId } : {}),
+            ...(n.hidden ? { hidden: true } : {}),
           };
-          if (n.parentId) out.parentId = n.parentId;
-          if (n.hidden) out.hidden = true;
-          return out;
         }
-        const g: PersistedGroup = {
-          kind: "domainGroup",
+        return {
+          kind: "domainGroup" as const,
           id: n.id,
           position: n.position,
           data: n.data,
+          ...(n.style
+            ? {
+                style: {
+                  width: n.style.width as number | undefined,
+                  height: n.style.height as number | undefined,
+                },
+              }
+            : {}),
+          ...(n.hidden ? { hidden: true } : {}),
         };
-        if (n.style) {
-          g.style = {
-            width: n.style.width as number | undefined,
-            height: n.style.height as number | undefined,
-          };
-        }
-        return g;
       }),
-      edges: edges.map((e) => {
-        const out: Persisted["edges"][number] = {
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          data: e.data!,
-        };
-        if (e.sourceHandle) out.sourceHandle = e.sourceHandle;
-        if (e.targetHandle) out.targetHandle = e.targetHandle;
-        if (e.hidden) out.hidden = true;
-        return out;
-      }),
+      edges: edges.map((e) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        data: e.data ?? {},
+        ...(e.sourceHandle ? { sourceHandle: e.sourceHandle } : {}),
+        ...(e.targetHandle ? { targetHandle: e.targetHandle } : {}),
+        ...(e.hidden ? { hidden: true } : {}),
+      })),
     };
     window.localStorage.setItem(STORE_KEY, JSON.stringify(slim));
   } catch {
@@ -160,7 +240,12 @@ export function hydrateFromPersisted(p: Persisted): { nodes: GraphNode[]; edges:
       target: e.target,
       ...(sh ? { sourceHandle: sh } : {}),
       ...(th ? { targetHandle: th } : {}),
-      data: e.data,
+      // `data` is validated loosely (see persistedSchema): the structural gate
+      // is what matters, and the render tolerates a stale-shaped edge data far
+      // better than the loader would tolerate a rejected sandbox. Cast back to
+      // the edge's data type; a genuinely wrong shape is a content problem the
+      // seedHash drift path surfaces, not a crash.
+      data: e.data as ClaimEdge["data"],
       ...(e.hidden ? { hidden: true } : {}),
     };
   });

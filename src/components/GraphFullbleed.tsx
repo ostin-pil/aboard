@@ -16,6 +16,7 @@ export function GraphFullbleed({ data }: Props) {
   const [jsonldText, setJsonldText] = useState("");
   const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
   const [activeDomain, setActiveDomain] = useState<string | "all">("all");
+  const [seedDrift, setSeedDrift] = useState(false);
   const domains = data.domains ?? (data.domain ? [data.domain] : []);
   const showDomainFilter = domains.length > 1;
 
@@ -29,6 +30,7 @@ export function GraphFullbleed({ data }: Props) {
     instanceRef.current = instance;
     setCounts({ n: instance.state.nodes.length, e: instance.state.edges.length });
     instance.setActiveDomain(activeDomain);
+    setSeedDrift(instance.seedDrift);
   };
 
   const chooseDomain = (d: string | "all") => {
@@ -74,6 +76,7 @@ export function GraphFullbleed({ data }: Props) {
   const reset = () => {
     if (!confirm("Reset graph to canonical seed? Local edits will be discarded.")) return;
     instanceRef.current?.reset();
+    setSeedDrift(false);
   };
 
   const copy = () => {
@@ -153,6 +156,14 @@ export function GraphFullbleed({ data }: Props) {
             ● local sandbox · not filed
           </span>
           {savedFlash && <span className="saved">● saved locally</span>}
+          {seedDrift && (
+            <span className="seed-drift" title="The published graph in data/ has changed since you last edited here. Your local edits are kept until you reset.">
+              ● new claims published since your last visit ·{" "}
+              <button className="seed-drift-reset" onClick={reset}>
+                reset to rebuild
+              </button>
+            </span>
+          )}
         </div>
         <div className="r">
           <button className="btn-mono" onClick={openExport}>

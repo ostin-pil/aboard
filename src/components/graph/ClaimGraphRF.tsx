@@ -45,6 +45,7 @@ import { NodePopover } from "./NodePopover";
 import { RowLabels } from "./RowLabels";
 import {
   clearPersisted,
+  computeSeedHash,
   hydrateFromPersisted,
   loadPersisted,
   savePersisted,
@@ -94,30 +95,37 @@ function ClaimGraphRFInner({
   onZoom,
   onReady,
 }: Props) {
-  // React Compiler is not enabled here (no reactCompiler in next.config), so this
-  // preview rule flags a manual memo it cannot prove it could preserve. The memo
-  // is intentional and correct: seed the initial React Flow state once from
-  // persisted or freshly-built engine data.
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
+  // Seed the initial React Flow state once: the canonical build plus its seed
+  // hash, or a validated persisted sandbox (fullbleed only). Runs at mount and
+  // when data/mode change.
   const initial = useMemo(() => {
+    const canonical = engineToRF(data, mode);
+    const seedHash = computeSeedHash(canonical.nodes);
     // Inline is a read-only display of canonical data/: it has no edit
     // affordances and nothing worth persisting. The persisted sandbox belongs
     // to fullbleed (/graph); reading it here put a visitor's editor state —
     // other domains, deleted seeds, collapsed groups — on the landing page,
     // and let its group chevrons write back to the shared key. Build fresh.
-    if (mode === "inline") return engineToRF(data, mode);
-    const persisted = loadPersisted();
-    if (persisted) {
-      const hydrated = hydrateFromPersisted(persisted);
-      // Self-heal on schema drift: a fullbleed snapshot must contain at least
-      // one domainGroup node. A snapshot pre-dating a structural refactor (e.g.
-      // before multi-domain landed) would rehydrate into an inert graph — drop
-      // it and rebuild from data/. Load-bearing; do not remove without
-      // replacing with a smarter drift check. See knowledge/issues.md.
-      if (hydrated.nodes.some(isGroupNode)) return hydrated;
+    if (mode === "inline") return { ...canonical, seedHash, seedDrift: false };
+    const loaded = loadPersisted(seedHash);
+    if (loaded) {
+      try {
+        const hydrated = hydrateFromPersisted(loaded.persisted);
+        // Self-heal on schema drift: a fullbleed snapshot must contain at least
+        // one domainGroup node. A snapshot pre-dating a structural refactor
+        // (e.g. before multi-domain landed) would rehydrate into an inert graph
+        // — drop it and rebuild. Load-bearing; see knowledge/issues.md.
+        if (hydrated.nodes.some(isGroupNode)) {
+          return { ...hydrated, seedHash, seedDrift: loaded.seedDrift };
+        }
+      } catch {
+        // Validated by Zod but still unhydratable: belt-and-braces, since the
+        // hydrate runs in render and a throw here would white-screen the route.
+        // Fall through to clear and rebuild.
+      }
       clearPersisted();
     }
-    return engineToRF(data, mode);
+    return { ...canonical, seedHash, seedDrift: false };
   }, [data, mode]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<GraphNode>(initial.nodes);
@@ -221,8 +229,8 @@ function ClaimGraphRFInner({
   }, []);
 
   const persist = useCallback(() => {
-    savePersisted(nodesRef.current, edgesRef.current);
-  }, []);
+    savePersisted(nodesRef.current, edgesRef.current, initial.seedHash);
+  }, [initial.seedHash]);
 
   // Toggle a domain group's collapsed flag and propagate hidden to children + edges.
   const toggleDomainCollapse = useCallback(
@@ -389,8 +397,9 @@ function ClaimGraphRFInner({
           data.domain
         ),
       setActiveDomain: (d) => setActiveDomain(d),
+      seedDrift: initial.seedDrift,
     };
-  }, [data, mode, rf, setNodes, setEdges, persist, updateNodeInternals]);
+  }, [data, mode, rf, setNodes, setEdges, persist, updateNodeInternals, initial.seedDrift]);
 
   // onReady — fire once after first mount.
   const readyFiredRef = useRef(false);

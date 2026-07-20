@@ -1064,6 +1064,16 @@ p.lede strong { color: var(--fg); font-weight: 500; }
 .meta-strip .l .v { color: var(--fg); }
 .meta-strip .r { display: flex; gap: 8px; align-items: center; }
 .meta-strip .saved { color: var(--lev-fg); }
+.meta-strip .seed-drift {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em;
+  color: var(--mech-fg); border: 1px solid color-mix(in oklab, var(--mech-fg) 30%, transparent);
+  padding: 2px 8px; border-radius: 999px;
+  background: color-mix(in oklab, var(--mech-bg) 60%, transparent);
+}
+.meta-strip .seed-drift-reset {
+  font: inherit; color: var(--mech-fg); background: none; border: none;
+  padding: 0; text-decoration: underline; cursor: pointer;
+}
 .meta-strip .sandbox-pill {
   font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em;
   color: var(--sym-fg); border: 1px solid color-mix(in oklab, var(--sym-fg) 30%, transparent);
