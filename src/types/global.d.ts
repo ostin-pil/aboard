@@ -14,6 +14,10 @@ declare global {
     reset: () => void;
     exportJSONLD: () => string;
     setActiveDomain: (domain: string | "all") => void;
+    // True when a persisted sandbox was restored but the canonical seed has
+    // since changed (claims added/removed in data/). The chrome uses it to
+    // offer a refresh without discarding the user's local edits.
+    seedDrift: boolean;
   }
 
   interface EngineNode {

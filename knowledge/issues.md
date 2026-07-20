@@ -111,12 +111,28 @@ didn't know about the new types.
    `/graph`) that calls `clearPersisted()` + `window.location.reload()`
    would be a cheap escape hatch.
 
-Status: option 1 landed
-(`feature/session-10-localstorage-selfheal`). The `useMemo` in
-`ClaimGraphRFInner` now sanity-checks that fullbleed-mode rehydrations
-contain at least one `domainGroup` node; otherwise it calls
-`clearPersisted()` and rebuilds from `data/`. Options 3 and 4 remain
-open if option 1 turns out to lose real local edits in practice.
+Status: RESOLVED (`fix/graph-state-integrity`, batch 2 of the code-quality
+audit). All four mitigations now exist, and the code-quality re-audit found
+that option 1 alone was insufficient — the self-heal guard read `mode !==
+"fullbleed" || ...`, so inline mode was exempt from it entirely, which put the
+editor sandbox on the landing page (audit E1).
+
+- Option 1 (self-heal on schema drift) landed in session 10 and stays, now
+  fullbleed-only and with the inline exemption removed.
+- Option 2 (explicit version key) landed as `STORE_SCHEMA_VERSION` in
+  `persist.ts`. Its recorded fragility ("relies on devs remembering to bump")
+  is answered by pairing it with a content `seedHash` over the canonical
+  claims' `id:kind`, which detects data/ drift without a manual bump.
+- Option 3 (visible reset hint on drift) landed as the meta-strip "new claims
+  published since your last visit · reset to rebuild" notice, shown on
+  seedHash mismatch so local edits are kept rather than nuked.
+- Option 4 (recovery escape hatch) landed as `src/app/graph/error.tsx`, whose
+  primary action clears the sandbox and retries.
+
+Also fixed alongside: the persisted payload is now Zod-validated (a corrupt
+one previously threw in the render-phase hydrate and white-screened the
+route), and the graph renders client-only so a localStorage-derived tree no
+longer hydration-mismatches the server prerender.
 
 ---
 
