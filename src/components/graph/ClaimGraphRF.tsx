@@ -343,6 +343,27 @@ function ClaimGraphRFInner({
     [setNodes, setEdges, snapshot, persist, mode, updateNodeInternals]
   );
 
+  // Restore a history snapshot, replaying the post-processing the live collapse
+  // path does. Undo/redo change group style.width/height directly; React Flow
+  // does not re-measure on its own, so its cached `measured` dims go stale and
+  // the collapsed pill becomes undraggable and its expand chevron unhittable
+  // (the exact wedge toggleDomainCollapse guards against at :322-338). So after
+  // restoring: recompute bounds for expanded groups (collapsed ones are skipped
+  // inside recomputeGroupBounds), then force a re-measure of every group.
+  const restoreSnapshot = useCallback(
+    (snap: { nodes: GraphNode[]; edges: ClaimEdge[] }) => {
+      const restored = snap.nodes.map((n) => ({ ...n, data: { ...n.data } } as GraphNode));
+      const groupIds = restored.filter(isGroupNode).map((g) => g.id);
+      setNodes(groupIds.length ? recomputeGroupBounds(restored, mode) : restored);
+      setEdges(snap.edges.map((e) => ({ ...e, data: { ...e.data! } })));
+      requestAnimationFrame(() => {
+        groupIds.forEach((id) => updateNodeInternals(id));
+        persist();
+      });
+    },
+    [setNodes, setEdges, mode, updateNodeInternals, persist]
+  );
+
   const buildInstance = useCallback((): AboardGraphInstance => {
     return {
       get state() {
@@ -359,20 +380,14 @@ function ClaimGraphRFInner({
         const h = historyRef.current;
         if (h.idx > 0) {
           h.idx--;
-          const snap = h.stack[h.idx];
-          setNodes(snap.nodes.map((n) => ({ ...n, data: { ...n.data } } as GraphNode)));
-          setEdges(snap.edges.map((e) => ({ ...e, data: { ...e.data! } })));
-          requestAnimationFrame(persist);
+          restoreSnapshot(h.stack[h.idx]);
         }
       },
       redo: () => {
         const h = historyRef.current;
         if (h.idx < h.stack.length - 1) {
           h.idx++;
-          const snap = h.stack[h.idx];
-          setNodes(snap.nodes.map((n) => ({ ...n, data: { ...n.data } } as GraphNode)));
-          setEdges(snap.edges.map((e) => ({ ...e, data: { ...e.data! } })));
-          requestAnimationFrame(persist);
+          restoreSnapshot(h.stack[h.idx]);
         }
       },
       fitView: () => rf.fitView({ duration: 200, padding: 0.15 }),
@@ -399,7 +414,7 @@ function ClaimGraphRFInner({
       setActiveDomain: (d) => setActiveDomain(d),
       seedDrift: initial.seedDrift,
     };
-  }, [data, mode, rf, setNodes, setEdges, persist, updateNodeInternals, initial.seedDrift]);
+  }, [data, mode, rf, setNodes, setEdges, restoreSnapshot, initial.seedDrift]);
 
   // onReady — fire once after first mount.
   const readyFiredRef = useRef(false);
