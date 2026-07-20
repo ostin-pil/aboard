@@ -1040,6 +1040,12 @@ p.lede strong { color: var(--fg); font-weight: 500; }
    PAGE: claim graph (fullbleed)
    ============================================================ */
 .canvas-host { flex: 1; position: relative; overflow: hidden; background: var(--bg); }
+.graph-error { display: flex; align-items: center; justify-content: center; }
+.graph-error-box { max-width: 460px; text-align: center; padding: 32px; }
+.graph-error-box h2 { font-size: 18px; margin-bottom: 12px; }
+.graph-error-box p { color: var(--muted); font-size: 14px; line-height: 1.55; margin-bottom: 20px; }
+.graph-error-actions { display: flex; gap: 10px; justify-content: center; }
+.graph-error-digest { font-family: var(--mono); font-size: 10.5px; color: var(--muted-2); margin: 16px 0 0; }
 .canvas-host > .ag-root { position: absolute; inset: 0; }
 
 .meta-strip {
