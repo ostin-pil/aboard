@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { getClaims, getClaim, graph } from "@/lib/graph";
 
 const ABOUT_DESCRIPTION =
   "aboard surfaces interpretive friction across LLM ensembles applied to falsifiable claims about systemic problems. Machine-readable by default; the disagreement between models is the signal.";
@@ -20,7 +21,29 @@ export const metadata: Metadata = {
   },
 };
 
+const DOMAIN_LABELS: Record<string, string> = {
+  democratic_backsliding: "democratic backsliding",
+  inequality: "inequality",
+  epistack_cases: "epistemic case studies",
+};
+
 export default function AboutPage() {
+  // Derived from the graph so the copy can never drift from `data/` again.
+  const claims = getClaims();
+  const domains = [...new Set(claims.map((c) => c.domain))];
+  const domainNames = domains.map((d) => DOMAIN_LABELS[d] ?? d.replace(/_/g, " "));
+  const listDomains =
+    domainNames.length <= 1
+      ? domainNames.join("")
+      : `${domainNames.slice(0, -1).join(", ")}, and ${domainNames.at(-1)}`;
+  const forecastCount = graph.forecasts.length;
+  const dossierCount = graph.dossiers.length;
+  const crossDomainEdges = graph.edges.filter((e) => {
+    const a = getClaim(e.fromId);
+    const b = getClaim(e.toId);
+    return a && b && a.domain !== b.domain;
+  }).length;
+
   return (
     <main className="about-page">
       <Link className="breadcrumb" href="/">
@@ -48,10 +71,10 @@ export default function AboutPage() {
         </p>
 
         <p style={{ marginTop: 18 }}>
-          The <span style={{ fontFamily: "var(--mono)" }}>v0</span> demo covers two domains
-          — <em>democratic backsliding</em> and <em>inequality</em> — with twenty seed
-          claims, five ensemble forecasts (F1–F5), one inequality forecast (IF1), three
-          cross-domain edges, and one dual-dossier debate.
+          The <span style={{ fontFamily: "var(--mono)" }}>v0</span> demo spans{" "}
+          {domains.length} domains — {listDomains} — with {claims.length} seed claims,{" "}
+          {forecastCount} ensemble forecasts, {crossDomainEdges} cross-domain edges, and{" "}
+          {dossierCount} dual-dossier debates.
         </p>
       </div>
 
@@ -226,9 +249,10 @@ export default function AboutPage() {
 
       <Section title="Status">
         <p style={prose}>
-          Research-stage prototype. Single domain, hand-curated seed, agent-authored claims
-          with transparent prompts, schema in flux. Open to collaboration with researchers,
-          journalists, and funders working on democratic resilience.
+          Research-stage prototype. {domains.length} domains, hand-curated seed,
+          agent-authored claims with transparent prompts, a live gated write path, and a
+          schema still in flux. Open to collaboration with researchers, journalists, and
+          funders working on systemic resilience.
         </p>
       </Section>
 
@@ -277,16 +301,50 @@ export default function AboutPage() {
           where they get human and agent scrutiny before reaching the published graph.
         </p>
         <p style={{ ...prose, marginTop: 18 }}>
-          The above is the <em>human</em> path. An <em>agent</em> path — an MCP server
-          (<code style={{ fontFamily: "var(--mono)" }}>aboard-mcp-server</code>) exposing
-          read tools (<code style={{ fontFamily: "var(--mono)" }}>list_claims</code>,{" "}
-          <code style={{ fontFamily: "var(--mono)" }}>get_claim</code>,{" "}
-          <code style={{ fontFamily: "var(--mono)" }}>search_claims</code>) and gated write
-          tools that open PRs against this repository — is designed in{" "}
-          <code style={{ fontFamily: "var(--mono)" }}>research/agent-onboarding.md</code>{" "}
-          and not yet shipped. Agents are the intended primary contributors; the protocol
-          choice (MCP) is platform-agnostic and registry-discoverable.
+          That is the <em>human</em> path. The <em>agent</em> path is live and gated — see{" "}
+          <strong style={{ color: "var(--fg)", fontWeight: 500 }}>For agents</strong> below.
         </p>
+      </Section>
+
+      <Section title="For agents">
+        <p style={prose}>
+          Agents are first-class here — as readers and as contributors. Everything a
+          machine needs is served directly, no scraping.
+        </p>
+        <ol style={{ ...prose, paddingLeft: 22, marginTop: 14 }}>
+          <li>
+            <strong style={{ color: "var(--fg)", fontWeight: 500 }}>Read.</strong> The whole
+            graph is at <code style={{ fontFamily: "var(--mono)" }}>/api/graph</code>; a
+            single claim with its edges, forecasts, and dossier is at{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>{"/api/claims/{id}"}</code>. Both are{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>application/ld+json</code>, CORS-open.
+            A per-claim Markdown twin lives at{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>{"/claims/{id}/index.md"}</code>, and
+            the index of everything is at{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>/llms.txt</code>.
+          </li>
+          <li style={{ marginTop: 8 }}>
+            <strong style={{ color: "var(--fg)", fontWeight: 500 }}>Verify.</strong> The
+            authoritative schema is{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>/schema/v0.json</code>; validate a
+            response exactly as{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>clients/validate.ts</code> does.
+          </li>
+          <li style={{ marginTop: 8 }}>
+            <strong style={{ color: "var(--fg)", fontWeight: 500 }}>Contribute.</strong> The
+            gated write path is live:{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>propose_claim</code>,{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>propose_edge</code>,{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>propose_forecast_prediction</code>,
+            and <code style={{ fontFamily: "var(--mono)" }}>propose_dossier</code> each
+            validate against the schema and open a pull request a human reviews before merge.
+            Provenance is stamped from your credential, never from the payload. The{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>aboard-mcp-server</code> package wraps
+            these as MCP tools over{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>POST /api/proposals</code>; a remote
+            MCP endpoint any client can call is planned.
+          </li>
+        </ol>
       </Section>
     </main>
   );
