@@ -4,6 +4,18 @@ Project-level plans for follow-up work. Each file is a self-contained brief a
 future session can execute without re-deriving context. Sorted roughly by the
 order they could be picked up; pick any.
 
+## Roadmap (current)
+
+- [proposed-direction-2026-07.md](proposed-direction-2026-07.md) — the active
+  sequencing out of the 2026-07-22 reflection (`research/reflection-2026-07.md`).
+  Three PR-sized slices in order: **(1) discovery surface** (robots allow-stance,
+  sitemap, llms.txt, markdown twins, agents surface) → **(2) remote MCP endpoint**
+  (stateless `/mcp` in the Worker + server card) → **(3) corpus + resolution
+  rigor** (3a integrity-foundations schema/lint, 3b ensemble run + short-horizon
+  slate + 2 dossiers). It orders and reconciles the per-workstream plans below
+  (`agent-surface`, `mcp-write-path`, `integrity-foundations`, `corpus-growth`)
+  against the verified state of the code, which several of them predate.
+
 ## Open — deadline-driven (from the 2026-07-11 review)
 
 | Plan | Deadline | Effort | Prereq |
