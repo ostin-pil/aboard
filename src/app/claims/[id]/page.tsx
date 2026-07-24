@@ -38,6 +38,14 @@ export async function generateMetadata({
   return {
     title,
     description,
+    alternates: {
+      // Let an agent that landed on the HTML hop to the structured record and
+      // the Markdown twin without guessing the API shape.
+      types: {
+        "application/ld+json": `/api/claims/${claim.id}`,
+        "text/markdown": `/claims/${claim.id}/index.md`,
+      },
+    },
     openGraph: {
       type: "article",
       siteName: "aboard",
