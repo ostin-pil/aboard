@@ -46,6 +46,7 @@ export function GET() {
     `- Full graph: ${base}/api/graph`,
     `- Single claim (with edges, forecasts, dossier): ${base}/api/claims/{id}`,
     `- JSON Schema (authoritative): ${base}/schema/v0.json`,
+    `- API catalog (RFC 9727): ${base}/.well-known/api-catalog`,
     `- Per-claim Markdown twin: ${base}/claims/{id}/index.md`,
     `- Human + agent guide: ${base}/about`,
     "",
