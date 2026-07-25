@@ -32,7 +32,7 @@ order they could be picked up; pick any.
 | [agent-surface.md](agent-surface.md) | ~3–5 hr | Light — /agents vs /about section | Canonical domain (deploy) |
 | [corpus-growth.md](corpus-growth.md) | ~1–2 days | Medium — dossier targets, forecast slate | integrity-foundations (for §3) |
 | [mcp-write-path.md](mcp-write-path.md) | ~2–3 days v1 slice, ~1–2 wk full | Yes — proposals route shape, auth, rate limits | repo-hardening (CI) |
-| [content-as-data.md](content-as-data.md) | ~30 min (A) / ~3–4 hr (B) / ~1–2 hr (C) | Yes — markdown renderer dependency, sanitization posture, `content/` location | None; slice B builds on session 28's Accept negotiation |
+| [content-as-data.md](content-as-data.md) | ~3–4 hr (B) / ~1–2 hr (C); A landed session 29 | Yes — markdown renderer dependency, sanitization posture, `content/` location | None; slice B builds on session 28's Accept negotiation |
 | [domain-on-create.md](domain-on-create.md) | ~1–2 hr | Light — slot-on-create vs leave-free | None |
 | [cross-domain-claim-drag.md](cross-domain-claim-drag.md) | ~half-day | Yes — extent strategy, confirm UX, coordinate math | None |
 | [editor-mode-posture.md](editor-mode-posture.md) | ~3 hr (Posture 2) / ~12+ hr (Posture 3) | Yes — three postures to choose between | None |

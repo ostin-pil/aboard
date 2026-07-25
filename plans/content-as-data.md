@@ -69,16 +69,36 @@ and the positioning paragraph. Roughly 500 lines of English, not the graph.
 
 ## Proposed design
 
-### Slice A. One source for the positioning paragraph
+### Slice A. One source for the positioning paragraph (landed, session 29)
 
-The smallest useful change, and it needs no new dependency.
+`src/lib/copy.ts` (`4a79e3d`) exports the shared strings as plain typed
+constants: no loader, no parsing, no new dependency. The five sites named
+above import from it, and so does `opengraph-image.tsx`, which turned out to
+share the tagline's second half with the homepage headline.
 
-A `src/lib/copy.ts` exporting the canonical strings (positioning paragraph,
-the symptom/mechanism/leverage gloss, the tagline). All five sites import
-from it. Plain typed constants, no loader, no parsing.
+Two rules came out of doing it, both asserted by `src/lib/copy.test.ts`:
 
-This alone kills the live drift. Do it first even if slices B and C never
-happen.
+- **Constants are plain prose, never markup.** A call site that wants emphasis
+  wraps a whole constant, so one spelling serves JSX, Markdown and a `<meta>`
+  attribute. The positioning sentence is split at its subject for this reason:
+  the homepage bolds "aboard" and the Markdown twin quotes the sentence whole.
+- **Copy that differs by audience still lives there.** `SITE_DESCRIPTION`,
+  `POSITIONING` and `AGENT_INTRO` address a search engine, a human and an
+  agent; they are deliberately different prose and flattening them would lose
+  the tuning. Adjacency is what makes the next writer reuse one instead of
+  writing a sixth. `copy.test.ts` confines a distinctive fragment of each to
+  the module, the way `canonical-urls.test.ts` confines origin literals.
+
+Output is unchanged but for two reconciliations, both verified against a build
+of `origin/main` (the OG card is byte-identical, and so are `about.html`,
+`llms.txt`, and every claim and dossier twin): the hero now says "leverage
+points", matching the claim kind's name in `data/`, and the OG alt text is
+composed from the card's own headline.
+
+One known sentence-initial use of "non-convergent by design" remains outside
+the module, in `dossiers/[claimId]/index.md/route.ts`. That is the dossier's
+own editorial surface with its own grammar, and it belongs to slice B rather
+than to a capitalization helper.
 
 ### Slice B. A `content/` tree, loaded and validated
 
@@ -131,11 +151,13 @@ file under the 250-line rule on its own.
 
 ## Sequencing and effort
 
-- Slice A, ~30 minutes. No dependency, no decisions, kills the live drift.
+- Slice A, landed in session 29 (`4a79e3d`). Decision 4 is answered for the
+  hero copy: it moved into `copy.ts` as constants rather than waiting for the
+  `content/` tree, because it is three sentences with no structure to model.
 - Slice B, ~3 to 4 hours after decision 1 is made. Bounded by the about page.
 - Slice C, ~1 to 2 hours. Mechanical, independent, browser QA on both themes.
 
-Slice A can ride any session. B and C each deserve their own PR.
+B and C each deserve their own PR.
 
 ## Relationship to existing plans
 
