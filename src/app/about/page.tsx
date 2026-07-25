@@ -323,7 +323,9 @@ export default function AboutPage() {
             index of everything is at{" "}
             <code style={{ fontFamily: "var(--mono)" }}>/llms.txt</code>, and an API catalog
             (RFC 9727) is at{" "}
-            <code style={{ fontFamily: "var(--mono)" }}>/.well-known/api-catalog</code>.
+            <code style={{ fontFamily: "var(--mono)" }}>/.well-known/api-catalog</code>. Any
+            page with a twin also answers its own URL in Markdown when you send{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>Accept: text/markdown</code>.
           </li>
           <li style={{ marginTop: 8 }}>
             <strong style={{ color: "var(--fg)", fontWeight: 500 }}>Verify.</strong> The

@@ -13,7 +13,16 @@
   "main": "worker/index.ts",
   "assets": {
     "directory": "./out",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+
+    // Assets are served BEFORE the Worker runs by default, so a request for a
+    // path that matches a static file never reaches the script. Markdown
+    // content negotiation has to see the request to answer it, so the page
+    // routes that have Markdown twins run the Worker first; it falls through to
+    // this same binding for anything it does not negotiate. Listed per route
+    // rather than `true` so the JS chunks, images and JSON-LD assets keep being
+    // served straight from the asset layer with no Worker invocation.
+    "run_worker_first": ["/", "/claims/*", "/dossiers/*"]
   },
 
   // Custom domain for the Worker. On deploy, Cloudflare provisions the DNS

@@ -50,6 +50,9 @@ export function GET() {
     `- Per-claim Markdown twin: ${base}/claims/{id}/index.md`,
     `- Human + agent guide: ${base}/about`,
     "",
+    "Markdown: send `Accept: text/markdown` to a page URL and it answers with",
+    "that page's Markdown twin. Works on /, /claims/{id}, and /dossiers/{id}.",
+    "",
     "## Claims",
   ];
 

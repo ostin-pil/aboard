@@ -39,6 +39,7 @@ import {
   dossierPath,
 } from "../src/lib/data/serialize";
 import { isTransientStatus, withRetry } from "../src/lib/http-retry";
+import { markdownTwinPath, prefersMarkdown } from "../src/lib/markdown-negotiation";
 import { withinRateLimit, type RateLimiter } from "../src/lib/rate-limit";
 import type { Claim, Dossier, Edge, Prediction } from "../src/lib/types";
 
@@ -768,12 +769,61 @@ async function handleProposal(request: Request, env: Env): Promise<Response> {
   return fail(501, "not_implemented", `\`${kind}\` is declared but not wired.`);
 }
 
+// --- Markdown content negotiation ------------------------------------------
+
+const MARKDOWN_HEADERS = {
+  "content-type": "text/markdown; charset=utf-8",
+  // The same URL now has two representations, so any cache between us and the
+  // agent has to key on Accept.
+  vary: "Accept",
+  // Cloudflare's edge cache keys on Accept-Encoding, not on Accept, so `Vary`
+  // alone would not stop a cached Markdown response from being handed to the
+  // next browser that asks the same URL for HTML. The twins are cheap to
+  // regenerate, so decline to be cached rather than risk serving a page as
+  // Markdown. The HTML responses keep their normal caching.
+  "cache-control": "no-store",
+  "access-control-allow-origin": "*",
+};
+
+/**
+ * Serve the Markdown twin of a page when the request asked for Markdown, or
+ * null to let the request fall through to HTML.
+ *
+ * Null covers every "no" — wrong method, no Markdown preference, a path that
+ * cannot have a twin, and a page whose twin does not exist. That last one is
+ * what makes this self-maintaining: the asset lookup is the source of truth on
+ * which pages have twins, so adding a twin route is all it takes to make that
+ * page negotiate.
+ */
+async function serveMarkdownTwin(request: Request, env: Env): Promise<Response | null> {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+  if (!prefersMarkdown(request.headers.get("accept"))) return null;
+
+  const url = new URL(request.url);
+  const twin = markdownTwinPath(url.pathname);
+  if (!twin) return null;
+
+  const asset = await env.ASSETS.fetch(new Request(new URL(twin, url).toString()));
+  if (!asset.ok) return null;
+
+  return new Response(request.method === "HEAD" ? null : asset.body, {
+    status: 200,
+    headers: MARKDOWN_HEADERS,
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
     if (pathname === "/api/proposals") {
       return handleProposal(request, env);
     }
+
+    // An agent asking a page URL for Markdown gets the page's twin, so it does
+    // not have to know the twin convention to get Markdown out of a plain link.
+    const markdown = await serveMarkdownTwin(request, env);
+    if (markdown) return markdown;
+
     // Everything else is the static site.
     return env.ASSETS.fetch(request);
   },
