@@ -42,3 +42,6 @@ next-env.d.ts
 
 # claude code local worktrees (linked git worktrees, not committed)
 .claude/worktrees/
+
+# wrangler local dev state (created by `wrangler dev`, never committed)
+.wrangler/
