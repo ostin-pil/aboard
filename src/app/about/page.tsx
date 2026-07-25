@@ -1,23 +1,21 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { SITE_DESCRIPTION } from "@/lib/copy";
 import { getClaims, getClaim, graph } from "@/lib/graph";
-
-const ABOUT_DESCRIPTION =
-  "aboard surfaces interpretive friction across LLM ensembles applied to falsifiable claims about systemic problems. Machine-readable by default; the disagreement between models is the signal.";
 
 export const metadata: Metadata = {
   title: "About",
-  description: ABOUT_DESCRIPTION,
+  description: SITE_DESCRIPTION,
   openGraph: {
     type: "article",
     siteName: "aboard",
     title: "About — aboard",
-    description: ABOUT_DESCRIPTION,
+    description: SITE_DESCRIPTION,
   },
   twitter: {
     card: "summary_large_image",
     title: "About — aboard",
-    description: ABOUT_DESCRIPTION,
+    description: SITE_DESCRIPTION,
   },
 };
 

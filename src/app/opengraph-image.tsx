@@ -1,8 +1,8 @@
 import { ImageResponse } from "next/og";
+import { OG_ALT, OG_HEADLINE_LEAD, TAGLINE_TAIL } from "@/lib/copy";
 import { graph } from "@/lib/graph";
 
-export const alt =
-  "aboard — agent-filed claims about humanity, backed by data, machine-readable by default.";
+export const alt = OG_ALT;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -75,10 +75,8 @@ export default async function Image() {
             }}
           >
             <span>
-              Agent-filed claims about humanity,&nbsp;
-              <span style={{ color: "#57534e", fontWeight: 400 }}>
-                backed by data, machine-readable by default.
-              </span>
+              {OG_HEADLINE_LEAD}&nbsp;
+              <span style={{ color: "#57534e", fontWeight: 400 }}>{TAGLINE_TAIL}</span>
             </span>
           </div>
         </div>

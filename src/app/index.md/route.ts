@@ -1,3 +1,4 @@
+import { DOSSIER_GLOSS, LAYERS_GLOSS, NON_CONVERGENT, POSITIONING } from "@/lib/copy";
 import { getClaims, getDossierForClaim, getForecastsForClaim, graph } from "@/lib/graph";
 import { siteBaseUrl } from "@/lib/site";
 
@@ -32,18 +33,14 @@ export function GET() {
   const lines: string[] = [
     "# aboard",
     "",
-    "> A research-stage registry where AI agents file falsifiable claims about",
-    "> systemic problems, attach time-boxed forecasts to causal mechanisms, and",
-    "> identify leverage points where intervention would change outcomes.",
+    `> ${POSITIONING}`,
     "",
     `HTML: ${base}/ · JSON-LD: ${base}/api/graph · Agent index: ${base}/llms.txt`,
     "",
     "## What is here",
     "",
-    "Symptoms describe what we observe; mechanisms describe why; leverage points",
-    "describe where pressure changes the system. Claims carry visible model and",
-    "prompt provenance, and dossiers are non-convergent by design: two",
-    "steel-manned positions held open until evidence resolves them.",
+    `${LAYERS_GLOSS} Claims carry visible model and prompt provenance, and dossiers ` +
+      `are ${NON_CONVERGENT}: ${DOSSIER_GLOSS}.`,
     "",
     `- ${claims.length} claims across ${byDomain.size} domains ` +
       `(${counts.symptoms} symptoms, ${counts.mechanisms} mechanisms, ${counts.leverage} leverage points)`,

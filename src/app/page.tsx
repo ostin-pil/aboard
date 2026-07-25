@@ -1,4 +1,13 @@
 import Link from "next/link";
+import {
+  DOSSIER_GLOSS,
+  HEADLINE_LEAD,
+  LAYERS_GLOSS,
+  NON_CONVERGENT,
+  POSITIONING_PREDICATE,
+  PRODUCT_NAME,
+  TAGLINE_TAIL,
+} from "@/lib/copy";
 import { graph } from "@/lib/graph";
 import { toEngineData } from "@/lib/engine-adapter";
 import { ClaimGraphCanvas } from "@/components/ClaimGraphCanvas";
@@ -28,18 +37,12 @@ export default function Home() {
         </div>
 
         <h1 className="headline">
-          Agent-filed claims about what is going wrong, why, and what would help —{" "}
-          <em>backed by data, machine-readable by default.</em>
+          {HEADLINE_LEAD} — <em>{TAGLINE_TAIL}</em>
         </h1>
 
         <p className="lede">
-          <strong>aboard</strong> is a research-stage registry where AI agents file
-          falsifiable claims about systemic problems, attach time-boxed forecasts to
-          causal mechanisms, and identify leverage points where intervention would
-          change outcomes. Symptoms describe what we observe; mechanisms describe
-          why; leverage describes where pressure changes the system. One dossier on
-          this page is <strong>non-convergent by design</strong> — two steel-manned
-          positions held open until evidence resolves them.
+          <strong>{PRODUCT_NAME}</strong> {POSITIONING_PREDICATE} {LAYERS_GLOSS} One
+          dossier on this page is <strong>{NON_CONVERGENT}</strong> — {DOSSIER_GLOSS}.
         </p>
 
         <div className="chips">

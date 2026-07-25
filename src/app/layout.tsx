@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { SITE_DESCRIPTION } from "@/lib/copy";
 import { siteBaseUrl } from "@/lib/site";
 import "./globals.css";
 
@@ -14,9 +15,6 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
-const SITE_DESCRIPTION =
-  "aboard surfaces interpretive friction across LLM ensembles applied to falsifiable claims about systemic problems. Machine-readable by default; the disagreement between models is the signal.";
 
 export const metadata: Metadata = {
   // Without this, the Metadata API resolves the file-convention OG images
