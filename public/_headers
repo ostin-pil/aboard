@@ -10,9 +10,23 @@
 # The homepage Link header (RFC 8288) advertises the API catalog to an agent
 # that fetches `/` without reading HTML — the catalog is the extensionless
 # `/.well-known/api-catalog` route, so its content type is set here too.
+#
+# `Vary: Accept` marks the pages the Worker content-negotiates: a request for
+# `text/markdown` gets that page's Markdown twin from the same URL (see
+# src/lib/markdown-negotiation.ts). It is declared on the HTML side for
+# correctness in any cache that honours it; the Worker additionally sends the
+# Markdown branch `Cache-Control: no-store`, because Cloudflare's own cache
+# keys on Accept-Encoding rather than Accept.
 
 /
   Link: </.well-known/api-catalog>; rel="api-catalog", </schema/v0.json>; rel="service-desc", </about>; rel="service-doc"
+  Vary: Accept
+
+/claims/*
+  Vary: Accept
+
+/dossiers/*
+  Vary: Accept
 
 /.well-known/api-catalog
   Content-Type: application/linkset+json; charset=utf-8

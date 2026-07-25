@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated Worker bundles from `wrangler dev`. Not ours, and linting them
+    // buried the real warning count under ~170 findings about generated code.
+    ".wrangler/**",
   ]),
 ]);
 
