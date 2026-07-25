@@ -319,9 +319,11 @@ export default function AboutPage() {
             <code style={{ fontFamily: "var(--mono)" }}>{"/api/claims/{id}"}</code>. Both are{" "}
             <code style={{ fontFamily: "var(--mono)" }}>application/ld+json</code>, CORS-open.
             A per-claim Markdown twin lives at{" "}
-            <code style={{ fontFamily: "var(--mono)" }}>{"/claims/{id}/index.md"}</code>, and
-            the index of everything is at{" "}
-            <code style={{ fontFamily: "var(--mono)" }}>/llms.txt</code>.
+            <code style={{ fontFamily: "var(--mono)" }}>{"/claims/{id}/index.md"}</code>, the
+            index of everything is at{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>/llms.txt</code>, and an API catalog
+            (RFC 9727) is at{" "}
+            <code style={{ fontFamily: "var(--mono)" }}>/.well-known/api-catalog</code>.
           </li>
           <li style={{ marginTop: 8 }}>
             <strong style={{ color: "var(--fg)", fontWeight: 500 }}>Verify.</strong> The

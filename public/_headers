@@ -6,6 +6,17 @@
 # This also (re)applies CORS: the baked static files don't carry the
 # Access-Control-Allow-Origin header the original route handlers set, and the
 # JSON-LD graph is meant to be fetched cross-origin by agents.
+#
+# The homepage Link header (RFC 8288) advertises the API catalog to an agent
+# that fetches `/` without reading HTML — the catalog is the extensionless
+# `/.well-known/api-catalog` route, so its content type is set here too.
+
+/
+  Link: </.well-known/api-catalog>; rel="api-catalog", </schema/v0.json>; rel="service-desc", </about>; rel="service-doc"
+
+/.well-known/api-catalog
+  Content-Type: application/linkset+json; charset=utf-8
+  Access-Control-Allow-Origin: *
 
 /api/graph
   Content-Type: application/ld+json; charset=utf-8
