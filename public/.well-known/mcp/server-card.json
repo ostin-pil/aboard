@@ -1,0 +1,19 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "me.untype.aboard/aboard",
+  "title": "aboard",
+  "description": "Falsifiable claims about systemic problems: causal graph, forecasts, dossiers.",
+  "version": "0.1.0",
+  "websiteUrl": "https://aboard.untype.me/about",
+  "repository": {
+    "url": "https://github.com/ostin-pil/aboard",
+    "source": "github",
+    "id": "1233371921"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://aboard.untype.me/mcp"
+    }
+  ]
+}
