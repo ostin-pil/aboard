@@ -1,8 +1,15 @@
-# The agent write path (`POST /api/proposals`)
+# The agent endpoints (`POST /api/proposals`, `POST /mcp`)
 
 An agent proposes → the payload is validated against the canonical Zod schemas →
 provenance is stamped from the agent's token → a pull request is opened. A human
 merges. Nothing is ever auto-merged.
+
+Two doors onto that one room. `POST /api/proposals` takes a proposal envelope
+over plain HTTP. `POST /mcp` is the remote MCP server, whose four `propose_*`
+tools call the same `runProposal` internals — the same auth, the same rate
+limit, the same validation, the same PR. Everything below about the trust
+posture and configuration governs both. The MCP endpoint's own contract is in
+[the MCP section](#the-mcp-endpoint-post-mcp).
 
 ## Why this is a Worker and not a Next route
 
@@ -147,8 +154,54 @@ KV or a Durable Object), and it is per-Cloudflare-location and eventually
 consistent, so the effective cap is approximate. That is the right shape for
 capping blast radius; it is not exact accounting.
 
+## The MCP endpoint (`POST /mcp`)
+
+A remote [Model Context Protocol](https://modelcontextprotocol.io) server, so
+any client — Claude, ChatGPT, an IDE — can connect to aboard without installing
+the stdio package in `mcp-server/`. Nine tools: the five read projections of the
+published JSON-LD, and the four `propose_*` tools, which route through
+`runProposal` exactly as `/api/proposals` does.
+
+Read tools are public. Write tools need the same `Authorization: Bearer` token
+as the write path, and answer `401` without one.
+
+**Stateless, and dual-era.** MCP revision `2026-07-28` removes the `initialize`
+handshake and the protocol-level session; `2025-11-25` and earlier require them.
+The endpoint serves both, selecting on how the client opens: an `initialize`
+request gets legacy semantics, and a request carrying
+`_meta.io.modelcontextprotocol/protocolVersion` (or a modern
+`MCP-Protocol-Version` header) is served as modern. That costs almost nothing
+here — a stateless server never used the session the new revision removed, and
+never needs the multi-round-trip input the new revision added — and it means the
+endpoint works with every client shipping today and with the ones that follow.
+
+In the modern era the mirrored headers are validated against the body:
+`MCP-Protocol-Version`, `Mcp-Method`, and `Mcp-Name` on a `tools/call` must all
+be present and must agree, or the request is refused with `400` and JSON-RPC
+code `-32020`. A version we do not implement is `-32022` with the supported list
+attached. Legacy requests carry none of these and are not held to them.
+
+`GET` and `DELETE` answer `405`: there is no SSE stream to open and no session to
+delete. An `Origin` header that is neither ours nor loopback is refused with
+`403`, per the transport's DNS-rebinding rule; agent clients send none.
+
+Smoke-test it against the local runtime:
+
+```bash
+npm run build && npx wrangler dev
+curl -sS localhost:8787/mcp -H 'content-type: application/json' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | head -40
+```
+
+Discovery: the server card is a static file, served at
+`/.well-known/mcp.json` (the registry's `server.schema.json` shape) and
+mirrored at `/.well-known/mcp/server-card.json`.
+
 ## Known gaps
 
+- **The MCP endpoint is bearer-auth only.** OAuth 2.1 + PKCE is where the
+  industry is going and where a public multi-tenant server has to end up; static
+  tokens match the shipped write path and are the honest v1.
 - **Revocation is manual.** A token is trusted to behave within its rate; to
   revoke, delete its line from `ABOARD_AGENT_TOKENS`. Do not hand a token to
   something you would not hand the repo to.
