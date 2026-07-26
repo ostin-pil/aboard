@@ -3,11 +3,16 @@
   // ./out, which is served through the assets binding. The _headers file in out/
   // sets content-types + CORS.
   //
-  // The Worker script exists for one reason: the agent write path. aboard is a
-  // static export, so Next Route Handlers are GET-only and there is no server
-  // runtime — POST /api/proposals cannot be a Next route. It lives in the Worker
-  // instead: same origin, same deploy, and the GitHub credential never leaves the
-  // server. Every other path falls straight through to the assets binding.
+  // The Worker script exists for the two agent endpoints: POST /api/proposals
+  // (the write path) and POST /mcp (the remote MCP server). aboard is a static
+  // export, so Next Route Handlers are GET-only and there is no server runtime —
+  // neither can be a Next route. They live in the Worker instead: same origin,
+  // same deploy, and the GitHub credential never leaves the server. Every other
+  // path falls straight through to the assets binding.
+  //
+  // /mcp needs no binding of its own. The 2026-07-28 MCP spec is stateless, so
+  // there is no session to keep: no KV, no Durable Object, no nodejs_compat. The
+  // server card is a static file under public/.well-known/, served by ASSETS.
   "name": "aboard",
   "compatibility_date": "2025-06-01",
   "main": "worker/index.ts",

@@ -1,0 +1,135 @@
+import { describe, expect, it } from "vitest";
+import { TOOLS, findTool, toolListing, type JsonSchema } from "@/lib/mcp/tools";
+
+/** Properties of a rendered input schema, as a client would read them. */
+function shape(name: string): { required: string[]; properties: Record<string, JsonSchema> } {
+  const tool = findTool(name);
+  if (!tool) throw new Error(`no such tool: ${name}`);
+  const schema = tool.inputSchema;
+  return {
+    required: (schema.required as string[] | undefined) ?? [],
+    properties: (schema.properties as Record<string, JsonSchema> | undefined) ?? {},
+  };
+}
+
+describe("the tool catalogue", () => {
+  it("publishes nine tools with unique names", () => {
+    expect(TOOLS).toHaveLength(9);
+    expect(new Set(TOOLS.map((t) => t.name)).size).toBe(9);
+  });
+
+  it("lists five read tools and four write tools", () => {
+    const reads = TOOLS.filter((t) => t.handler.kind === "read");
+    const writes = TOOLS.filter((t) => t.handler.kind === "write");
+    expect(reads.map((t) => t.name)).toEqual([
+      "list_claims",
+      "get_claim",
+      "get_graph",
+      "get_forecast",
+      "get_dossier",
+    ]);
+    expect(writes.map((t) => t.name)).toEqual([
+      "propose_claim",
+      "propose_edge",
+      "propose_forecast_prediction",
+      "propose_dossier",
+    ]);
+  });
+
+  it("gives every tool a non-empty description and an object input schema", () => {
+    for (const tool of TOOLS) {
+      expect(tool.description.length).toBeGreaterThan(20);
+      expect(tool.inputSchema.type).toBe("object");
+    }
+  });
+
+  it("keeps the listing free of the executable schema", () => {
+    const listed = toolListing();
+    expect(listed).toHaveLength(9);
+    expect(Object.keys(listed[0]).sort()).toEqual([
+      "description",
+      "inputSchema",
+      "name",
+      "title",
+    ]);
+  });
+});
+
+// The point of deriving these from the canonical Zod payloads is that a client
+// is told exactly what the validator will accept. These assert the derivation
+// survived, not the wording of any particular field.
+describe("write tool schemas, derived from the canonical payloads", () => {
+  it("requires on propose_claim exactly what ClaimPayload requires, plus a rationale", () => {
+    const { required, properties } = shape("propose_claim");
+    expect(required.sort()).toEqual([
+      "confidence",
+      "domain",
+      "kind",
+      "rationale",
+      "sources",
+      "statement",
+      "title",
+    ]);
+    // Server-stamped fields are absent, so a caller cannot even name them.
+    expect(properties.id).toBeUndefined();
+    expect(properties.authoredBy).toBeUndefined();
+    expect(properties.createdAt).toBeUndefined();
+  });
+
+  it("carries the one-source-minimum onto the wire", () => {
+    const { properties } = shape("propose_claim");
+    expect(properties.sources.minItems).toBe(1);
+  });
+
+  it("carries the 0..1 bounds on a probability", () => {
+    const { properties } = shape("propose_forecast_prediction");
+    expect(properties.probability).toMatchObject({ type: "number", minimum: 0, maximum: 1 });
+  });
+
+  it("leaves defaulted fields optional", () => {
+    // Each of these has a default in its payload schema, so a caller may omit it.
+    expect(shape("propose_edge").required).not.toContain("sources");
+    expect(shape("propose_forecast_prediction").required).not.toContain("dataAnchors");
+    expect(shape("propose_dossier").required).not.toContain("cruxes");
+  });
+
+  it("requires both sides of a dossier", () => {
+    const { required } = shape("propose_dossier");
+    expect(required).toContain("pro");
+    expect(required).toContain("con");
+  });
+
+  it("names the rationale field each write tool actually reads", () => {
+    for (const tool of TOOLS) {
+      if (tool.handler.kind !== "write") continue;
+      const { required } = shape(tool.name);
+      expect(required).toContain(tool.handler.rationaleField);
+    }
+  });
+
+  it("tells the caller a token is needed and that nothing auto-merges", () => {
+    for (const tool of TOOLS) {
+      if (tool.handler.kind !== "write") continue;
+      expect(tool.description).toMatch(/Bearer/);
+      expect(tool.description).toMatch(/NEVER auto-merged/);
+    }
+  });
+});
+
+describe("read tool schemas", () => {
+  it("requires an id where one is needed and nothing where none is", () => {
+    expect(shape("get_claim").required).toEqual(["id"]);
+    expect(shape("get_forecast").required).toEqual(["id"]);
+    expect(shape("get_dossier").required).toEqual(["claim_id"]);
+    expect(shape("get_graph").required).toEqual([]);
+    expect(shape("list_claims").required).toEqual([]);
+  });
+});
+
+describe("findTool", () => {
+  it("finds a tool by name and is case-sensitive", () => {
+    expect(findTool("get_claim")?.name).toBe("get_claim");
+    expect(findTool("Get_Claim")).toBeUndefined();
+    expect(findTool("nope")).toBeUndefined();
+  });
+});
