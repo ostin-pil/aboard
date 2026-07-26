@@ -88,5 +88,13 @@ export const AboutDoc = z.object({
   headline: line,
   modules: z.array(AboutModule).min(1),
   readings: z.array(AboutReading).min(2),
+  /**
+   * Editorial commentary for the spread table, keyed by forecast id.
+   *
+   * Only the commentary is authored. Each row's median and spread are derived
+   * from `data/` by `spread.ts`, which also asserts that these keys and the
+   * ensemble forecasts match in both directions.
+   */
+  spreadReadings: z.record(z.string(), line),
 });
 export type AboutDoc = z.infer<typeof AboutDoc>;

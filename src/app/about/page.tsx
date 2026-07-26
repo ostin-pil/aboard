@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { about, site } from "@/lib/content/loader";
 import { renderContent, splitSlots, type Part } from "@/lib/content/render";
 import type { AboutModule, AboutReading } from "@/lib/content/schema";
-import { aboutVars } from "@/lib/content/vars";
+import type { SpreadRow } from "@/lib/content/spread";
+import { aboutSpreadRows, aboutVars } from "@/lib/content/vars";
 
 /**
  * The about page is chrome only: every word of prose lives in
@@ -106,6 +107,8 @@ function Slot({ name }: { name: string }) {
           ))}
         </div>
       );
+    case "spread":
+      return <SpreadTable rows={aboutSpreadRows()} />;
     default:
       throw new Error(`${LABEL}: no component for slot "${name}"`);
   }
@@ -119,6 +122,34 @@ function Module({ tag, name, body }: AboutModule) {
         <div className="name">{name}</div>
         <p>{body}</p>
       </div>
+    </div>
+  );
+}
+
+/** Median and spread come from `data/`; only the reading column is authored. */
+function SpreadTable({ rows }: { rows: SpreadRow[] }) {
+  return (
+    <div className="spread-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Forecast</th>
+            <th>Median</th>
+            <th align="right">Spread</th>
+            <th>Reading</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td>{r.id}</td>
+              <td>{r.median}</td>
+              <td align="right">{r.spread}</td>
+              <td>{r.reading}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

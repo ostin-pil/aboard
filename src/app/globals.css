@@ -1563,7 +1563,8 @@ a.dossier-cta:hover { background: var(--fg); color: var(--bg); }
 .about-prose ul { margin: 14px 0 0; padding-left: 22px; }
 .about-prose li + li { margin-top: 8px; }
 
-.about-prose table {
+.about-prose table,
+.spread-table table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13.5px;
@@ -1571,7 +1572,8 @@ a.dossier-cta:hover { background: var(--fg); color: var(--bg); }
   display: block;
   overflow-x: auto;
 }
-.about-prose th {
+.about-prose th,
+.spread-table th {
   text-align: left;
   font-weight: 500;
   color: var(--muted);
@@ -1582,13 +1584,15 @@ a.dossier-cta:hover { background: var(--fg); color: var(--bg); }
   text-transform: uppercase;
   letter-spacing: 0.4px;
 }
-.about-prose td {
+.about-prose td,
+.spread-table td {
   padding: 8px 10px 8px 0;
   color: var(--fg);
   border-bottom: 1px solid var(--line);
   vertical-align: top;
 }
-.about-prose td[align="right"] { font-family: var(--mono); }
+.about-prose td[align="right"],
+.spread-table td[align="right"] { font-family: var(--mono); }
 
 .about-page .reading-cards {
   display: grid;

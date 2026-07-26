@@ -1,9 +1,12 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import YAML from "yaml";
+import { Forecast } from "@/lib/types";
 import { parseDocument } from "./parse";
 import { renderContent, splitSlots } from "./render";
 import { AboutDoc, HomeDoc, SiteDoc } from "./schema";
+import { spreadRows } from "./spread";
 
 /**
  * The shipped `content/` documents, checked against their schemas here rather
@@ -19,8 +22,24 @@ import { AboutDoc, HomeDoc, SiteDoc } from "./schema";
 const CONTENT = join(process.cwd(), "content");
 const read = (slug: string) => readFileSync(join(CONTENT, `${slug}.md`), "utf8");
 
-/** Slots the about page knows how to fill. A slot outside this set renders nothing. */
-const KNOWN_SLOTS = new Set(["modules", "readings"]);
+/**
+ * The shipped forecasts, read straight from `data/`. Bypasses
+ * `src/lib/data/loader.ts` for the same reason this file bypasses the content
+ * loader: it imports `server-only`. The Zod schema is the same one the loader
+ * validates against, so a forecast that parses here parses there.
+ */
+function shippedForecasts() {
+  const root = join(process.cwd(), "data");
+  return readdirSync(root, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => join(root, e.name, "forecasts"))
+    .filter(existsSync)
+    .flatMap((dir) => readdirSync(dir).map((f) => join(dir, f)))
+    .map((file) => Forecast.parse(YAML.parse(readFileSync(file, "utf8"))));
+}
+
+/** Slots the about page knows how to fill. A slot outside this set throws. */
+const KNOWN_SLOTS = new Set(["modules", "readings", "spread"]);
 
 /** Placeholders the about page supplies. Values are irrelevant to the check. */
 const ABOUT_VARS = {
@@ -28,6 +47,7 @@ const ABOUT_VARS = {
   domainList: "a, b, and c",
   claimCount: 20,
   forecastCount: 5,
+  ensembleCount: 5,
   crossDomainEdges: 3,
   dossierCount: 3,
 };
@@ -97,6 +117,23 @@ describe("content/about.md", () => {
       for (const part of parts) {
         if (part.kind === "slot") expect(KNOWN_SLOTS.has(part.name)).toBe(true);
       }
+    }
+  });
+
+  it("has a spread reading for every ensemble forecast in data/, and no orphans", () => {
+    // spreadRows throws in both directions; this is the shipped-data check that
+    // catches a forecast added without commentary, which is how the table went
+    // stale in the first place.
+    expect(() =>
+      spreadRows(shippedForecasts(), doc.data.spreadReadings, "content/about.md"),
+    ).not.toThrow();
+  });
+
+  it("derives spread-table numbers rather than carrying them in the document", () => {
+    const raw = read("about");
+    for (const row of spreadRows(shippedForecasts(), doc.data.spreadReadings, "about.md")) {
+      expect(raw).not.toContain(`| ${row.median} |`);
+      expect(raw).not.toContain(`| ${row.spread} |`);
     }
   });
 

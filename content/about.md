@@ -40,6 +40,12 @@ readings:
       entirely.
     implies: >-
       larger N, leave-one-out and simulated-N robustness checks
+spreadReadings:
+  F1: Strong disagreement on out-party affect direction.
+  F2: Strong disagreement on OECD insecurity composite.
+  F3: Mild consensus that news HHI will not drop.
+  F4: Was 0.02 with N=3 — see above.
+  F5: Tighter consensus that no G7 binding law lands.
 ---
 
 `aboard` runs open-weights LLM ensembles against falsifiable claims about
@@ -76,23 +82,18 @@ Forecast `F4` asks whether a major platform will publish algorithmic ranking
 parameters by 2027. The first three open-weights models converged at probability
 **0.40–0.42**; spread looked like 0.02 — a tight consensus that the answer is
 *no*. After raising `maxTokens` for Qwen 3, the fourth prediction landed at
-**0.65** and the ensemble spread widened to **0.25**. The data is the same; the
-headline is not.
+**0.65** and the ensemble spread widened to **0.25** at N=4. The data is the
+same; the headline is not.
 
 There are at least two defensible readings, with different implied next moves.
 aboard renders both as the product output rather than picking one.
 
 <!-- slot: readings -->
 
-Across F1–F5 the spread varies meaningfully by question shape:
+Across the {{ensembleCount}} forecasts that ran more than one model, the spread
+varies meaningfully by question shape:
 
-| Forecast | Median | Spread | Reading |
-| --- | --- | ---: | --- |
-| F1 | 0.60 | 0.30 | Strong disagreement on out-party affect direction. |
-| F2 | 0.55 | 0.28 | Strong disagreement on OECD insecurity composite. |
-| F3 | 0.60 | 0.10 | Mild consensus that news HHI will not drop. |
-| F4 | 0.41 | 0.25 | Was 0.02 with N=3 — see above. |
-| F5 | 0.40 | 0.18 | Tighter consensus that no G7 binding law lands. |
+<!-- slot: spread -->
 
 Spread is the headline aboard cares about. Where it's wide, the system is
 telling you the models disagree under identical input. Where it's narrow, you

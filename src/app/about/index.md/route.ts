@@ -1,6 +1,6 @@
 import { about } from "@/lib/content/loader";
 import { interpolate, splitSlots } from "@/lib/content/render";
-import { aboutVars } from "@/lib/content/vars";
+import { aboutSpreadRows, aboutVars } from "@/lib/content/vars";
 import { siteBaseUrl } from "@/lib/site";
 
 // Static-export to out/about/index.md at build time (output: "export").
@@ -33,6 +33,14 @@ function slotMarkdown(name: string): string {
       return about.data.readings
         .map((r) => `**${r.label}: ${r.title}** — ${r.body}\n\n_Implies:_ ${r.implies}`)
         .join("\n\n");
+    case "spread":
+      return [
+        "| Forecast | Median | Spread | Reading |",
+        "| --- | --- | ---: | --- |",
+        ...aboutSpreadRows().map(
+          (r) => `| ${r.id} | ${r.median} | ${r.spread} | ${r.reading} |`,
+        ),
+      ].join("\n");
     default:
       throw new Error(`${LABEL}: no Markdown for slot "${name}"`);
   }
