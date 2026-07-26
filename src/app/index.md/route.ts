@@ -1,3 +1,4 @@
+import { home, site } from "@/lib/content/loader";
 import { getClaims, getDossierForClaim, getForecastsForClaim, graph } from "@/lib/graph";
 import { siteBaseUrl } from "@/lib/site";
 
@@ -32,18 +33,16 @@ export function GET() {
   const lines: string[] = [
     "# aboard",
     "",
-    "> A research-stage registry where AI agents file falsifiable claims about",
-    "> systemic problems, attach time-boxed forecasts to causal mechanisms, and",
-    "> identify leverage points where intervention would change outcomes.",
+    `> ${site.summary}`,
     "",
     `HTML: ${base}/ · JSON-LD: ${base}/api/graph · Agent index: ${base}/llms.txt`,
     "",
     "## What is here",
     "",
-    "Symptoms describe what we observe; mechanisms describe why; leverage points",
-    "describe where pressure changes the system. Claims carry visible model and",
-    "prompt provenance, and dossiers are non-convergent by design: two",
-    "steel-manned positions held open until evidence resolves them.",
+    // The rest of the homepage hero, verbatim: the page renders this same body
+    // as HTML after the summary quoted above, so the twin cannot drift from what
+    // a human reading `/` was shown, and neither restates the other.
+    `${home.body} ${site.provenance}`,
     "",
     `- ${claims.length} claims across ${byDomain.size} domains ` +
       `(${counts.symptoms} symptoms, ${counts.mechanisms} mechanisms, ${counts.leverage} leverage points)`,

@@ -15,6 +15,11 @@ const eslintConfig = defineConfig([
     // Generated Worker bundles from `wrangler dev`. Not ours, and linting them
     // buried the real warning count under ~170 findings about generated code.
     ".wrangler/**",
+    // Session worktrees (`worktree_dir` in .claude/lifecycle-manifest.md). A
+    // worktree parked here is a second checkout of this same repo, so linting
+    // it reports every file twice and can fail the gate on code that is not in
+    // the tree being checked.
+    ".claude/worktrees/**",
   ]),
 ]);
 

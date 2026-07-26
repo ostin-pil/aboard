@@ -32,7 +32,6 @@ order they could be picked up; pick any.
 | [agent-surface.md](agent-surface.md) | ~3–5 hr | Light — /agents vs /about section | Canonical domain (deploy) |
 | [corpus-growth.md](corpus-growth.md) | ~1–2 days | Medium — dossier targets, forecast slate | integrity-foundations (for §3) |
 | [mcp-write-path.md](mcp-write-path.md) | ~2–3 days v1 slice, ~1–2 wk full | Yes — proposals route shape, auth, rate limits | repo-hardening (CI) |
-| [content-as-data.md](content-as-data.md) | ~30 min (A) / ~3–4 hr (B) / ~1–2 hr (C) | Yes — markdown renderer dependency, sanitization posture, `content/` location | None; slice B builds on session 28's Accept negotiation |
 | [domain-on-create.md](domain-on-create.md) | ~1–2 hr | Light — slot-on-create vs leave-free | None |
 | [cross-domain-claim-drag.md](cross-domain-claim-drag.md) | ~half-day | Yes — extent strategy, confirm UX, coordinate math | None |
 | [editor-mode-posture.md](editor-mode-posture.md) | ~3 hr (Posture 2) / ~12+ hr (Posture 3) | Yes — three postures to choose between | None |
@@ -54,6 +53,14 @@ the math.
 
 ## Shipped
 
+- [content-as-data.md](content-as-data.md) — done, session 29. Editorial prose
+  moved to a loaded, validated `content/` tree: `site.md`, `home.md` and
+  `about.md` read by `src/lib/content/`, rendered with `marked`. `/about`
+  gained the Markdown twin session 28 left out, and `about/page.tsx` went from
+  479 lines with 102 inline styles to 137 lines of chrome. The plan's slice A
+  (a constants module) was built and superseded within the session. Deriving
+  the spread table from `data/` came with it and corrected three published
+  numbers that had gone stale against the claim pages.
 - [second-domain-cross-domain.md](second-domain-cross-domain.md) — done. The
   `inequality` domain (8 claims: IL/IM/IS) and three cross-domain edges
   (CE1–CE3, each with sourced rationale) are live in `data/`. Cross-domain is

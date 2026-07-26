@@ -22,7 +22,7 @@
     // this same binding for anything it does not negotiate. Listed per route
     // rather than `true` so the JS chunks, images and JSON-LD assets keep being
     // served straight from the asset layer with no Worker invocation.
-    "run_worker_first": ["/", "/claims/*", "/dossiers/*"]
+    "run_worker_first": ["/", "/about", "/claims/*", "/dossiers/*"]
   },
 
   // Custom domain for the Worker. On deploy, Cloudflare provisions the DNS

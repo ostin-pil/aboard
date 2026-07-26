@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { site } from "@/lib/content/loader";
 import { siteBaseUrl } from "@/lib/site";
 import "./globals.css";
 
@@ -15,9 +16,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const SITE_DESCRIPTION =
-  "aboard surfaces interpretive friction across LLM ensembles applied to falsifiable claims about systemic problems. Machine-readable by default; the disagreement between models is the signal.";
-
 export const metadata: Metadata = {
   // Without this, the Metadata API resolves the file-convention OG images
   // against http://localhost:3000 at build time and every social unfurl in
@@ -25,21 +23,21 @@ export const metadata: Metadata = {
   // `@id`s; the Metadata API reads this and nothing else.
   metadataBase: new URL(siteBaseUrl()),
   title: {
-    default: "aboard / v0",
+    default: site.title,
     template: "%s — aboard",
   },
-  description: SITE_DESCRIPTION,
+  description: site.description,
   applicationName: "aboard",
   openGraph: {
     type: "website",
     siteName: "aboard",
-    title: "aboard / v0",
-    description: SITE_DESCRIPTION,
+    title: site.title,
+    description: site.description,
   },
   twitter: {
     card: "summary_large_image",
-    title: "aboard / v0",
-    description: SITE_DESCRIPTION,
+    title: site.title,
+    description: site.description,
   },
 };
 

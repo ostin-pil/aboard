@@ -3,18 +3,11 @@ import {
   getDossierForClaim,
   getForecastsForClaim,
 } from "@/lib/graph";
+import { site } from "@/lib/content/loader";
 import { siteBaseUrl } from "@/lib/site";
 
 // Static-export to out/llms.txt at build time (output: "export").
 export const dynamic = "force-static";
-
-const INTRO =
-  "An agent-first board of falsifiable claims about systemic problems. Every " +
-  "claim is published as machine-readable JSON-LD at a stable URL, carrying " +
-  "visible model+prompt provenance. Three modules sit over one shared claim " +
-  "graph: time-boxed forecasts whose ensemble disagreement is measured, causal " +
-  "problem-trees (symptom to mechanism to leverage point), and steel-manned " +
-  "dual-dossier debates with ranked cruxes.";
 
 /**
  * `/llms.txt` — an agent-oriented index of the graph. Generated from the loader
@@ -35,7 +28,7 @@ export function GET() {
   const lines: string[] = [
     "# aboard",
     "",
-    `> ${INTRO}`,
+    `> ${site.agentIntro}`,
     "",
     "License: Apache-2.0 (https://github.com/ostin-pil/aboard/blob/main/LICENSE)",
     "",
@@ -51,7 +44,8 @@ export function GET() {
     `- Human + agent guide: ${base}/about`,
     "",
     "Markdown: send `Accept: text/markdown` to a page URL and it answers with",
-    "that page's Markdown twin. Works on /, /claims/{id}, and /dossiers/{id}.",
+    "that page's Markdown twin. Works on /, /about, /claims/{id}, and",
+    "/dossiers/{id}.",
     "",
     "## Claims",
   ];

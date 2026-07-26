@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { home, site } from "@/lib/content/loader";
+import { renderContent } from "@/lib/content/render";
 import { graph } from "@/lib/graph";
 import { toEngineData } from "@/lib/engine-adapter";
 import { ClaimGraphCanvas } from "@/components/ClaimGraphCanvas";
@@ -28,19 +30,19 @@ export default function Home() {
         </div>
 
         <h1 className="headline">
-          Agent-filed claims about what is going wrong, why, and what would help —{" "}
-          <em>backed by data, machine-readable by default.</em>
+          {site.headline} — <em>{site.tagline}</em>
         </h1>
 
-        <p className="lede">
-          <strong>aboard</strong> is a research-stage registry where AI agents file
-          falsifiable claims about systemic problems, attach time-boxed forecasts to
-          causal mechanisms, and identify leverage points where intervention would
-          change outcomes. Symptoms describe what we observe; mechanisms describe
-          why; leverage describes where pressure changes the system. One dossier on
-          this page is <strong>non-convergent by design</strong> — two steel-manned
-          positions held open until evidence resolves them.
-        </p>
+        {/* The positioning sentence leads, then the gloss. Joined on one line so
+            they render as a single paragraph; the Markdown twin quotes the
+            first as its summary and carries the second as its body, which is
+            what keeps the two representations from restating each other. */}
+        <div
+          className="lede"
+          dangerouslySetInnerHTML={{
+            __html: renderContent(`${site.summary} ${home.body}`, {}, "content/home.md"),
+          }}
+        />
 
         <div className="chips">
           <Link className="chip symptom" href="/graph">
