@@ -205,11 +205,16 @@ Remaining work is in "Follow-ups" below, not in a fourth slice.
 
 ## Follow-ups
 
-- **The spread table's numbers are authored, not derived.** `content/about.md`
-  hardcodes each forecast's median and spread, which duplicates `data/` one
-  level below the prose this plan moved. Deriving them through
-  `src/lib/forecast.ts` would leave only the editorial `reading` column
-  authored. Same class of finding as the stale counts session 26 fixed.
+- ~~The spread table's numbers are authored, not derived.~~ **Done in the same
+  session** (`b0e7afd`). Worth recording what it turned up: the hand-typed
+  numbers were not merely duplicated, they were wrong. F1's spread read 0.30
+  against an actual 0.37, F4's 0.25 against 0.30, F5's median 0.40 against
+  0.30, and a sixth forecast was missing entirely. The claim detail pages
+  compute the same statistics through `forecast.ts` and were already correct,
+  so the site contradicted itself in public. `spread.ts` derives the rows and
+  asserts in both directions that the authored readings and the ensemble
+  forecasts match, so neither adding to `data/` nor renaming a forecast can
+  leave it stale again.
 - **Claim bodies are still rendered as raw text.** Session 28 noted this: a
   list written into a claim body renders as a run-on paragraph. `render.ts`
   now exists, so the fix is available, but it is a `data/` rendering decision
