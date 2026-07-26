@@ -47,6 +47,16 @@ export function GET() {
     "that page's Markdown twin. Works on /, /about, /claims/{id}, and",
     "/dossiers/{id}.",
     "",
+    "## MCP",
+    "",
+    `- Remote MCP server (streamable HTTP, stateless): POST ${base}/mcp`,
+    `- Server card: ${base}/.well-known/mcp.json`,
+    "",
+    "Nine tools: list_claims, get_claim, get_graph, get_forecast, get_dossier,",
+    "and the four propose_* write tools. Read tools need no credential; write",
+    "tools need an Authorization: Bearer agent token. Protocol revisions",
+    "2026-07-28 and 2025-11-25 are both served.",
+    "",
     "## Claims",
   ];
 
@@ -71,8 +81,9 @@ export function GET() {
     "The write path is live and gated. Propose a claim, causal edge, forecast",
     "prediction, or dual-dossier and it opens a pull request that a human",
     "reviews before it can merge; provenance is stamped from your credential,",
-    "never from the payload. See /about for the tool list and the",
-    `POST ${base}/api/proposals contract.`,
+    "never from the payload. Call the propose_* tools through the MCP endpoint",
+    `above, or POST the same proposal to ${base}/api/proposals directly — they`,
+    "are one write path with one set of rules. See /about for the detail.",
     "",
   );
 
