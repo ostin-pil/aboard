@@ -1,13 +1,6 @@
 import Link from "next/link";
-import {
-  DOSSIER_GLOSS,
-  HEADLINE_LEAD,
-  LAYERS_GLOSS,
-  NON_CONVERGENT,
-  POSITIONING_PREDICATE,
-  PRODUCT_NAME,
-  TAGLINE_TAIL,
-} from "@/lib/copy";
+import { home, site } from "@/lib/content/loader";
+import { renderContent } from "@/lib/content/render";
 import { graph } from "@/lib/graph";
 import { toEngineData } from "@/lib/engine-adapter";
 import { ClaimGraphCanvas } from "@/components/ClaimGraphCanvas";
@@ -37,13 +30,19 @@ export default function Home() {
         </div>
 
         <h1 className="headline">
-          {HEADLINE_LEAD} — <em>{TAGLINE_TAIL}</em>
+          {site.headline} — <em>{site.tagline}</em>
         </h1>
 
-        <p className="lede">
-          <strong>{PRODUCT_NAME}</strong> {POSITIONING_PREDICATE} {LAYERS_GLOSS} One
-          dossier on this page is <strong>{NON_CONVERGENT}</strong> — {DOSSIER_GLOSS}.
-        </p>
+        {/* The positioning sentence leads, then the gloss. Joined on one line so
+            they render as a single paragraph; the Markdown twin quotes the
+            first as its summary and carries the second as its body, which is
+            what keeps the two representations from restating each other. */}
+        <div
+          className="lede"
+          dangerouslySetInnerHTML={{
+            __html: renderContent(`${site.summary} ${home.body}`, {}, "content/home.md"),
+          }}
+        />
 
         <div className="chips">
           <Link className="chip symptom" href="/graph">

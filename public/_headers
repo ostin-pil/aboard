@@ -22,6 +22,9 @@
   Link: </.well-known/api-catalog>; rel="api-catalog", </schema/v0.json>; rel="service-desc", </about>; rel="service-doc"
   Vary: Accept
 
+/about
+  Vary: Accept
+
 /claims/*
   Vary: Accept
 

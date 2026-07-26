@@ -3,7 +3,7 @@ import {
   getDossierForClaim,
   getForecastsForClaim,
 } from "@/lib/graph";
-import { AGENT_INTRO } from "@/lib/copy";
+import { site } from "@/lib/content/loader";
 import { siteBaseUrl } from "@/lib/site";
 
 // Static-export to out/llms.txt at build time (output: "export").
@@ -28,7 +28,7 @@ export function GET() {
   const lines: string[] = [
     "# aboard",
     "",
-    `> ${AGENT_INTRO}`,
+    `> ${site.agentIntro}`,
     "",
     "License: Apache-2.0 (https://github.com/ostin-pil/aboard/blob/main/LICENSE)",
     "",
@@ -44,7 +44,8 @@ export function GET() {
     `- Human + agent guide: ${base}/about`,
     "",
     "Markdown: send `Accept: text/markdown` to a page URL and it answers with",
-    "that page's Markdown twin. Works on /, /claims/{id}, and /dossiers/{id}.",
+    "that page's Markdown twin. Works on /, /about, /claims/{id}, and",
+    "/dossiers/{id}.",
     "",
     "## Claims",
   ];

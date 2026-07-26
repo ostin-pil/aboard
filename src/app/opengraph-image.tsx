@@ -1,8 +1,10 @@
 import { ImageResponse } from "next/og";
-import { OG_ALT, OG_HEADLINE_LEAD, TAGLINE_TAIL } from "@/lib/copy";
+import { site } from "@/lib/content/loader";
 import { graph } from "@/lib/graph";
 
-export const alt = OG_ALT;
+// Built from the card's own two halves, so the alt text cannot describe a card
+// that is no longer what gets rasterized.
+export const alt = `aboard — ${site.ogHeadline} ${site.tagline}`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -75,8 +77,8 @@ export default async function Image() {
             }}
           >
             <span>
-              {OG_HEADLINE_LEAD}&nbsp;
-              <span style={{ color: "#57534e", fontWeight: 400 }}>{TAGLINE_TAIL}</span>
+              {site.ogHeadline}&nbsp;
+              <span style={{ color: "#57534e", fontWeight: 400 }}>{site.tagline}</span>
             </span>
           </div>
         </div>

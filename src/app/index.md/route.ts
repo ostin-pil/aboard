@@ -1,4 +1,4 @@
-import { DOSSIER_GLOSS, LAYERS_GLOSS, NON_CONVERGENT, POSITIONING } from "@/lib/copy";
+import { home, site } from "@/lib/content/loader";
 import { getClaims, getDossierForClaim, getForecastsForClaim, graph } from "@/lib/graph";
 import { siteBaseUrl } from "@/lib/site";
 
@@ -33,14 +33,16 @@ export function GET() {
   const lines: string[] = [
     "# aboard",
     "",
-    `> ${POSITIONING}`,
+    `> ${site.summary}`,
     "",
     `HTML: ${base}/ · JSON-LD: ${base}/api/graph · Agent index: ${base}/llms.txt`,
     "",
     "## What is here",
     "",
-    `${LAYERS_GLOSS} Claims carry visible model and prompt provenance, and dossiers ` +
-      `are ${NON_CONVERGENT}: ${DOSSIER_GLOSS}.`,
+    // The rest of the homepage hero, verbatim: the page renders this same body
+    // as HTML after the summary quoted above, so the twin cannot drift from what
+    // a human reading `/` was shown, and neither restates the other.
+    `${home.body} ${site.provenance}`,
     "",
     `- ${claims.length} claims across ${byDomain.size} domains ` +
       `(${counts.symptoms} symptoms, ${counts.mechanisms} mechanisms, ${counts.leverage} leverage points)`,
