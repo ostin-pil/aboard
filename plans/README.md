@@ -31,7 +31,6 @@ order they could be picked up; pick any.
 | [repo-hardening.md](repo-hardening.md) | ~3–4 hr | Light — license choice | §4 blocked on domain choice; rest none |
 | [agent-surface.md](agent-surface.md) | ~3–5 hr | Light — /agents vs /about section | Canonical domain (deploy) |
 | [corpus-growth.md](corpus-growth.md) | ~1–2 days | Medium — dossier targets, forecast slate | integrity-foundations (for §3) |
-| [mcp-write-path.md](mcp-write-path.md) | ~2–3 days v1 slice, ~1–2 wk full | Yes — proposals route shape, auth, rate limits | repo-hardening (CI) |
 | [domain-on-create.md](domain-on-create.md) | ~1–2 hr | Light — slot-on-create vs leave-free | None |
 | [cross-domain-claim-drag.md](cross-domain-claim-drag.md) | ~half-day | Yes — extent strategy, confirm UX, coordinate math | None |
 | [editor-mode-posture.md](editor-mode-posture.md) | ~3 hr (Posture 2) / ~12+ hr (Posture 3) | Yes — three postures to choose between | None |
@@ -41,7 +40,7 @@ order they could be picked up; pick any.
 
 Suggested order (2026-07-11 review): FLF entry first (hard deadline; carries
 the deploy + LICENSE), then integrity-foundations → repo-hardening →
-agent-surface → corpus-growth → mcp-write-path, with funding applications
+agent-surface → corpus-growth, with funding applications
 running in parallel as evidence items land. The pre-review plans
 (domain-on-create, cross-domain-claim-drag, editor-mode-posture,
 open-weights-forecaster) remain independent and can interleave.
@@ -52,6 +51,16 @@ session 7 — `src/lib/forecast.ts` (`median`/`spread`/`aggregate`/`leaveOneOut`
 the math.
 
 ## Shipped
+
+- [mcp-write-path.md](mcp-write-path.md) — done. The four `propose_*` tools
+  went live in sessions 18–20 (`POST /api/proposals` in the Worker, canonical
+  Zod validation, server-stamped provenance, native rate limiting, PR-only). The
+  remote MCP endpoint that fronts them landed in session 30: a stateless
+  `POST /mcp` serving both the `2026-07-28` and `2025-11-25` protocol
+  revisions, plus a server card at `/.well-known/mcp.json`. The plan's
+  Next.js-API-route design was never buildable under static export and was
+  retracted in the file itself; `AgentAttribution`'s schema upgrade and OAuth
+  remain open.
 
 - [content-as-data.md](content-as-data.md) — done, session 29. Editorial prose
   moved to a loaded, validated `content/` tree: `site.md`, `home.md` and

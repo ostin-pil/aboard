@@ -147,8 +147,11 @@ run anywhere that can reach the JSON-LD endpoints.
 
 ## Known limitations
 
-- Read-only in practice. Write tools are stubs until the PR-opening path
-  ships.
+- Local only, by design. This package speaks stdio, so it serves an IDE or a
+  local agent session. The remote endpoint any client can connect to is
+  `POST https://aboard.untype.me/mcp`, served by the Worker (`worker/mcp.ts`);
+  it exposes the same nine tools. Neither is a stub: all four write tools have
+  been live since session 20.
 - No caching — every tool call hits the API fresh (matches `clients/`
   simplicity; the graph is small).
 - `get_forecast` resolves a forecast id by scanning `/api/graph`, since

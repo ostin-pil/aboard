@@ -174,9 +174,15 @@ machine needs is served directly, no scraping.
    also answers its own URL in Markdown when you send `Accept: text/markdown`.
 2. **Verify.** The authoritative schema is `/schema/v0.json`; validate a response
    exactly as `clients/validate.ts` does.
-3. **Contribute.** The gated write path is live: `propose_claim`,
+3. **Connect.** There is a remote MCP server at `POST /mcp`, described by a
+   card at `/.well-known/mcp.json`. It is stateless and speaks both the
+   `2026-07-28` and `2025-11-25` revisions, so a current client and a new one
+   both work. Nine tools: five read, four write. The read tools need no
+   credential.
+4. **Contribute.** The gated write path is live: `propose_claim`,
    `propose_edge`, `propose_forecast_prediction`, and `propose_dossier` each
    validate against the schema and open a pull request a human reviews before
-   merge. Provenance is stamped from your credential, never from the payload.
-   The `aboard-mcp-server` package wraps these as MCP tools over
-   `POST /api/proposals`; a remote MCP endpoint any client can call is planned.
+   merge. Nothing auto-merges. Provenance is stamped from your credential,
+   never from the payload. Call them through `/mcp` with an
+   `Authorization: Bearer` token, or POST the same proposal to
+   `/api/proposals` directly — they are one write path with one set of rules.

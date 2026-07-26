@@ -1,11 +1,16 @@
 /**
- * The agent write path: `POST /api/proposals`.
+ * The two agent endpoints: `POST /api/proposals` (the write path) and
+ * `POST /mcp` (the remote MCP server, in ./mcp.ts).
  *
  * aboard is a static export, so it has no server runtime — Next Route Handlers
- * under `output: "export"` support GET only. The write path therefore lives in
+ * under `output: "export"` support GET only. Both endpoints therefore live in
  * the Cloudflare Worker that already fronts the static assets. Same origin, same
  * deploy, and the GitHub credential stays server-side. Everything that is not
- * this endpoint falls through to the assets binding untouched.
+ * one of these endpoints falls through to the assets binding untouched.
+ *
+ * The MCP endpoint is a second door onto the same room: its `propose_*` tools
+ * call `runProposal` below, so an MCP write and an HTTP write are the same
+ * write, with the same auth, the same rate limit, and the same validation.
  *
  * This Worker is a deliberately thin shell: HTTP, token lookup, and GitHub
  * calls. Every decision that matters — what a valid proposal is, which id gets
@@ -39,6 +44,7 @@ import {
   dossierPath,
 } from "../src/lib/data/serialize";
 import { isTransientStatus, withRetry } from "../src/lib/http-retry";
+import { handleMcp } from "./mcp";
 import { markdownTwinPath, prefersMarkdown } from "../src/lib/markdown-negotiation";
 import { withinRateLimit, type RateLimiter } from "../src/lib/rate-limit";
 import type { Claim, Dossier, Edge, Prediction } from "../src/lib/types";
@@ -709,11 +715,24 @@ async function handleDossier(
   );
 }
 
-async function handleProposal(request: Request, env: Env): Promise<Response> {
-  if (request.method !== "POST") {
-    return fail(405, "method_not_allowed", "POST a proposal envelope to this endpoint.");
-  }
-
+/**
+ * Everything the write path does once an envelope can be produced: auth, flood
+ * brake, config check, canonical validation, dispatch.
+ *
+ * Two callers reach it. `POST /api/proposals` reads the envelope from the HTTP
+ * body; the MCP endpoint builds one from a `propose_*` tool's arguments. Both
+ * come through here, so there is exactly one definition of who may write and
+ * what happens when they do — a second copy of the auth or rate-limit check is
+ * how those two things drift apart.
+ *
+ * The envelope arrives as a thunk rather than a value so the checks keep their
+ * order: an unauthenticated caller is turned away before its body is read.
+ */
+async function runProposal(
+  request: Request,
+  env: Env,
+  readEnvelope: () => Promise<unknown>,
+): Promise<Response> {
   const identity = resolveIdentity(env, request);
   if (!identity) {
     return fail(401, "unauthorized", "A valid `Authorization: Bearer <token>` is required.");
@@ -742,7 +761,7 @@ async function handleProposal(request: Request, env: Env): Promise<Response> {
 
   let raw: unknown;
   try {
-    raw = await request.json();
+    raw = await readEnvelope();
   } catch {
     return fail(400, "invalid_json", "Request body is not valid JSON.");
   }
@@ -767,6 +786,13 @@ async function handleProposal(request: Request, env: Env): Promise<Response> {
   if (kind === "dossier") return handleDossier(request, env, ctx, identity, payload, rationale);
 
   return fail(501, "not_implemented", `\`${kind}\` is declared but not wired.`);
+}
+
+async function handleProposal(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "POST") {
+    return fail(405, "method_not_allowed", "POST a proposal envelope to this endpoint.");
+  }
+  return runProposal(request, env, () => request.json());
 }
 
 // --- Markdown content negotiation ------------------------------------------
@@ -817,6 +843,16 @@ export default {
     const { pathname } = new URL(request.url);
     if (pathname === "/api/proposals") {
       return handleProposal(request, env);
+    }
+
+    // The remote MCP endpoint. Read tools project the same published JSON-LD the
+    // assets binding serves; write tools go through runProposal, so an MCP write
+    // and an HTTP write are the same write.
+    if (pathname === "/mcp") {
+      return handleMcp(request, {
+        assets: env.ASSETS,
+        proposal: (envelope) => runProposal(request, env, async () => envelope),
+      });
     }
 
     // An agent asking a page URL for Markdown gets the page's twin, so it does

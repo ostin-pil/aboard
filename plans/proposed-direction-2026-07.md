@@ -143,6 +143,25 @@ allowlist with a comment.
 
 ## Slice 2 — Remote MCP endpoint (one session / PR)
 
+> **Shipped, session 30.** `POST /mcp` in the Worker (`worker/mcp.ts`, pure core
+> in `src/lib/mcp/`), nine tools, writes routed through the same `runProposal`
+> internals as `/api/proposals`. Server card at `/.well-known/mcp.json` and
+> `/.well-known/mcp/server-card.json`.
+>
+> Two departures from the brief below, both forced by facts it could not have
+> had. First, the endpoint is **dual-era**: revision `2026-07-28` (final two days
+> after this session) removes the `initialize` handshake and the session
+> entirely, while every shipping client still speaks `2025-11-25`. The spec
+> sanctions serving both from one endpoint and it is nearly free for a stateless
+> server, so it does. Second, the tool schemas are **derived** from the canonical
+> Zod payloads via `z.toJSONSchema` rather than duplicated as hand-written JSON
+> Schema — the brief recommended the small duplication to avoid coupling the
+> Worker to the sibling stdio package, but deriving from `src/lib/proposals.ts`
+> (which the Worker already imports) avoids both the coupling and the drift.
+>
+> Still open from this slice: registry and Smithery listing (operator action 3
+> below), and confirming the endpoint against a real client post-deploy.
+
 **Goal.** Elevate from local stdio to a discoverable **remote** MCP server any
 client (Claude, ChatGPT, IDEs) can connect to — the "front door for agents"
 milestone and the strongest funding-demo artifact. The 2026-07-28 spec is
