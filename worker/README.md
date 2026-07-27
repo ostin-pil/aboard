@@ -89,7 +89,8 @@ on a `401`, and static tokens behave exactly as they always have.
 
 ```bash
 # 1. Storage for clients, codes, grants and tokens. Paste the printed id into
-#    the kv_namespaces block in wrangler.jsonc, replacing REPLACE_ME.
+#    the kv_namespaces block in wrangler.jsonc. Done for this account; a fresh
+#    account needs it again, and a new namespace revokes every existing token.
 npx wrangler kv namespace create ABOARD_OAUTH
 
 # 2. A GitHub OAuth App (Settings > Developer settings > OAuth Apps).
@@ -107,9 +108,11 @@ wrangler secret put ABOARD_OAUTH_STATE_SECRET
 wrangler secret put ABOARD_OAUTH_ALLOWED_LOGINS
 ```
 
-`wrangler deploy` fails while `id` is still `REPLACE_ME`. That is deliberate: an
-authorization server that answers discovery and then cannot issue is worse than
-one that is plainly absent.
+The GitHub OAuth App is production-only: GitHub allows one callback URL, and
+the Worker derives it from `CANONICAL_ORIGIN`. Driving the flow against
+`wrangler dev` needs a second App with a loopback callback and that constant
+pointed at the dev origin. Device Flow stays disabled on the App; the code uses
+the authorization-code flow and never calls the device endpoints.
 
 **Who may obtain a credential.** The allowlist defaults to open, decided in
 session 31. Human review of every pull request is already the admission gate,

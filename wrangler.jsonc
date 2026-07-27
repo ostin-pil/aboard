@@ -74,22 +74,19 @@
   ],
 
   // Storage for the authorization server: registered clients, authorization
-  // codes, grants and tokens. Unlike the rate-limit binding above, this one is
-  // a real namespace that has to exist in the account before a deploy will
-  // succeed:
+  // codes, grants and tokens. Unlike the rate-limit binding above, this is a
+  // real namespace that must exist in the account, created with
+  // `npx wrangler kv namespace create ABOARD_OAUTH`. Recreating it in another
+  // account means a new id here; every issued token and registered client
+  // lives in this namespace, so replacing it revokes all of them.
   //
-  //   npx wrangler kv namespace create ABOARD_OAUTH
-  //
-  // then paste the printed id below, replacing REPLACE_ME. Until that happens
-  // `wrangler deploy` fails loudly, which is the intended failure mode: a
-  // half-configured authorization server that answers discovery and then
-  // cannot issue is worse than one that is plainly absent.
-  //
-  // The Worker tolerates the binding being missing at runtime. With no
+  // The Worker still tolerates the binding being absent at runtime, which is
+  // what makes a partial deploy safe rather than half-broken: with no
   // OAUTH_KV, /oauth/* answers 503, no OAuth discovery is advertised on a 401,
-  // and static agent tokens keep working exactly as before.
+  // and static agent tokens keep working exactly as before. The binding's
+  // presence is the signal the code reads for "OAuth is configured".
   "kv_namespaces": [
-    { "binding": "OAUTH_KV", "id": "REPLACE_ME" }
+    { "binding": "OAUTH_KV", "id": "2c2117a65a094b6ebb8ebcf192da0e93" }
   ]
 
   // Secrets — set with `wrangler secret put`, never committed:
