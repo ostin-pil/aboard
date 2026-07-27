@@ -35,7 +35,9 @@ order they could be picked up; pick any.
 | [cross-domain-claim-drag.md](cross-domain-claim-drag.md) | ~half-day | Yes — extent strategy, confirm UX, coordinate math | None |
 | [editor-mode-posture.md](editor-mode-posture.md) | ~3 hr (Posture 2) / ~12+ hr (Posture 3) | Yes — three postures to choose between | None |
 | [open-weights-forecaster.md](open-weights-forecaster.md) | ~4–6 hr for the M2/F2 prototype | Yes — inference provider, model roster, aggregation rule | None |
-| [organic-traffic-dual-ux.md](organic-traffic-dual-ux.md) | ~3–4 days across phases | Light — content negotiation vs parallel URLs, crawler stance | Audit batches 1–2 (`code-quality-audit.md`), agent-surface refresh |
+| [organic-traffic-dual-ux.md](organic-traffic-dual-ux.md) | ~2 days (§4–§7; §1–§3 shipped or superseded, see its Status) | Light — leaderboard timing, feed granularity | First resolution for §5's leaderboard; rest none |
+| [agent-distribution.md](agent-distribution.md) | ~2 days (operator + writing) | Light — dataset home, post timing | MCP OAuth for §5's post; organic-traffic §7 instrumentation helps; rest none |
+| [proposal-dry-run.md](proposal-dry-run.md) | ~half-day | Light — flag shape on the envelope | None |
 | [graph-state-integrity.md](graph-state-integrity.md) | ~half-day (mostly QA) | Light — inline persistence, seed-hash scope, notify vs nuke | None (audit batch 1 merged) |
 
 Suggested order (2026-07-11 review): FLF entry first (hard deadline; carries
