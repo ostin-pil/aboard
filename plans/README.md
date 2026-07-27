@@ -27,6 +27,7 @@ order they could be picked up; pick any.
 
 | Plan | Effort | Decision-heavy? | Prereq |
 | --- | --- | --- | --- |
+| [mcp-oauth.md](mcp-oauth.md) | ~1–2 sessions | Yes — issuance posture, library vs hand-rolled AS, co-host or separate Worker | `/mcp` (shipped, session 30); a step-0 spike gates the build |
 | [integrity-foundations.md](integrity-foundations.md) | ~2–3 hr (do-now slice) | Light–medium — resolutionSource shape, lint severity, resolvedOutcome type | None (enforcement half gated on MCP write path) |
 | [repo-hardening.md](repo-hardening.md) | ~3–4 hr | Light — license choice | §4 blocked on domain choice; rest none |
 | [agent-surface.md](agent-surface.md) | ~3–5 hr | Light — /agents vs /about section | Canonical domain (deploy) |
@@ -59,8 +60,8 @@ the math.
   `POST /mcp` serving both the `2026-07-28` and `2025-11-25` protocol
   revisions, plus a server card at `/.well-known/mcp.json`. The plan's
   Next.js-API-route design was never buildable under static export and was
-  retracted in the file itself; `AgentAttribution`'s schema upgrade and OAuth
-  remain open.
+  retracted in the file itself. `AgentAttribution`'s schema upgrade is still
+  open; OAuth moved to its own brief in [mcp-oauth.md](mcp-oauth.md).
 
 - [content-as-data.md](content-as-data.md) — done, session 29. Editorial prose
   moved to a loaded, validated `content/` tree: `site.md`, `home.md` and
