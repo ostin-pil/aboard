@@ -79,6 +79,51 @@ manual is the right scale for now, and revocation is deleting a line.
 
 `GITHUB_REPO` and `GITHUB_BASE_BRANCH` are plain vars in `wrangler.jsonc`.
 
+### OAuth (optional, and separately inert)
+
+The MCP endpoint also accepts tokens from aboard's own authorization server, so
+a client that has never been handed a static token can obtain one by signing in
+with GitHub. This half is inert until its own configuration exists: with no
+`OAUTH_KV` binding, `/oauth/*` answers `503`, no OAuth discovery is advertised
+on a `401`, and static tokens behave exactly as they always have.
+
+```bash
+# 1. Storage for clients, codes, grants and tokens. Paste the printed id into
+#    the kv_namespaces block in wrangler.jsonc, replacing REPLACE_ME.
+npx wrangler kv namespace create ABOARD_OAUTH
+
+# 2. A GitHub OAuth App (Settings > Developer settings > OAuth Apps).
+#    Authorization callback URL: https://aboard.untype.me/oauth/callback
+#    It needs no repository permissions: read:user is the whole ask.
+wrangler secret put GITHUB_OAUTH_CLIENT_ID
+wrangler secret put GITHUB_OAUTH_CLIENT_SECRET
+
+# 3. A random HMAC key sealing the in-flight authorization state.
+#    openssl rand -hex 32
+wrangler secret put ABOARD_OAUTH_STATE_SECRET
+
+# 4. Optional. Comma-separated GitHub logins allowed to obtain a credential.
+#    Unset or empty means any authenticated GitHub account may.
+wrangler secret put ABOARD_OAUTH_ALLOWED_LOGINS
+```
+
+`wrangler deploy` fails while `id` is still `REPLACE_ME`. That is deliberate: an
+authorization server that answers discovery and then cannot issue is worse than
+one that is plainly absent.
+
+**Who may obtain a credential.** The allowlist defaults to open, decided in
+session 31. Human review of every pull request is already the admission gate,
+and `plans/mcp-write-path.md` records it as the only Sybil defense with a long
+track record. Setting `ABOARD_OAUTH_ALLOWED_LOGINS` narrows it to named logins
+without a redeploy of anything but the secret. The check runs at consent and
+again at issuance, so tightening it closes pages that are already open.
+
+**The GitHub login is identity, not authority.** Pull requests are still opened
+by aboard's own PAT. Signing in with GitHub establishes who is asking, so that
+`operator` on every proposal is a verified login rather than a string a human
+typed into a table. It grants aboard nothing on the user's account: `read:user`
+is the only scope requested, and no repository permission is involved.
+
 ## Calling it
 
 ```bash
@@ -162,8 +207,31 @@ the stdio package in `mcp-server/`. Nine tools: the five read projections of the
 published JSON-LD, and the four `propose_*` tools, which route through
 `runProposal` exactly as `/api/proposals` does.
 
-Read tools are public. Write tools need the same `Authorization: Bearer` token
-as the write path, and answer `401` without one.
+Read tools are public and stay that way. Write tools need a credential, either
+a static agent token or an OAuth access token carrying `aboard:propose`.
+
+**The endpoint is half public, so the challenge is per call.** `tools/list`
+answers everyone and lists all nine tools, because a client that cannot see the
+write tools has no reason to authenticate. Calling a `propose_*` tool without a
+credential is what draws the challenge:
+
+| Caller | Read tool | Write tool |
+| --- | --- | --- |
+| No credential | `200` | `401` with `WWW-Authenticate` |
+| Static agent token | `200` | `201` |
+| OAuth token, `aboard:propose` | `200` | `201` |
+| OAuth token without the scope | `200` | `403` `insufficient_scope` |
+| Invalid or expired token | `200` | `401` with `WWW-Authenticate` |
+
+A missing credential is a transport-level answer rather than a tool result: it
+is the client, not the model, that has to act on it, and a `401` carrying
+`WWW-Authenticate` is what starts an OAuth flow. Validation failures stay tool
+errors with the field paths attached, which is what a model can act on.
+
+The challenge points at RFC 9728 Protected Resource Metadata, served at
+`/.well-known/oauth-protected-resource/mcp` (path-aware, per §3.1) and at the
+root as the fallback clients try second. Authorization server metadata is at
+`/.well-known/oauth-authorization-server`.
 
 **Stateless, and dual-era.** MCP revision `2026-07-28` removes the `initialize`
 handshake and the protocol-level session; `2025-11-25` and earlier require them.
@@ -199,12 +267,25 @@ mirrored at `/.well-known/mcp/server-card.json`.
 
 ## Known gaps
 
-- **The MCP endpoint is bearer-auth only.** OAuth 2.1 + PKCE is where the
-  industry is going and where a public multi-tenant server has to end up; static
-  tokens match the shipped write path and are the honest v1.
-- **Revocation is manual.** A token is trusted to behave within its rate; to
-  revoke, delete its line from `ABOARD_AGENT_TOKENS`. Do not hand a token to
-  something you would not hand the repo to.
+- **`authorization_response_iss_parameter_supported` is not advertised**, though
+  `iss` is emitted on every authorization response including errors. The
+  provider library generates the authorization server metadata document and
+  does not expose that field, and claiming support we cannot guarantee across
+  every response is worse than staying silent. Under the spec's own
+  compatibility table this is the row that still validates: a client that
+  recorded our issuer compares a present `iss`, and one that did not proceeds.
+  Revisit if the library gains the field.
+- **Static token revocation is manual.** A token is trusted to behave within
+  its rate; to revoke, delete its line from `ABOARD_AGENT_TOKENS`. Do not hand
+  a token to something you would not hand the repo to. OAuth grants are
+  revocable through the provider's own grant store instead.
+- **Static tokens have no deprecation date.** They are the shipped contract for
+  the generator script and the stdio server, and OAuth does not make them
+  wrong. Revisit once something other than the operator holds an OAuth
+  credential.
+- **One scope, `aboard:propose`,** covering all four write tools. Per-kind
+  scopes can come later if a real caller wants narrower access; inventing four
+  now would be a guess about a consumer that does not exist.
 - **All four write tools are wired** (`propose_claim`, `propose_edge`,
   `propose_forecast_prediction`, `propose_dossier`).
 - **A PAT, not a GitHub App.** The plan's stated v1. An App is the end state.

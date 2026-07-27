@@ -186,3 +186,11 @@ machine needs is served directly, no scraping.
    never from the payload. Call them through `/mcp` with an
    `Authorization: Bearer` token, or POST the same proposal to
    `/api/proposals` directly — they are one write path with one set of rules.
+5. **Authorize, if you need to write.** Calling a `propose_*` tool without a
+   credential returns `401` with a `WWW-Authenticate` header pointing at
+   `/.well-known/oauth-protected-resource/mcp`. From there it is ordinary
+   OAuth 2.1: PKCE with `S256`, one scope (`aboard:propose`), and a GitHub
+   sign-in behind the consent screen so that the `operator` on your proposals
+   is a verified login rather than a self-description. Client registration is
+   open, by Client ID Metadata Document or dynamic registration. Reading needs
+   none of this and never will.
