@@ -48,12 +48,12 @@ import {
   audienceMatches,
   authorizeWrite,
   parseBearer,
-  parseScopes,
   resolveStaticIdentity,
   type ChallengeOptions,
   type Credential,
 } from "../src/lib/mcp/auth";
 import { handleMcp } from "./mcp";
+import { withOAuth } from "./oauth";
 import { markdownTwinPath, prefersMarkdown } from "../src/lib/markdown-negotiation";
 import { withinRateLimit, type RateLimiter } from "../src/lib/rate-limit";
 import type { Claim, Dossier, Edge, Prediction } from "../src/lib/types";
@@ -73,9 +73,12 @@ interface Env {
    *  unbound the write path still works (the limiter fails open). */
   PROPOSAL_LIMITER?: RateLimiter;
   /** Injected into `env` by `@cloudflare/workers-oauth-provider` before it
-   *  calls the default handler. Absent until OAuth is configured, which is
-   *  what keeps this deployable in stages. */
+   *  calls the default handler. Always present once the wrapper is in place,
+   *  which is why it is not the signal for "OAuth is configured". */
   OAUTH_PROVIDER?: OAuthHelpers;
+  /** The provider's storage. Its presence *is* the signal: without it there is
+   *  no authorization server to discover and no token that could resolve. */
+  OAUTH_KV?: unknown;
 }
 
 /** What an authorization-server grant carries about the human and the client
@@ -88,12 +91,16 @@ type GrantProps = {
 };
 
 /** A token as `unwrapToken` returns it. Narrowed to the fields we read, so a
- *  library change surfaces here rather than deep in the request path. */
+ *  library change surfaces here rather than deep in the request path.
+ *
+ *  `scope` is already an array in 0.8.2, not the space-delimited string the
+ *  wire format uses. Checked against the published build rather than the
+ *  repository's main branch, where other details differ. */
 type TokenSummary = {
   userId: string;
-  scope?: string;
+  scope: string[];
   audience?: string | string[];
-  grant: { clientId: string; scope: string; props: GrantProps };
+  grant: { clientId: string; scope: string[]; props: GrantProps };
 };
 
 /** The slice of the provider's helper API the default handler uses. `/mcp`
@@ -143,7 +150,9 @@ async function resolveCredential(env: Env, request: Request): Promise<Credential
   const staticIdentity = resolveStaticIdentity(token, env.ABOARD_AGENT_TOKENS);
   if (staticIdentity) return { kind: "static", identity: staticIdentity };
 
-  if (!env.OAUTH_PROVIDER) {
+  if (!env.OAUTH_KV || !env.OAUTH_PROVIDER) {
+    // No authorization server on this deployment, so the static table was the
+    // only thing a token could have been.
     return { kind: "invalid", reason: "Unrecognized agent token." };
   }
 
@@ -166,7 +175,7 @@ async function resolveCredential(env: Env, request: Request): Promise<Credential
   return {
     kind: "oauth",
     subject: grant.userId,
-    scopes: parseScopes(grant.scope),
+    scopes: grant.scope,
     identity: {
       // The branch name carries this, so keep it short and filesystem-safe.
       tokenId: `gh-${props.login ?? grant.userId}`.slice(0, 40).replace(/[^a-zA-Z0-9._-]/g, "-"),
@@ -182,7 +191,7 @@ async function resolveCredential(env: Env, request: Request): Promise<Credential
 /** OAuth discovery is only advertised once there is something to discover.
  *  See `ChallengeOptions` in `src/lib/mcp/auth.ts`. */
 function challengeOptions(env: Env): ChallengeOptions {
-  return { discovery: Boolean(env.OAUTH_PROVIDER) };
+  return { discovery: Boolean(env.OAUTH_KV) };
 }
 
 /** Memoize per request: an MCP write authorizes in the endpoint shell and
@@ -950,7 +959,12 @@ async function serveMarkdownTwin(request: Request, env: Env): Promise<Response |
   });
 }
 
-export default {
+/**
+ * aboard's own routing. Reached through the authorization server wrapper
+ * below, which handles the OAuth endpoints and injects `OAUTH_PROVIDER`
+ * before falling through to here for everything else.
+ */
+const siteHandler = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
 
@@ -982,3 +996,20 @@ export default {
     return env.ASSETS.fetch(request);
   },
 };
+
+/**
+ * The deployed Worker.
+ *
+ * The authorization server wraps aboard rather than the other way round,
+ * because the provider has to see a request before the site does: it owns the
+ * token, registration and OAuth metadata endpoints, and it injects
+ * `OAUTH_PROVIDER` into `env` on the way through. `/mcp` is deliberately not
+ * one of its `apiRoute`s, so anonymous reads reach `siteHandler` untouched and
+ * the per-call decision stays ours.
+ *
+ * With no `OAUTH_KV` bound and no GitHub OAuth App configured, the wrapper is
+ * inert: `/oauth/*` answers 503, no discovery is advertised, and every
+ * existing path behaves exactly as it did before. That is what lets this ship
+ * ahead of the operator steps in `worker/README.md`.
+ */
+export default withOAuth(siteHandler as never);

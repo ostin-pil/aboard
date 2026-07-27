@@ -10,11 +10,25 @@
   // same deploy, and the GitHub credential never leaves the server. Every other
   // path falls straight through to the assets binding.
   //
-  // /mcp needs no binding of its own. The 2026-07-28 MCP spec is stateless, so
-  // there is no session to keep: no KV, no Durable Object, no nodejs_compat. The
-  // server card is a static file under public/.well-known/, served by ASSETS.
+  // The MCP protocol core needs no storage. The 2026-07-28 spec is stateless,
+  // so there is no session to keep, and every read tool answers from the assets
+  // binding. The server card is a static file under public/.well-known/.
+  //
+  // Token issuance is the exception, and the only one. An authorization server
+  // has to remember registered clients, authorization codes and grants, which
+  // is what OAUTH_KV below is for. Nothing on the /mcp hot path reads it except
+  // a token lookup, and an anonymous read still touches no storage at all.
   "name": "aboard",
   "compatibility_date": "2025-06-01",
+
+  // Lets the OAuth provider support Client ID Metadata Documents, which the
+  // 2026-07-28 spec prefers and which supersedes Dynamic Client Registration
+  // (deprecated in that revision, and kept only for older clients). The flag
+  // makes global fetch() strictly public, so a request to our own hostname goes
+  // out to the internet rather than looping back internally. aboard never does
+  // that: the site is read through the ASSETS binding, and the only outbound
+  // fetches are to github.com and api.github.com.
+  "compatibility_flags": ["global_fetch_strictly_public"],
   "main": "worker/index.ts",
   "assets": {
     "directory": "./out",
@@ -57,6 +71,25 @@
       "namespace_id": "1001",
       "simple": { "limit": 10, "period": 60 }
     }
+  ],
+
+  // Storage for the authorization server: registered clients, authorization
+  // codes, grants and tokens. Unlike the rate-limit binding above, this one is
+  // a real namespace that has to exist in the account before a deploy will
+  // succeed:
+  //
+  //   npx wrangler kv namespace create ABOARD_OAUTH
+  //
+  // then paste the printed id below, replacing REPLACE_ME. Until that happens
+  // `wrangler deploy` fails loudly, which is the intended failure mode: a
+  // half-configured authorization server that answers discovery and then
+  // cannot issue is worse than one that is plainly absent.
+  //
+  // The Worker tolerates the binding being missing at runtime. With no
+  // OAUTH_KV, /oauth/* answers 503, no OAuth discovery is advertised on a 401,
+  // and static agent tokens keep working exactly as before.
+  "kv_namespaces": [
+    { "binding": "OAUTH_KV", "id": "REPLACE_ME" }
   ]
 
   // Secrets — set with `wrangler secret put`, never committed:
