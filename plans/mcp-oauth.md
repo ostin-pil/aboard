@@ -154,17 +154,26 @@ act on.
 
 ## Decisions this slice has to make
 
-**Who may obtain a write credential.** This is the project-posture decision
-and it is not a technical one. Three options: any authenticated GitHub
-account, an allowlist of GitHub logins, or manual approval on first use. The
-argument for the open end is that human review of every PR is already the
-admission gate, and `plans/mcp-write-path.md` records it as the only Sybil
-defense with a long track record. The argument for the narrow end is that
-opening issuance turns a hand-issued credential into an unbounded supply of
-them, and rate limiting per subject caps burst rather than volume.
-Recommendation is an allowlist that is empty-means-open, defaulting to open,
-because it costs one environment variable and converts the decision into a
-lever that can be pulled the day it is needed rather than a rebuild.
+**Who may obtain a write credential. Decided: an allowlist defaulting to
+open.** This was the project-posture decision rather than a technical one, and
+it was taken in session 31. A single optional variable,
+`ABOARD_OAUTH_ALLOWED_LOGINS`, holds a comma-separated list of GitHub logins.
+Unset or empty means any authenticated GitHub account may consent and receive
+an `aboard:propose` token; non-empty means only those logins may, and everyone
+else is refused at the consent step with a message that says so.
+
+The reasoning on both sides is worth keeping, because the lever will get
+pulled one day. Open is defensible today because human review of every pull
+request is already the admission gate, and `plans/mcp-write-path.md` records
+it as the only Sybil defense with a long track record. The risk is that
+issuance turns a hand-issued credential into an unbounded supply of them, and
+per-subject rate limiting caps burst rather than volume. Shipping the check
+now and leaving it empty costs one variable and converts a future rebuild into
+a config change.
+
+Refuse at consent, not at the token endpoint. A refused login should never
+reach a code exchange, and the human deserves to be told why while they are
+still looking at a page.
 
 **Static tokens keep working, with no deprecation date set here.** They are
 the shipped contract, they are what the `scripts/` generator and the stdio
@@ -192,42 +201,68 @@ Note that the stateless revision removed the `initialize` handshake, so
 registration is where the agent's name now comes from, which is a better
 source anyway because it is bound to the credential.
 
-## Step 0, the gate: spike the Cloudflare provider's auth model
+## Step 0, the gate: resolved 2026-07-27 by reading the source
 
-`@cloudflare/workers-oauth-provider` is the obvious substrate. It needs one KV
+`@cloudflare/workers-oauth-provider` is the substrate. It needs one KV
 namespace bound as `OAUTH_KV`, serves `/.well-known/oauth-protected-resource`
 and `/.well-known/oauth-authorization-server`, implements DCR and PKCE, takes
 a plain `ExportedHandler` as `apiHandler` rather than requiring the McpAgent
 Durable Object, and hands the authorized identity to the handler as
-`ctx.props`. All of that fits.
+`ctx.props`.
 
-One thing does not obviously fit, and it decides the whole build. The library
-routes `apiRoute` paths through token validation and, on the documentation's
-own phrasing, passes the request to the API handler when it "receives an API
-request with a valid access token". If unauthenticated requests to an
-`apiRoute` are rejected with a 401 before the handler sees them, then routing
-`/mcp` as an `apiRoute` breaks anonymous reads, which is not negotiable.
+The open question was whether it rejects unauthenticated requests to an
+`apiRoute` before the handler runs, which would break anonymous reads. The
+README does not say. The source does, at `handleApiRequest`:
 
-Spike it before writing anything else. Read the source rather than the README;
-this is a question the docs do not answer. Two outcomes:
+```ts
+const authHeader = request.headers.get('Authorization');
+if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  return this.createErrorResponse('invalid_token', { statusCode: 401, ... });
+}
+```
 
-- **Path A, the library.** If the handler can receive anonymous requests, or
-  if `/mcp` can stay on the `defaultHandler` while the library still exposes
-  token validation to it, use the library. The AS endpoints, DCR, PKCE, and
-  the metadata documents all come for free.
-- **Path B, hand-rolled.** If authentication on `apiRoute` is binary with no
-  way through, write the authorization server directly. It is more code and
-  it is not exotic: an authorize endpoint, a token endpoint, a registration
-  endpoint, signed JWTs so that validation at the resource server needs no
-  round trip, and KV for codes, clients, and grants only.
+Authentication on an `apiRoute` is binary, so `/mcp` cannot be one.
 
-Also settle during the spike whether the library honours the `resource`
-parameter (RFC 8707) and emits `iss` (RFC 9207). If it does neither, Path B
-gets more attractive, because both are requirements we would otherwise be
-patching around.
+**Path A survives in a hybrid form, and that is what to build.** The
+provider's `fetch` handles the metadata, token, and registration endpoints
+first, checks `isApiRequest` second, and only then falls through to the
+`defaultHandler` with `env.OAUTH_PROVIDER` injected. So:
 
-Timebox this to one sitting. It is the only thing in this plan whose answer
-changes the shape of everything after it.
+- `/mcp` stays on the `defaultHandler`, where anonymous requests arrive
+  untouched and the per-call decision is ours to make.
+- `env.OAUTH_PROVIDER.unwrapToken(token)` validates a presented token from
+  inside that handler. It checks KV, enforces expiry, decrypts the grant
+  props, and returns `{userId, scope, audience, grant: {clientId, props}}`.
+  That is exactly the input the challenge decision needs.
+- The authorization server endpoints, DCR, PKCE, and both metadata documents
+  still come for free, because none of them are gated on `apiRoute`.
+
+Two consequences to carry into the build.
+
+The constructor throws unless given `apiRoute` plus `apiHandler`, or
+`apiHandlers`. Since `/mcp` cannot be the API route, something else has to be.
+Use `GET /api/whoami`, an endpoint that returns the caller's resolved
+identity. It satisfies the constructor with a real endpoint rather than a
+placeholder, and it is independently useful: an agent holding a credential
+can check what aboard thinks it is before spending a write on finding out.
+
+Audience validation is ours. The library parses the RFC 8707 `resource`
+parameter, binds it to the token as `audience`, and returns it in the token
+response, but it does not check it at the resource server, which is correct
+because that is the resource server's job. Compare `unwrapToken().audience`
+against `https://aboard.untype.me/mcp` and reject on mismatch. This is a MUST
+in the spec and it is the single easiest thing in this plan to forget.
+
+**One gap, accepted and documented.** The library does not implement RFC 9207:
+it never emits `iss` in authorization responses and never advertises
+`authorization_response_iss_parameter_supported`. This is interoperable today,
+because the spec's own table says a client proceeds when the parameter is
+neither advertised nor present. It is a SHOULD we do not meet, and a future
+revision is expected to raise it to a MUST. Our authorize handler performs the
+final redirect itself, using the `redirectTo` that `completeAuthorization()`
+returns, so appending `iss` is within reach; whether the AS metadata document
+can be extended to advertise it needs a second look. Record it as a known gap
+in `worker/README.md` either way, rather than letting it be discovered later.
 
 ## The build
 
@@ -393,16 +428,19 @@ the goal, and remember from session 30 that a smoke run immediately after
 - **Opening PRs as the authenticated user.** Needs a fork story.
 - **Anything that auto-merges.** Human review stays the admission gate.
 
-## Open questions for whoever picks this up
+## Open questions
 
-1. Issuance posture, which is the one decision that is genuinely the
-   project's rather than the implementation's. Recommendation above is an
-   allowlist defaulting to open.
-2. Path A or Path B, answered by the step 0 spike rather than by preference.
-3. Whether the authorization server co-hosts in this Worker or gets its own.
+Two of the four are now closed. Issuance posture is an allowlist defaulting to
+open, decided in session 31 and described above. Path A or B is answered by
+the step 0 spike, also above: Path A, with `/mcp` on the default handler and
+`unwrapToken` doing per-call validation.
+
+What remains:
+
+1. Whether the authorization server co-hosts in this Worker or gets its own.
    Co-hosting is simpler and keeps discovery same-origin; a separate Worker
    would preserve the current "no bindings" property for `/mcp` at the cost of
    a second deploy target. Recommendation is to co-host and correct the
    `wrangler.jsonc` comment.
-4. Whether `AgentAttribution`'s schema upgrade lands in this slice or gets
+2. Whether `AgentAttribution`'s schema upgrade lands in this slice or gets
    deferred a third time.
