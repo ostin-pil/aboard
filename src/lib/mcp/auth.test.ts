@@ -192,6 +192,23 @@ describe("the WWW-Authenticate value", () => {
     );
   });
 
+  it("omits the discovery hints when there is no authorization server", () => {
+    // A resource_metadata pointer to a 404 is worse than no pointer: a
+    // conforming client fetches it, fails, and has nothing to fall back on.
+    expect(bearerChallenge({ scope: PROPOSE_SCOPE, discovery: false })).toBe("Bearer");
+    expect(bearerChallenge({ error: "invalid_token", discovery: false })).toBe(
+      'Bearer error="invalid_token"',
+    );
+  });
+
+  it("still challenges with a 401 when discovery is off", () => {
+    const outcome = authorizeWrite({ kind: "none" }, { discovery: false });
+    if (outcome.allowed) throw new Error("expected a challenge");
+    expect(outcome.challenge.status).toBe(401);
+    expect(outcome.challenge.wwwAuthenticate).toBe("Bearer");
+    expect(outcome.challenge.wwwAuthenticate).not.toContain("resource_metadata");
+  });
+
   it("strips quotes and newlines that would truncate the header", () => {
     const header = bearerChallenge({
       error: "invalid_token",

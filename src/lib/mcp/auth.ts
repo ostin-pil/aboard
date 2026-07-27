@@ -81,6 +81,19 @@ export type AuthOutcome =
   | { allowed: true; identity: TokenIdentity; rateLimitKey: string }
   | { allowed: false; challenge: AuthChallenge };
 
+/**
+ * Whether to advertise OAuth discovery in a challenge.
+ *
+ * `resource_metadata` points a client at a document that only exists once an
+ * authorization server does, and a pointer to a 404 is worse than no pointer:
+ * a conforming client will fetch it, fail, and have nothing to fall back on.
+ * So a deployment with no OAuth configured still answers 401, still says
+ * `Bearer`, and simply omits the discovery hints. That mirrors how
+ * `/api/proposals` answers 503 `not_configured` rather than pretending, and it
+ * is what lets this ship in stages.
+ */
+export type ChallengeOptions = { discovery: boolean };
+
 // --- parsing ---------------------------------------------------------------
 
 /** The bearer token from an Authorization header, or null. Case-insensitive
@@ -154,7 +167,12 @@ function normalizeResource(value: string): string {
  * identity so one caller cannot multiply its burst allowance by holding both
  * a static token and an OAuth grant.
  */
-export function authorizeWrite(credential: Credential): AuthOutcome {
+export function authorizeWrite(
+  credential: Credential,
+  options: ChallengeOptions = { discovery: true },
+): AuthOutcome {
+  const { discovery } = options;
+
   switch (credential.kind) {
     case "none":
       return {
@@ -163,7 +181,7 @@ export function authorizeWrite(credential: Credential): AuthOutcome {
           status: 401,
           description:
             "The four propose_* tools require a credential. Read tools need none.",
-          wwwAuthenticate: bearerChallenge({ scope: PROPOSE_SCOPE }),
+          wwwAuthenticate: bearerChallenge({ scope: PROPOSE_SCOPE, discovery }),
         },
       };
 
@@ -178,6 +196,7 @@ export function authorizeWrite(credential: Credential): AuthOutcome {
             error: "invalid_token",
             errorDescription: credential.reason,
             scope: PROPOSE_SCOPE,
+            discovery,
           }),
         },
       };
@@ -205,6 +224,7 @@ export function authorizeWrite(credential: Credential): AuthOutcome {
               error: "insufficient_scope",
               errorDescription: description,
               scope: PROPOSE_SCOPE,
+              discovery,
             }),
           },
         };
@@ -229,15 +249,20 @@ export function bearerChallenge(params: {
   error?: "invalid_token" | "insufficient_scope";
   errorDescription?: string;
   scope?: string;
+  /** Omit the discovery hints when no authorization server exists to find. */
+  discovery?: boolean;
 }): string {
+  const discovery = params.discovery ?? true;
   const parts: string[] = [];
   if (params.error) parts.push(`error="${params.error}"`);
   if (params.errorDescription) {
     parts.push(`error_description="${quoteSafe(params.errorDescription)}"`);
   }
-  if (params.scope) parts.push(`scope="${quoteSafe(params.scope)}"`);
-  parts.push(`resource_metadata="${RESOURCE_METADATA_URL}"`);
-  return `Bearer ${parts.join(", ")}`;
+  if (discovery) {
+    if (params.scope) parts.push(`scope="${quoteSafe(params.scope)}"`);
+    parts.push(`resource_metadata="${RESOURCE_METADATA_URL}"`);
+  }
+  return parts.length ? `Bearer ${parts.join(", ")}` : "Bearer";
 }
 
 /** Header values are quoted strings, so a stray quote or backslash would end
