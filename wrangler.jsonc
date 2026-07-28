@@ -10,11 +10,25 @@
   // same deploy, and the GitHub credential never leaves the server. Every other
   // path falls straight through to the assets binding.
   //
-  // /mcp needs no binding of its own. The 2026-07-28 MCP spec is stateless, so
-  // there is no session to keep: no KV, no Durable Object, no nodejs_compat. The
-  // server card is a static file under public/.well-known/, served by ASSETS.
+  // The MCP protocol core needs no storage. The 2026-07-28 spec is stateless,
+  // so there is no session to keep, and every read tool answers from the assets
+  // binding. The server card is a static file under public/.well-known/.
+  //
+  // Token issuance is the exception, and the only one. An authorization server
+  // has to remember registered clients, authorization codes and grants, which
+  // is what OAUTH_KV below is for. Nothing on the /mcp hot path reads it except
+  // a token lookup, and an anonymous read still touches no storage at all.
   "name": "aboard",
   "compatibility_date": "2025-06-01",
+
+  // Lets the OAuth provider support Client ID Metadata Documents, which the
+  // 2026-07-28 spec prefers and which supersedes Dynamic Client Registration
+  // (deprecated in that revision, and kept only for older clients). The flag
+  // makes global fetch() strictly public, so a request to our own hostname goes
+  // out to the internet rather than looping back internally. aboard never does
+  // that: the site is read through the ASSETS binding, and the only outbound
+  // fetches are to github.com and api.github.com.
+  "compatibility_flags": ["global_fetch_strictly_public"],
   "main": "worker/index.ts",
   "assets": {
     "directory": "./out",
@@ -56,7 +70,43 @@
       "name": "PROPOSAL_LIMITER",
       "namespace_id": "1001",
       "simple": { "limit": 10, "period": 60 }
+    },
+
+    // Flood brake on POST /oauth/register, keyed per client IP.
+    //
+    // Dynamic Client Registration is unauthenticated by design: a client that
+    // has never met this server still has to be able to obtain a client_id.
+    // That makes it the only unauthenticated write into OAUTH_KV, and the only
+    // endpoint here the provider answers before our own code sees the request,
+    // which is why the brake sits in a wrapper around the provider rather than
+    // in the site handler.
+    //
+    // A registered client can do nothing on its own; a human must still sign in
+    // and approve consent before any token exists. So the exposure is junk
+    // accumulation rather than access, bounded by the 90-day registration TTL.
+    // The limit is lower than the proposal one because a legitimate client
+    // registers once and then keeps its id for the life of that TTL.
+    {
+      "name": "REGISTRATION_LIMITER",
+      "namespace_id": "1002",
+      "simple": { "limit": 5, "period": 60 }
     }
+  ],
+
+  // Storage for the authorization server: registered clients, authorization
+  // codes, grants and tokens. Unlike the rate-limit binding above, this is a
+  // real namespace that must exist in the account, created with
+  // `npx wrangler kv namespace create ABOARD_OAUTH`. Recreating it in another
+  // account means a new id here; every issued token and registered client
+  // lives in this namespace, so replacing it revokes all of them.
+  //
+  // The Worker still tolerates the binding being absent at runtime, which is
+  // what makes a partial deploy safe rather than half-broken: with no
+  // OAUTH_KV, /oauth/* answers 503, no OAuth discovery is advertised on a 401,
+  // and static agent tokens keep working exactly as before. The binding's
+  // presence is the signal the code reads for "OAuth is configured".
+  "kv_namespaces": [
+    { "binding": "OAUTH_KV", "id": "2c2117a65a094b6ebb8ebcf192da0e93" }
   ]
 
   // Secrets — set with `wrangler secret put`, never committed:

@@ -25,6 +25,7 @@ import {
   type JsonRpcId,
   type McpPlan,
 } from "../src/lib/mcp/protocol";
+import { authorizeWrite, type ChallengeOptions, type Credential } from "../src/lib/mcp/auth";
 import type { ReadOp, ToolDescriptor } from "../src/lib/mcp/tools";
 
 export type ProposalEnvelopeInput = {
@@ -36,6 +37,10 @@ export type ProposalEnvelopeInput = {
 export type McpDeps = {
   /** The built `out/` directory: the published JSON-LD the read tools project. */
   assets: { fetch: (request: Request) => Promise<Response> };
+  /** The request's credential, memoized by the caller. Only write tools ask. */
+  credential: () => Promise<Credential>;
+  /** Whether to advertise OAuth discovery in a challenge. */
+  challengeOptions: ChallengeOptions;
   /**
    * Files a proposal through exactly the pipeline `POST /api/proposals` uses —
    * bearer auth, rate limit, canonical Zod validation, branch and PR. Passing a
@@ -53,6 +58,11 @@ function corsHeaders(origin: string | null): Record<string, string> {
     "access-control-allow-origin": origin && origin !== "null" ? origin : "*",
     "access-control-allow-methods": "POST, OPTIONS",
     "access-control-allow-headers": "authorization, content-type, mcp-protocol-version, mcp-method, mcp-name, mcp-session-id",
+    // WWW-Authenticate is not CORS-safelisted, so a browser-side client cannot
+    // read the challenge that tells it how to authenticate unless it is
+    // exposed. Without this the discovery hook is invisible to exactly the
+    // clients that most need it.
+    "access-control-expose-headers": "WWW-Authenticate",
     "access-control-max-age": "86400",
     vary: "Origin",
   };
@@ -63,11 +73,12 @@ function rpcError(
   status: number,
   error: JsonRpcErrorBody,
   origin: string | null,
+  extraHeaders: Record<string, string> = {},
 ): Response {
   const body = { jsonrpc: "2.0", id, error };
   return new Response(JSON.stringify(body, null, 2), {
     status,
-    headers: { ...JSON_HEADERS, ...corsHeaders(origin) },
+    headers: { ...JSON_HEADERS, ...corsHeaders(origin), ...extraHeaders },
   });
 }
 
@@ -254,8 +265,11 @@ async function runWriteTool(
       `Proposal rejected (HTTP ${response.status}${body.error?.code ? `, ${body.error.code}` : ""}).`,
       body.error?.message ?? "",
       issues ? `\nFields that failed validation:\n${issues}` : "",
-      response.status === 401
-        ? "\nThe four propose_* tools need an `Authorization: Bearer <agent token>` header on the MCP request. Read tools need none."
+      // Credential failures are answered before a tool ever runs, with an HTTP
+      // challenge the client can act on. Reaching here means the two checks
+      // disagreed, so say that rather than repeating the auth instructions.
+      response.status === 401 || response.status === 403
+        ? "\nThe credential was accepted by the endpoint and refused by the write path. This is a server bug; please report it."
         : "",
     ]
       .filter(Boolean)
@@ -322,6 +336,25 @@ export async function handleMcp(request: Request, deps: McpDeps): Promise<Respon
   }
   if (plan.kind === "result") {
     return rpcResult(plan.id, plan.era, plan.result, origin);
+  }
+
+  // A write tool needs a credential, and a missing or insufficient one is a
+  // transport-level answer rather than a tool result. The client, not the
+  // model, is what has to act on it: a 401 carrying `WWW-Authenticate` is what
+  // starts an OAuth flow, where an `isError` tool result would just be prose a
+  // model cannot act on. Validation failures stay tool errors (see runWriteTool).
+  if (plan.tool.handler.kind === "write") {
+    const outcome = authorizeWrite(await deps.credential(), deps.challengeOptions);
+    if (!outcome.allowed) {
+      const { status, error, description, wwwAuthenticate } = outcome.challenge;
+      return rpcError(
+        plan.id,
+        status,
+        { code: INTERNAL_ERROR, message: description, data: error ? { error } : undefined },
+        origin,
+        { "www-authenticate": wwwAuthenticate },
+      );
+    }
   }
 
   try {

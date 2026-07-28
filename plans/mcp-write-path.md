@@ -65,6 +65,7 @@ in an open branch, not in the graph.
   stamped into PR bodies today, but they are not part of the published schema.
 - **OAuth 2.1 + PKCE** for the MCP endpoint. Static bearer tokens are v1 and
   match the write path; OAuth is where a public multi-tenant server ends up.
+  Now has its own brief, `plans/mcp-oauth.md`, written in session 31.
 - **A GitHub App** instead of a PAT.
 - **Resolution-criteria lint** on prediction and new-forecast payloads, once
   `plans/integrity-foundations.md`'s do-now slice exists.
