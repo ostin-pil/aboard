@@ -53,7 +53,7 @@ import {
   type Credential,
 } from "../src/lib/mcp/auth";
 import { handleMcp } from "./mcp";
-import { withOAuth } from "./oauth";
+import { whoamiResponse, withOAuth } from "./oauth";
 import { markdownTwinPath, prefersMarkdown } from "../src/lib/markdown-negotiation";
 import { withinRateLimit, type RateLimiter } from "../src/lib/rate-limit";
 import type { Claim, Dossier, Edge, Prediction } from "../src/lib/types";
@@ -973,6 +973,16 @@ const siteHandler = {
 
     if (pathname === "/api/proposals") {
       return handleProposal(request, env, credential);
+    }
+
+    // What a credential resolves to. Served here rather than as an OAuth
+    // `apiRoute` because the provider validates a token's audience against the
+    // request path, and our tokens are bound to `/mcp` (see UNUSED_API_ROUTE).
+    if (pathname === "/api/whoami") {
+      const resolved = await credential();
+      const identity =
+        resolved.kind === "static" || resolved.kind === "oauth" ? resolved.identity : null;
+      return whoamiResponse(identity);
     }
 
     // The remote MCP endpoint. Read tools project the same published JSON-LD the

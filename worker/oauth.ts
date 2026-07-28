@@ -30,8 +30,8 @@
  * the handler runs. `/mcp` must serve anonymous reads, so it stays on the
  * default handler and validates tokens itself through
  * `env.OAUTH_PROVIDER.unwrapToken`. The constructor still demands some API
- * route, so `GET /api/whoami` is one: an endpoint an agent wants anyway, to
- * check what a credential resolves to before spending a write finding out.
+ * route, so an unadvertised placeholder is one. See UNUSED_API_ROUTE for why
+ * nothing real can take that slot.
  */
 import { OAuthProvider, type AuthRequest } from "@cloudflare/workers-oauth-provider";
 import { CANONICAL_ORIGIN } from "../src/lib/site";
@@ -346,27 +346,63 @@ function withIssuer(redirectTo: string): string {
 
 // --- routing ---------------------------------------------------------------
 
-/** `GET /api/whoami`: what this credential resolves to. Reached only through
- *  the provider's `apiRoute`, so it is authenticated by construction. */
-const whoamiHandler = {
-  async fetch(request: Request, _env: unknown, ctx: ExecCtx): Promise<Response> {
-    const props = (ctx.props ?? {}) as { login?: string; clientName?: string };
+/**
+ * The path that exists only to satisfy the constructor.
+ *
+ * `OAuthProvider` throws without an `apiRoute`, and nothing of ours can be
+ * one. `/mcp` cannot, because an `apiRoute` 401s anonymous requests and reads
+ * must stay open. `/api/whoami` cannot either, for a subtler reason worth
+ * recording: the provider validates a token's audience against the *request
+ * path*, computing `${protocol}//${host}${pathname}` and comparing that to the
+ * token's `aud`. Our tokens are audience-bound to `https://aboard.untype.me/mcp`
+ * because that is the resource an MCP client asks for, so they can never
+ * satisfy a check that expects `.../api/whoami`. An `apiRoute` here is
+ * reachable only by a token no client would ever request.
+ *
+ * So the requirement is met by a path that is never advertised and never
+ * called, and `/api/whoami` lives in the site handler where the same resolver
+ * that guards `/mcp` guards it too.
+ */
+const UNUSED_API_ROUTE = "/api/_oauth_unused";
+
+const unusedApiHandler = {
+  async fetch(): Promise<Response> {
     return new Response(
-      JSON.stringify(
-        {
-          authenticated: true,
-          operator: props.login ?? null,
-          client: props.clientName ?? null,
-          scope: PROPOSE_SCOPE,
-          resource: RESOURCE_URI,
+      JSON.stringify({
+        error: {
+          code: "not_an_endpoint",
+          message: "This path exists to satisfy a library constraint. Use /api/whoami.",
         },
-        null,
-        2,
-      ),
-      { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } },
+      }),
+      { status: 404, headers: { "content-type": "application/json; charset=utf-8" } },
     );
   },
 };
+
+/** What a credential resolves to, for an agent that wants to check before
+ *  spending a write finding out. Answered from the site handler, so an MCP
+ *  token (audience `/mcp`) actually works here. */
+export function whoamiResponse(identity: {
+  operator: string;
+  agent: string;
+  agentId: string;
+} | null): Response {
+  const body = identity
+    ? {
+        authenticated: true,
+        operator: identity.operator,
+        client: identity.agent,
+        clientId: identity.agentId,
+        scope: PROPOSE_SCOPE,
+        resource: RESOURCE_URI,
+      }
+    : { authenticated: false, scope: PROPOSE_SCOPE, resource: RESOURCE_URI };
+
+  return new Response(JSON.stringify(body, null, 2), {
+    status: identity ? 200 : 401,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+  });
+}
 
 /** The `/oauth/*` legs the provider does not implement itself. Everything else
  *  the provider sees falls through to aboard's own site handler. */
@@ -407,8 +443,8 @@ export function withOAuth(siteHandler: {
   fetch: (request: Request, env: never, ctx: ExecCtx) => Promise<Response>;
 }) {
   return new OAuthProvider({
-    apiRoute: ["/api/whoami"],
-    apiHandler: whoamiHandler,
+    apiRoute: [UNUSED_API_ROUTE],
+    apiHandler: unusedApiHandler,
     defaultHandler: oauthUiHandler(siteHandler),
     // Absolute rather than path-relative. The library resolves a bare path
     // against the inbound request URL, which makes `issuer` a function of how
