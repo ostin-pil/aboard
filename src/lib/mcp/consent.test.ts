@@ -6,6 +6,7 @@ import {
   escapeHtml,
   isLoopback,
   loginAllowed,
+  oauthSubject,
   openState,
   redirectHost,
   refusedPage,
@@ -43,6 +44,31 @@ describe("the allowlist", () => {
   it("compares case-insensitively and tolerates padding", () => {
     expect(loginAllowed("Ostin-Pil", "ostin-pil")).toBe(true);
     expect(loginAllowed("ostin-pil", " OSTIN-PIL , other ")).toBe(true);
+  });
+});
+
+describe("the grant subject", () => {
+  // Regression, session 31. The provider packs the subject into every
+  // authorization code and access token as `${userId}:${grantId}:${random}`
+  // and parses them back with split(":"), requiring exactly three parts. A
+  // subject carrying a colon made every token this server issued unparseable,
+  // and the flow died at the token endpoint with invalid_grant. Unit tests and
+  // every pre-redirect production check passed; only an end-to-end run saw it.
+  it("never contains a colon, whatever GitHub returns", () => {
+    expect(oauthSubject("165952329")).toBe("github-165952329");
+    expect(oauthSubject("165952329")).not.toContain(":");
+    expect(oauthSubject("weird:id")).not.toContain(":");
+    expect(oauthSubject("a:b:c:d")).not.toContain(":");
+  });
+
+  it("splits into exactly three parts when packed into a token", () => {
+    const token = `${oauthSubject("165952329")}:grantid:randomsecret`;
+    expect(token.split(":")).toHaveLength(3);
+  });
+
+  it("stays filesystem- and URL-safe", () => {
+    expect(oauthSubject("../../etc/passwd")).toMatch(/^[a-zA-Z0-9._-]+$/);
+    expect(oauthSubject("a b c")).toMatch(/^[a-zA-Z0-9._-]+$/);
   });
 });
 

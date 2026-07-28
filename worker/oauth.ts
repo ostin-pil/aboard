@@ -39,6 +39,7 @@ import { PROPOSE_SCOPE, RESOURCE_URI } from "../src/lib/mcp/auth";
 import {
   consentPage,
   loginAllowed,
+  oauthSubject,
   openState,
   refusedPage,
   sealState,
@@ -303,9 +304,10 @@ async function recordConsent(request: Request, env: OAuthEnv): Promise<Response>
 
   const { redirectTo } = await env.OAUTH_PROVIDER.completeAuthorization({
     request: authRequest,
-    // GitHub's numeric id rather than the login: it survives a rename, and it
-    // is what the rate limiter and every grant lookup key on.
-    userId: `github:${state.userId}`,
+    // Never interpolate a colon here: the provider packs this into every code
+    // and token as `${userId}:${grantId}:${random}` and parses by splitting on
+    // ':'. See oauthSubject for the whole story.
+    userId: oauthSubject(state.userId),
     metadata: { login: state.login, authorizedAt: new Date().toISOString() },
     // Narrowed to what this server issues, whatever was asked for.
     scope: [PROPOSE_SCOPE],

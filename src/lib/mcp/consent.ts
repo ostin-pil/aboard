@@ -60,6 +60,27 @@ export type ConsentState = {
  *  consent screen, short enough that a leaked URL is not a standing grant. */
 export const STATE_TTL_SECONDS = 600;
 
+/**
+ * The subject a grant is issued to, derived from GitHub's numeric user id.
+ *
+ * **The separator may not be a colon, and this is not cosmetic.** The OAuth
+ * provider builds every authorization code and access token as
+ * `${userId}:${grantId}:${random}` and parses them back with `split(":")`,
+ * requiring exactly three parts. A subject containing a colon produces four,
+ * so every code and every token the server issues becomes unparseable and the
+ * whole flow fails at the token endpoint with `invalid_grant`.
+ *
+ * Found by an end-to-end run in session 31, after unit tests and every
+ * pre-redirect production check had passed. Nothing before the code exchange
+ * can detect it.
+ *
+ * GitHub's numeric id rather than the login: it survives a rename, and it is
+ * what the rate limiter and every grant lookup key on.
+ */
+export function oauthSubject(githubUserId: string): string {
+  return `github-${githubUserId}`.replace(/[^a-zA-Z0-9._-]/g, "-");
+}
+
 async function hmacKey(secret: string): Promise<CryptoKey> {
   return crypto.subtle.importKey(
     "raw",
