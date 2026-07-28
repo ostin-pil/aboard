@@ -42,9 +42,11 @@ import {
   oauthSubject,
   openState,
   refusedPage,
+  registrationLimitKey,
   sealState,
   type ConsentState,
 } from "../src/lib/mcp/consent";
+import { withinRateLimit, type RateLimiter } from "../src/lib/rate-limit";
 
 /** The GitHub OAuth App behind the login step. `read:user` and nothing more:
  *  we need a login and a stable id, never repository access. */
@@ -52,6 +54,17 @@ const GITHUB_AUTHORIZE = "https://github.com/login/oauth/authorize";
 const GITHUB_TOKEN = "https://github.com/login/oauth/access_token";
 const GITHUB_USER = "https://api.github.com/user";
 const GITHUB_SCOPE = "read:user";
+
+/** Where Dynamic Client Registration lives. Named once because both the
+ *  provider config and the rate-limit brake in front of it need it. */
+const REGISTRATION_ENDPOINT_PATH = "/oauth/register";
+
+/** Mirrors the `period` on the REGISTRATION_LIMITER binding in wrangler.jsonc;
+ *  used only for the `Retry-After` hint. Keep the two in sync. */
+const REGISTRATION_LIMIT_PERIOD_S = 60;
+
+/** 90 days, the library's own default, stated explicitly. See the config. */
+const REGISTRATION_TTL_SECONDS = 2160 * 60 * 60;
 
 /** Enough of an execution context for what this file reads off it. The
  *  project has no `@cloudflare/workers-types` dependency and does not need one
@@ -69,6 +82,9 @@ export type OAuthEnv = {
   ABOARD_OAUTH_STATE_SECRET?: string;
   /** Comma-separated GitHub logins. Empty or unset means open. */
   ABOARD_OAUTH_ALLOWED_LOGINS?: string;
+  /** Flood brake on unauthenticated client registration. Optional: when
+   *  unbound the endpoint still works, since the limiter fails open. */
+  REGISTRATION_LIMITER?: RateLimiter;
 };
 
 /** The provider helpers, narrowed to what this file calls. */
@@ -442,7 +458,7 @@ export function oauthUiHandler(siteHandler: {
 export function withOAuth(siteHandler: {
   fetch: (request: Request, env: never, ctx: ExecCtx) => Promise<Response>;
 }) {
-  return new OAuthProvider({
+  const provider = new OAuthProvider({
     apiRoute: [UNUSED_API_ROUTE],
     apiHandler: unusedApiHandler,
     defaultHandler: oauthUiHandler(siteHandler),
@@ -456,7 +472,7 @@ export function withOAuth(siteHandler: {
     // the dev origin, which the GitHub OAuth App's callback URL needs anyway.
     authorizeEndpoint: `${CANONICAL_ORIGIN}/oauth/authorize`,
     tokenEndpoint: `${CANONICAL_ORIGIN}/oauth/token`,
-    clientRegistrationEndpoint: `${CANONICAL_ORIGIN}/oauth/register`,
+    clientRegistrationEndpoint: `${CANONICAL_ORIGIN}${REGISTRATION_ENDPOINT_PATH}`,
     scopesSupported: [PROPOSE_SCOPE],
     // Client ID Metadata Documents: an HTTPS URL as the client id, pointing at
     // the client's own metadata. The 2026-07-28 revision prefers this and
@@ -478,5 +494,41 @@ export function withOAuth(siteHandler: {
     // manage it, and every MCP client can.
     allowPlainPKCE: false,
     allowImplicitFlow: false,
+    // Stated rather than inherited. The library already defaults to this exact
+    // value, so this changes no behaviour; it puts the number where a reader
+    // of our config can see it, and pins it against a future default change.
+    // 90 days is generous for a client that never completes a flow, and it is
+    // the ceiling on how long abandoned registrations sit in KV.
+    clientRegistrationTTL: REGISTRATION_TTL_SECONDS,
   });
+
+  return {
+    async fetch(request: Request, env: OAuthEnv, ctx: ExecCtx): Promise<Response> {
+      // The one unauthenticated write into the authorization server's storage,
+      // and the only endpoint the provider handles before our code sees it.
+      // Brake it here, outside the provider, because by the time the provider
+      // routes it there is nowhere left to intervene.
+      if (new URL(request.url).pathname === REGISTRATION_ENDPOINT_PATH) {
+        const key = registrationLimitKey(request.headers.get("cf-connecting-ip"));
+        if (!(await withinRateLimit(env.REGISTRATION_LIMITER, key))) {
+          return new Response(
+            JSON.stringify({
+              error: "temporarily_unavailable",
+              error_description:
+                "Too many client registrations from this address; retry shortly.",
+            }),
+            {
+              status: 429,
+              headers: {
+                "content-type": "application/json; charset=utf-8",
+                "retry-after": String(REGISTRATION_LIMIT_PERIOD_S),
+              },
+            },
+          );
+        }
+      }
+
+      return provider.fetch(request, env, ctx);
+    },
+  };
 }

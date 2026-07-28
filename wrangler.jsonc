@@ -70,6 +70,26 @@
       "name": "PROPOSAL_LIMITER",
       "namespace_id": "1001",
       "simple": { "limit": 10, "period": 60 }
+    },
+
+    // Flood brake on POST /oauth/register, keyed per client IP.
+    //
+    // Dynamic Client Registration is unauthenticated by design: a client that
+    // has never met this server still has to be able to obtain a client_id.
+    // That makes it the only unauthenticated write into OAUTH_KV, and the only
+    // endpoint here the provider answers before our own code sees the request,
+    // which is why the brake sits in a wrapper around the provider rather than
+    // in the site handler.
+    //
+    // A registered client can do nothing on its own; a human must still sign in
+    // and approve consent before any token exists. So the exposure is junk
+    // accumulation rather than access, bounded by the 90-day registration TTL.
+    // The limit is lower than the proposal one because a legitimate client
+    // registers once and then keeps its id for the life of that TTL.
+    {
+      "name": "REGISTRATION_LIMITER",
+      "namespace_id": "1002",
+      "simple": { "limit": 5, "period": 60 }
     }
   ],
 

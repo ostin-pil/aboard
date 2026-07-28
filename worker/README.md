@@ -289,6 +289,21 @@ mirrored at `/.well-known/mcp/server-card.json`.
 - **One scope, `aboard:propose`,** covering all four write tools. Per-kind
   scopes can come later if a real caller wants narrower access; inventing four
   now would be a guess about a consumer that does not exist.
+- **Client registration is open, and deliberately so.** Dynamic Client
+  Registration is unauthenticated by design: a client that has never met this
+  server still has to be able to obtain a `client_id`. That makes
+  `/oauth/register` the only unauthenticated write into `OAUTH_KV`. Two things
+  bound it. Registrations expire after 90 days (`clientRegistrationTTL`, stated
+  explicitly in `worker/oauth.ts` rather than inherited), and
+  `REGISTRATION_LIMITER` caps the endpoint at 5 per minute per client IP. A
+  registered client can still do nothing on its own: a human must sign in and
+  approve consent before any token exists.
+- **Whether DCR is needed at all is worth revisiting.** The `2026-07-28`
+  revision deprecates it in favour of Client ID Metadata Documents, which are
+  enabled here and store nothing, since the client id is a URL fetched on
+  demand. A CIMD-only server would have no registration write path to abuse.
+  Keeping DCR is a compatibility choice: most clients shipping today still use
+  it. Revisit once real clients show what they speak.
 - **All four write tools are wired** (`propose_claim`, `propose_edge`,
   `propose_forecast_prediction`, `propose_dossier`).
 - **A PAT, not a GitHub App.** The plan's stated v1. An App is the end state.

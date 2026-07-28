@@ -10,6 +10,7 @@ import {
   openState,
   redirectHost,
   refusedPage,
+  registrationLimitKey,
   sealState,
   type ConsentState,
 } from "@/lib/mcp/consent";
@@ -69,6 +70,22 @@ describe("the grant subject", () => {
   it("stays filesystem- and URL-safe", () => {
     expect(oauthSubject("../../etc/passwd")).toMatch(/^[a-zA-Z0-9._-]+$/);
     expect(oauthSubject("a b c")).toMatch(/^[a-zA-Z0-9._-]+$/);
+  });
+});
+
+describe("the registration rate-limit key", () => {
+  it("buckets per client IP", () => {
+    expect(registrationLimitKey("203.0.113.7")).toBe("register:203.0.113.7");
+    expect(registrationLimitKey("203.0.113.7")).not.toBe(registrationLimitKey("203.0.113.8"));
+  });
+
+  it("shares one bucket when the IP is missing, rather than minting budgets", () => {
+    // A distinct key per missing value would give every anonymous caller its
+    // own allowance, which is the opposite of a limit.
+    expect(registrationLimitKey(null)).toBe("register:unknown");
+    expect(registrationLimitKey(undefined)).toBe("register:unknown");
+    expect(registrationLimitKey("")).toBe("register:unknown");
+    expect(registrationLimitKey("   ")).toBe("register:unknown");
   });
 });
 

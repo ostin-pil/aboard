@@ -81,6 +81,28 @@ export function oauthSubject(githubUserId: string): string {
   return `github-${githubUserId}`.replace(/[^a-zA-Z0-9._-]/g, "-");
 }
 
+/**
+ * The rate-limit bucket for a client registration attempt.
+ *
+ * Dynamic Client Registration is unauthenticated by design, which is the whole
+ * point of it: a client that has never met this server can still obtain a
+ * `client_id`. That also means `/oauth/register` is an open write into the
+ * authorization server's storage, and it is the only endpoint here with that
+ * property. A registered client can do nothing on its own, since a human must
+ * still sign in and approve consent before any token exists, so the exposure
+ * is junk accumulation rather than access. The library expires registrations
+ * after 90 days by default, which bounds it; a brake is what stops a script
+ * filling those 90 days in an afternoon.
+ *
+ * An absent client IP shares one bucket rather than getting a fresh one.
+ * Deriving a distinct key from a missing value would hand every anonymous
+ * caller its own budget, which is the opposite of a limit.
+ */
+export function registrationLimitKey(clientIp: string | null | undefined): string {
+  const ip = (clientIp ?? "").trim();
+  return `register:${ip || "unknown"}`;
+}
+
 async function hmacKey(secret: string): Promise<CryptoKey> {
   return crypto.subtle.importKey(
     "raw",
