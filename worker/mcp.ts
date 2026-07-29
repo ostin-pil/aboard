@@ -42,6 +42,25 @@ export type McpDeps = {
   /** Whether to advertise OAuth discovery in a challenge. */
   challengeOptions: ChallengeOptions;
   /**
+   * Challenge an uncredentialed caller at the handshake instead of at the
+   * first write. Off by default, because reads are public and demanding a
+   * token to list claims would be a regression for every ordinary client.
+   *
+   * It exists for gateways that decide a connection's authentication once,
+   * when the connection is created, and never revisit it. Smithery's Connect
+   * API is the worked example (session 35): its probe calls `initialize`,
+   * our public reads answer 200, the connection is marked ready, and no grant
+   * is ever obtained. The 401 a write raises later arrives after the only
+   * moment such a client would have acted on it, so the write can never
+   * succeed. Pointing that client at `?auth=required` moves the challenge to
+   * where its model expects it.
+   *
+   * The resource is unchanged: same endpoint, same metadata document, same
+   * token audience. This is when the challenge is raised, not what a token
+   * is good for.
+   */
+  authRequired?: boolean;
+  /**
    * Files a proposal through exactly the pipeline `POST /api/proposals` uses —
    * bearer auth, rate limit, canonical Zod validation, branch and PR. Passing a
    * function rather than importing the endpoint keeps the dependency one-way.
@@ -297,6 +316,35 @@ export async function handleMcp(request: Request, deps: McpDeps): Promise<Respon
 
   if (request.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  }
+
+  // Raised before the body is read, so a client that has to authenticate
+  // learns it from the handshake rather than from its first write. Preflight
+  // is already answered above: a 401 there would break CORS for everyone.
+  if (deps.authRequired) {
+    const outcome = authorizeWrite(await deps.credential(), deps.challengeOptions);
+    if (!outcome.allowed) {
+      const { status, error, description, wwwAuthenticate } = outcome.challenge;
+      return new Response(
+        JSON.stringify(
+          {
+            jsonrpc: "2.0",
+            id: null,
+            error: { code: INTERNAL_ERROR, message: description, data: error ? { error } : undefined },
+          },
+          null,
+          2,
+        ),
+        {
+          status,
+          headers: {
+            ...JSON_HEADERS,
+            "www-authenticate": wwwAuthenticate,
+            ...corsHeaders(origin),
+          },
+        },
+      );
+    }
   }
 
   // The modern era dropped the GET stream and the DELETE session teardown, and
