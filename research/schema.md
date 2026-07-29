@@ -72,7 +72,9 @@ A v1 will exist when:
    ensemble forecasting (`AgentAttribution` is currently thin), claim-unit
    distinction (resolvable ticket vs. standing dossier).
 3. The remaining [reservations](#known-inconsistencies) become actual data
-   patterns (`promptHash`, `Edge.rationale`, `EdgeKind.evidences`).
+   patterns (`promptHash`, `Edge.rationale`, `EdgeKind.evidences`, and the
+   resolved-forecast fields `aboard:resolvedOutcome` / `aboard:resolvedAt`,
+   which no seed forecast can populate before 2027).
 
 When v1 ships, both `/schema/v0.json` and `/schema/v1.json` will be served in
 parallel; `/api/graph` will support a `?schema=v1` query parameter, defaulting
@@ -340,12 +342,43 @@ A time-boxed forecast attached to a single claim.
   "schema:name": "Will the US ANES out-party feeling-thermometer gap widen relative to the most recent prior wave by the next ANES wave (≤2028)?",
   "aboard:resolutionDate": "2028-12-31",
   "aboard:resolutionCriteria": "Widening means the absolute difference between in-party and out-party mean feeling-thermometer scores increases by ≥2 points relative to the most recent ANES Time Series Study.",
+  "aboard:resolutionSource": {
+    "@type": "schema:CreativeWork",
+    "schema:name": "ANES Time Series Study (Data Center)",
+    "schema:url": "https://electionstudies.org/data-center/",
+    "aboard:sourceKind": "dataset"
+  },
   "aboard:predictions": [/* Prediction, ... */]
 }
 ```
 
-**Required:** all fields above. `aboard:predictions` may be empty but must be
-present. `aboard:attachedTo` is an `@id` reference to a `Claim`.
+**Required:** `@type`, `@id`, `aboard:id`, `aboard:attachedTo`,
+`schema:name`, `aboard:resolutionDate`, `aboard:resolutionCriteria`,
+`aboard:predictions`. The predictions array may be empty but must be present.
+`aboard:attachedTo` is an `@id` reference to a `Claim`.
+
+**The external resolution anchor.** `aboard:resolutionSource` is a `Source`
+naming the third-party dataset or publication a reader checks to settle the
+question. It is the one field that puts resolution outside the agent graph,
+which is what makes a forecast falsifiable by someone who does not trust
+aboard. It is optional in v0 while the corpus backfills, and a forecast
+without one is reported by `npm run lint:resolution` rather than rejected at
+load time. Consumers should treat its absence as "no external anchor stated",
+not as "resolves by editorial judgement".
+
+**Resolution outcome.** Two more optional fields appear once a forecast
+resolves, and they always travel together:
+
+| Field | Meaning |
+| --- | --- |
+| `aboard:resolvedOutcome` | `"yes"` / `"no"` for binary questions (mapping to 1/0 for proper scoring), a number for range questions, or an explicit `null` for a forecast resolved as **annulled** — unresolvable, and therefore excluded from scoring rather than left pending. |
+| `aboard:resolvedAt` | ISO-8601 timestamp of the resolution. Present whenever `aboard:resolvedOutcome` is. |
+
+The distinction that matters to a consumer: **absent** `aboard:resolvedOutcome`
+means not resolved yet; **`null`** means resolved and annulled. Only the first
+is a forecast still waiting on the world. No forecast in the v0 seed carries
+either field — the earliest resolution date is 2027-12-31 — so the numeric arm
+and the annulled case are both reserved shapes today, not observed ones.
 
 **Ensemble semantics.** When `aboard:predictions` holds more than one entry it
 is an *ensemble* — the same question put to multiple independent agents

@@ -225,7 +225,7 @@
     },
     "Forecast": {
       "type": "object",
-      "description": "A time-boxed forecast attached to a single claim.",
+      "description": "A time-boxed forecast attached to a single claim. Carries an optional external resolution anchor and, once resolved, its outcome and date.",
       "required": [
         "@type",
         "@id",
@@ -244,6 +244,9 @@
         "schema:name": { "type": "string", "description": "The forecast question." },
         "aboard:resolutionDate": { "$ref": "#/$defs/ResolutionDate" },
         "aboard:resolutionCriteria": { "type": "string" },
+        "aboard:resolutionSource": { "$ref": "#/$defs/Source", "description": "The external, real-world dataset or publication that resolves this forecast. Optional while the corpus backfills; absence means the forecast has no anchor outside the graph yet." },
+        "aboard:resolvedOutcome": { "oneOf": [{ "type": "string", "enum": ["yes", "no"] }, { "type": "number" }, { "type": "null" }], "description": "How the forecast resolved. Absent means not resolved yet; an explicit null means resolved as annulled and excluded from scoring. Binary outcomes map to 1/0 for proper scoring; the numeric arm is reserved for range questions." },
+        "aboard:resolvedAt": { "$ref": "#/$defs/Iso8601", "description": "When the forecast was resolved. Present whenever aboard:resolvedOutcome is." },
         "aboard:predictions": { "type": "array", "items": { "$ref": "#/$defs/Prediction" } }
       },
       "additionalProperties": false

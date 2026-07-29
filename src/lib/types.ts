@@ -127,14 +127,48 @@ export const Prediction = z.object({
 });
 export type Prediction = z.infer<typeof Prediction>;
 
-export const Forecast = z.object({
-  id: z.string(),
-  attachedToClaimId: z.string(),
-  question: z.string(),
-  resolutionDate: z.string(),
-  resolutionCriteria: z.string(),
-  predictions: z.array(Prediction),
-});
+/**
+ * How a resolved forecast came out.
+ *
+ * Binary forecasts use `"yes"` / `"no"`, which map to 1 / 0 for proper
+ * scoring. The numeric arm is reserved for range questions; no `Prediction`
+ * shape can express one yet, so nothing in the corpus uses it today.
+ */
+export const ResolvedOutcome = z.union([z.enum(["yes", "no"]), z.number()]);
+export type ResolvedOutcome = z.infer<typeof ResolvedOutcome>;
+
+export const Forecast = z
+  .object({
+    id: z.string(),
+    attachedToClaimId: z.string(),
+    question: z.string(),
+    resolutionDate: z.string(),
+    resolutionCriteria: z.string(),
+    /**
+     * The external, real-world thing that resolves this forecast: the
+     * third-party dataset or publication a reader checks, not aboard's own
+     * judgement. Every defense that resists gaming terminates in an anchor
+     * outside the agent graph, and for forecasts this is that anchor.
+     *
+     * Optional while the corpus backfills. A forecast without one is a
+     * finding in `resolution-lint`, not a load error.
+     */
+    resolutionSource: Source.optional(),
+    /**
+     * Absent means "not resolved yet". An explicit `null` means "resolved as
+     * annulled" — the question turned out to be unresolvable, so it is
+     * excluded from scoring rather than left pending forever.
+     */
+    resolvedOutcome: ResolvedOutcome.nullable().optional(),
+    resolvedAt: z.string().optional(),
+    predictions: z.array(Prediction),
+  })
+  // A resolution without a date cannot be audited or scored in order, so the
+  // two fields travel together.
+  .refine((f) => f.resolvedOutcome === undefined || f.resolvedAt !== undefined, {
+    message: "resolvedAt is required once resolvedOutcome is set",
+    path: ["resolvedAt"],
+  });
 export type Forecast = z.infer<typeof Forecast>;
 
 export const Argument = z.object({
