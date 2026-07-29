@@ -144,8 +144,8 @@
     },
     "Edge": {
       "type": "object",
-      "description": "A directed relation between two claims. May carry a rationale and citations supporting the claimed relation.",
-      "required": ["@type", "@id", "aboard:id", "aboard:from", "aboard:to", "aboard:relation", "aboard:strength"],
+      "description": "A directed relation between two claims. Always carries a rationale; may carry citations supporting the claimed relation.",
+      "required": ["@type", "@id", "aboard:id", "aboard:from", "aboard:to", "aboard:relation", "aboard:strength", "aboard:rationale"],
       "properties": {
         "@type": { "const": "aboard:CausalEdge" },
         "@id": { "type": "string", "format": "uri" },
@@ -154,7 +154,7 @@
         "aboard:to": { "$ref": "#/$defs/IriRef" },
         "aboard:relation": { "$ref": "#/$defs/EdgeKind" },
         "aboard:strength": { "$ref": "#/$defs/Probability" },
-        "aboard:rationale": { "type": "string" },
+        "aboard:rationale": { "type": "string", "description": "Free-text explanation of the claimed relation. Required: relations are classified on stated reasoning, not on edge counts." },
         "schema:citation": { "type": "array", "items": { "$ref": "#/$defs/Source" } }
       },
       "additionalProperties": false

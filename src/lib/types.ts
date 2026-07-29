@@ -105,7 +105,11 @@ export const Edge = z.object({
   toId: z.string(),
   kind: EdgeKind,
   strength: z.number().min(0).max(1),
-  rationale: z.string().optional(),
+  /**
+   * Required: the graph classifies relations on stated reasoning rather than
+   * on edge counts, which means the reasoning has to always be there to read.
+   */
+  rationale: z.string(),
   sources: z.array(Source).default([]),
 });
 export type Edge = z.infer<typeof Edge>;

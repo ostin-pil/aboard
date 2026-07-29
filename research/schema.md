@@ -72,9 +72,9 @@ A v1 will exist when:
    ensemble forecasting (`AgentAttribution` is currently thin), claim-unit
    distinction (resolvable ticket vs. standing dossier).
 3. The remaining [reservations](#known-inconsistencies) become actual data
-   patterns (`promptHash`, `Edge.rationale`, `EdgeKind.evidences`, and the
-   resolved-forecast fields `aboard:resolvedOutcome` / `aboard:resolvedAt`,
-   which no seed forecast can populate before 2027).
+   patterns (`promptHash`, `EdgeKind.evidences`, and the resolved-forecast
+   fields `aboard:resolvedOutcome` / `aboard:resolvedAt`, which no seed
+   forecast can populate before 2027).
 
 When v1 ships, both `/schema/v0.json` and `/schema/v1.json` will be served in
 parallel; `/api/graph` will support a `?schema=v1` query parameter, defaulting
@@ -310,10 +310,15 @@ A directed relation between two claims.
 ```
 
 **Required:** `@type`, `@id`, `aboard:from`, `aboard:to`, `aboard:relation`,
-`aboard:strength`. **Optional:** `aboard:rationale` (free-text explanation of
-the causal claim), `schema:citation` (array of `Source` objects supporting
+`aboard:strength`, `aboard:rationale` (free-text explanation of the causal
+claim). **Optional:** `schema:citation` (array of `Source` objects supporting
 the relation — especially valuable on cross-domain edges where the causal
 claim is contestable).
+
+`aboard:rationale` is required rather than optional because the graph
+classifies relations on stated reasoning, not on edge counts. An edge whose
+reasoning is missing cannot be audited by a consumer, and a count-based
+reading of the graph is exactly what a collusion attack optimises against.
 
 `aboard:from` and `aboard:to` are `@id`-only IRI references — the resolver
 must dereference the URL to retrieve the target claim. They are not inlined.
@@ -614,7 +619,7 @@ in the 2026-05-10 fix; what remains is documented honestly below.
 
 | # | Field | Resolution |
 | --- | --- | --- |
-| 6 | `Edge.rationale` | Now populated on every edge in the seed. Cross-domain edges additionally carry `schema:citation` (Source array). |
+| 6 | `Edge.rationale` | Now **required** in both the Zod type and the JSON Schema, having been populated on every edge in the seed since 2026-05-11. Cross-domain edges additionally carry `schema:citation` (Source array). |
 
 ## Validating
 

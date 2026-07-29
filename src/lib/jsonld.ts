@@ -92,7 +92,7 @@ export function edgeLD(edge: Edge, base: string) {
     "aboard:to": { "@id": `${base}/claims/${edge.toId}` },
     "aboard:relation": edge.kind,
     "aboard:strength": edge.strength,
-    ...(edge.rationale ? { "aboard:rationale": edge.rationale } : {}),
+    "aboard:rationale": edge.rationale,
     ...(edge.sources.length > 0
       ? { "schema:citation": edge.sources.map(sourceLD) }
       : {}),
