@@ -11,24 +11,23 @@
 #
 # Authentication is DNS-based: a TXT record at the untype.me apex carries the
 # ECDSA P-384 public key, and the matching private key proves ownership of the
-# me.untype/* namespace. Supply it as MCP_PUBLISHER_KEY, or store it in the
-# login keychain under the service name below and let the script read it.
+# me.untype/* namespace. The key is looked for in three places, in order:
 #
-#   security add-generic-password -s mcp-publisher-untype -a untype.me -w
+#   MCP_PUBLISHER_KEY        the raw scalar as 96 hex characters
+#   MCP_PUBLISHER_KEY_FILE   a PEM (defaults to key.pem at the repo root)
+#   the login keychain       security add-generic-password -s mcp-publisher-untype -a untype.me -w
 #
-# Note: mcp-publisher accepts the key only as a command-line flag, so it is
-# briefly visible to `ps` on this machine while login runs. It never reaches
-# the shell history or a file, and the session is closed with `logout`.
+# From a PEM the script derives the hex itself and checks the matching public
+# key against the TXT record before contacting the registry, so a wrong or
+# rotated key fails here with a clear message instead of as an opaque auth
+# error two steps later.
 #
-# macOS ships LibreSSL, whose Ed25519 `genpkey` fails; P-384 is the codepath
-# that works here, and `login` defaults to ed25519, so the algorithm is passed
-# explicitly below. The key is the raw P-384 scalar as 96 hex characters, not
-# a PEM. Given a PEM, these produce the hex and the matching public key, which
-# should equal the p= value in the TXT record:
-#
-#   openssl ec -in key.pem -text -noout            # priv: colon-hex, strip colons
-#   openssl ec -in key.pem -pubout -conv_form compressed -outform DER |
-#     tail -c 49 | base64
+# Two notes on handling. mcp-publisher accepts the key only as a command-line
+# flag, so it is briefly visible to `ps` on this machine while login runs; it
+# never reaches the shell history or a file, and the session is closed with
+# `logout`. And macOS ships LibreSSL, whose Ed25519 `genpkey` fails, so P-384
+# is the codepath here; `login` defaults to ed25519, so the algorithm is
+# passed explicitly below.
 #
 # To rotate: generate a new key (`openssl ecparam -genkey -name secp384r1`),
 # publish its public key as the apex TXT record, then run this script.
@@ -101,15 +100,31 @@ echo "Validating the card..."
 mcp-publisher validate "$CARD"
 
 echo "Checking DNS verification at the $DOMAIN apex..."
-dns_key="$(dig +short TXT "$DOMAIN" | tr -d '"' | grep '^v=MCPv1' || true)"
-[[ -n "$dns_key" ]] || die "no v=MCPv1 TXT record at the $DOMAIN apex"
-echo "  $dns_key"
+dns_record="$(dig +short TXT "$DOMAIN" | tr -d '"' | grep '^v=MCPv1' || true)"
+[[ -n "$dns_record" ]] || die "no v=MCPv1 TXT record at the $DOMAIN apex"
+echo "  $dns_record"
+dns_pub="${dns_record##*p=}"
 
+pem="${MCP_PUBLISHER_KEY_FILE:-$ROOT/key.pem}"
 key="${MCP_PUBLISHER_KEY:-}"
+if [[ -z "$key" && -f "$pem" ]]; then
+  # A compressed P-384 point is 49 bytes, and the DER public key ends with it.
+  derived="$(openssl ec -in "$pem" -pubout -conv_form compressed -outform DER 2>/dev/null |
+    tail -c 49 | base64)"
+  [[ "$derived" == "$dns_pub" ]] ||
+    die "$pem does not match the TXT record; rotate the record or find the right key"
+  echo "  $pem matches the record"
+  # openssl prints the scalar as colon-separated hex, sometimes with a leading
+  # zero byte the registry does not want.
+  key="$(openssl ec -in "$pem" -noout -text 2>/dev/null |
+    sed -n '/priv:/,/pub:/{/priv:/d; /pub:/d; p;}' | tr -cd '0-9a-f')"
+  [[ ${#key} -eq 98 && "$key" == 00* ]] && key="${key:2}"
+  [[ ${#key} -eq 96 ]] || die "expected a 96-character P-384 scalar from $pem, got ${#key}"
+fi
 if [[ -z "$key" ]]; then
   key="$(security find-generic-password -w -s "$KEYCHAIN_SERVICE" 2>/dev/null || true)"
 fi
-[[ -n "$key" ]] || die "no signing key: set MCP_PUBLISHER_KEY or add $KEYCHAIN_SERVICE to the keychain"
+[[ -n "$key" ]] || die "no signing key: set MCP_PUBLISHER_KEY, put a PEM at $pem, or add $KEYCHAIN_SERVICE to the keychain"
 
 echo "Logging in..."
 trap 'mcp-publisher logout >/dev/null 2>&1 || true' EXIT
