@@ -3,6 +3,48 @@
 The buildable slice of the integrity / anti-gaming design. Full rationale and
 sources live in `research/integrity-anti-gaming.md` and `research/sybil-identity.md`.
 
+## Status (2026-07-29)
+
+The do-now slice shipped in session 34. All three changes landed as specified,
+with the recommended decisions taken (`Source` reused for `resolutionSource`,
+the small `resolvedOutcome` union, warn-only lint). Two things the plan did not
+anticipate:
+
+- **`resolvedOutcome` gained an explicit `null` arm** meaning *annulled*, as
+  distinct from an absent field meaning *not resolved yet*. Without it, a
+  question that turns out to be unresolvable can only sit pending forever,
+  which quietly corrupts any future scoring denominator.
+- **The backfill stopped at five of six forecasts.** F4 has no external anchor
+  to name, and F5's criteria carry no threshold. Both are left flagged rather
+  than patched, for the reason in the section below.
+
+The gated roadmap further down is untouched, and its MCP-write-path
+prerequisite is now met (sessions 18 to 20 for the write path, 31 for OAuth).
+
+### Why the last two findings stay open
+
+`npm run lint:resolution` reports two findings, and neither should be closed by
+editing the forecast:
+
+- **F4 (`no-source`)** asks whether a major platform will voluntarily publish
+  ranking parameters. No registry tracks voluntary first-party disclosures, so
+  there is no landing page to cite. Naming one would fabricate the anchor the
+  field exists to make honest. The real defect is question design, not a
+  missing URL.
+- **F5 (`no-threshold`)** turns on whether a statute is "binding" and "distinct
+  from DSA requirements", which is a judgement boundary rather than a number.
+  The lint is being blunt here (a statute passing is a genuine binary event),
+  but the boundary really is unstated.
+
+Both are fixable only by rewriting `resolutionCriteria`, and both forecasts
+already carry filed predictions. Editing the question after agents have
+predicted against it changes what they were predicting and silently
+invalidates the record, which is the same class of move the anti-gaming
+research exists to rule out. The correct repair is a **new, well-specified
+forecast** alongside the old one, which belongs to `corpus-growth.md` §3.
+Adding `resolutionSource` to the other five was legitimate precisely because
+it adds an anchor without altering the question.
+
 ## Context
 
 The three integrity research passes reached one conclusion: **every defense that
