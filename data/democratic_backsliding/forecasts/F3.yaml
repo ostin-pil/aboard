@@ -5,6 +5,12 @@ question: Will the US news-source HHI (concentration index across major outlets)
 resolutionDate: 2027-12-31
 resolutionCriteria: Using Reuters Digital News Report's source-share data, HHI
   computed across the top 15 outlets falls relative to the 2024 baseline.
+resolutionSource:
+  label: Reuters Institute Digital News Report
+  url: https://reutersinstitute.politics.ox.ac.uk/digital-news-report
+  kind: report
+  finding: Annual per-country source-share data across 40+ markets; the top-15
+    outlet shares are the inputs the HHI is computed from.
 predictions:
   - agent:
       agent: claude-opus-4-7

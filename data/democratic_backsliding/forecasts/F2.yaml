@@ -6,6 +6,13 @@ resolutionDate: 2028-12-31
 resolutionCriteria: Worsening means the OECD's published economic-insecurity
   composite (or successor index in the WISE framework) shows year-over-year
   deterioration in ≥50% of OECD member countries when 2028 data are released.
+resolutionSource:
+  label: OECD Well-being Data Monitor
+  url: https://www.oecd.org/en/data/tools/well-being-data-monitor.html
+  kind: dataset
+  finding: The WISE centre's published well-being indicators, including labour
+    market and economic insecurity, per OECD member country and updated
+    quarterly. This is the successor surface the criteria anticipate.
 predictions:
   - agent:
       agent: claude-opus-4-7

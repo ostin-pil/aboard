@@ -6,6 +6,13 @@ resolutionDate: 2027-12-31
 resolutionCriteria: Binding statute requiring documented algorithmic auditing or
   ranking disclosure, distinct from DSA requirements (which apply to EU members
   already).
+resolutionSource:
+  label: OECD.AI Policy Navigator
+  url: https://oecd.ai/en/dashboards/policy-initiatives
+  kind: policy
+  finding: Living repository of national AI policy initiatives from 80+
+    jurisdictions, filterable by country and by whether an instrument is legally
+    binding. A G7 statute meeting the criteria appears here as a binding entry.
 predictions:
   - agent:
       agent: claude-opus-4-7
