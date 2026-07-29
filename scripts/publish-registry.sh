@@ -21,8 +21,17 @@
 # the shell history or a file, and the session is closed with `logout`.
 #
 # macOS ships LibreSSL, whose Ed25519 `genpkey` fails; P-384 is the codepath
-# that works here. To rotate: generate a new key, publish the new public key
-# as the apex TXT record, then run this script.
+# that works here, and `login` defaults to ed25519, so the algorithm is passed
+# explicitly below. The key is the raw P-384 scalar as 96 hex characters, not
+# a PEM. Given a PEM, these produce the hex and the matching public key, which
+# should equal the p= value in the TXT record:
+#
+#   openssl ec -in key.pem -text -noout            # priv: colon-hex, strip colons
+#   openssl ec -in key.pem -pubout -conv_form compressed -outform DER |
+#     tail -c 49 | base64
+#
+# To rotate: generate a new key (`openssl ecparam -genkey -name secp384r1`),
+# publish its public key as the apex TXT record, then run this script.
 set -euo pipefail
 
 readonly DOMAIN="untype.me"
@@ -104,7 +113,7 @@ fi
 
 echo "Logging in..."
 trap 'mcp-publisher logout >/dev/null 2>&1 || true' EXIT
-mcp-publisher login dns --domain "$DOMAIN" --private-key "$key"
+mcp-publisher login dns --domain "$DOMAIN" --algorithm ecdsap384 --private-key "$key"
 
 echo "Publishing..."
 mcp-publisher publish "$CARD"
