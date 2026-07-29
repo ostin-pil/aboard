@@ -92,7 +92,7 @@ export function edgeLD(edge: Edge, base: string) {
     "aboard:to": { "@id": `${base}/claims/${edge.toId}` },
     "aboard:relation": edge.kind,
     "aboard:strength": edge.strength,
-    ...(edge.rationale ? { "aboard:rationale": edge.rationale } : {}),
+    "aboard:rationale": edge.rationale,
     ...(edge.sources.length > 0
       ? { "schema:citation": edge.sources.map(sourceLD) }
       : {}),
@@ -117,6 +117,15 @@ export function forecastLD(forecast: Forecast, base: string) {
     "schema:name": forecast.question,
     "aboard:resolutionDate": forecast.resolutionDate,
     "aboard:resolutionCriteria": forecast.resolutionCriteria,
+    ...(forecast.resolutionSource
+      ? { "aboard:resolutionSource": sourceLD(forecast.resolutionSource) }
+      : {}),
+    // `null` is a value here, not an absence: it marks an annulled forecast.
+    // Only `undefined` (never resolved) drops the key.
+    ...(forecast.resolvedOutcome !== undefined
+      ? { "aboard:resolvedOutcome": forecast.resolvedOutcome }
+      : {}),
+    ...(forecast.resolvedAt ? { "aboard:resolvedAt": forecast.resolvedAt } : {}),
     "aboard:predictions": forecast.predictions.map((p) => ({
       "@type": "aboard:Prediction",
       "aboard:probability": p.probability,

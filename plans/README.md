@@ -27,10 +27,10 @@ order they could be picked up; pick any.
 
 | Plan | Effort | Decision-heavy? | Prereq |
 | --- | --- | --- | --- |
-| [integrity-foundations.md](integrity-foundations.md) | ~2–3 hr (do-now slice) | Light–medium — resolutionSource shape, lint severity, resolvedOutcome type | None (enforcement half gated on MCP write path) |
+| [integrity-foundations.md](integrity-foundations.md) | do-now slice shipped (session 34); enforcement half unscoped | Decisions taken; see its Status | Enforcement half was gated on the MCP write path, which is now met |
 | [repo-hardening.md](repo-hardening.md) | ~3–4 hr | Light — license choice | §4 blocked on domain choice; rest none |
 | [agent-surface.md](agent-surface.md) | ~3–5 hr | Light — /agents vs /about section | Canonical domain (deploy) |
-| [corpus-growth.md](corpus-growth.md) | ~1–2 days | Medium — dossier targets, forecast slate | integrity-foundations (for §3) |
+| [corpus-growth.md](corpus-growth.md) | ~1–2 days | Medium — dossier targets, forecast slate | none remaining; §3's integrity-foundations prereq shipped in session 34 |
 | [domain-on-create.md](domain-on-create.md) | ~1–2 hr | Light — slot-on-create vs leave-free | None |
 | [cross-domain-claim-drag.md](cross-domain-claim-drag.md) | ~half-day | Yes — extent strategy, confirm UX, coordinate math | None |
 | [editor-mode-posture.md](editor-mode-posture.md) | ~3 hr (Posture 2) / ~12+ hr (Posture 3) | Yes — three postures to choose between | None |
@@ -44,7 +44,8 @@ order they could be picked up; pick any.
 | [graph-state-integrity.md](graph-state-integrity.md) | ~half-day (mostly QA) | Light — inline persistence, seed-hash scope, notify vs nuke | None (audit batch 1 merged) |
 
 Suggested order (2026-07-11 review): FLF entry first (hard deadline; carries
-the deploy + LICENSE), then integrity-foundations → repo-hardening →
+the deploy + LICENSE), then integrity-foundations (do-now slice shipped in
+session 34) → repo-hardening →
 agent-surface → corpus-growth, with funding applications
 running in parallel as evidence items land. The pre-review plans
 (domain-on-create, cross-domain-claim-drag, editor-mode-posture,

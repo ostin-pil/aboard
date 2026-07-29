@@ -12,7 +12,14 @@ npm run dev          # http://localhost:3000
 npm run build        # production build (full type-check)
 npx tsc --noEmit     # type-check only, faster
 npm run lint         # eslint
+npm run test         # vitest
+npm run lint:resolution   # advisory: forecast resolution-criteria rigor
 ```
+
+`lint:resolution` is warn-only and deliberately outside the build. It reports
+forecasts a distrustful reader could not settle: criteria resolving on an
+utterance, criteria with no checkable threshold, and forecasts with no
+`resolutionSource`. Findings are a prompt to reread the criteria, not a gate.
 
 ## Architecture
 

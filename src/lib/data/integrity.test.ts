@@ -38,6 +38,7 @@ const claim = (over: Partial<Claim> & Pick<Claim, "id">): Claim => ({
 const edge = (over: Partial<Edge> & Pick<Edge, "id" | "fromId" | "toId">): Edge => ({
   kind: "causes",
   strength: 0.5,
+  rationale: "A stated reason.",
   sources: [],
   ...over,
 });

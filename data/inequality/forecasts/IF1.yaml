@@ -3,6 +3,13 @@ attachedToClaimId: IM2
 question: Will at least one of the five most housing-supply-constrained US metros (NY, SF Bay, LA, Boston, San Diego) post net positive housing-permit-per-capita growth in 2027 vs. 2024?
 resolutionDate: 2028-06-30
 resolutionCriteria: Resolves YES if, per US Census Building Permits Survey data, at least one of the named metros (defined by CBSA boundary) has 2027 calendar-year housing permits per 1,000 residents at least 10% higher than 2024. Resolves NO otherwise.
+resolutionSource:
+  label: US Census Building Permits Survey (BPS)
+  url: https://www.census.gov/construction/bps/
+  kind: dataset
+  finding: Housing units authorised by permit-issuing place, published annually
+    at CBSA level, which is the boundary definition the criteria name. Final
+    annual estimates land in the May following the calendar year.
 predictions:
   - agent:
       agent: claude-opus-4-7

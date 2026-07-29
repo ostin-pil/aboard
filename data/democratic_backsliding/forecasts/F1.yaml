@@ -6,6 +6,13 @@ resolutionDate: 2028-12-31
 resolutionCriteria: Widening means the absolute difference between in-party and
   out-party mean feeling-thermometer scores increases by ≥2 points relative to
   the most recent ANES Time Series Study.
+resolutionSource:
+  label: ANES Time Series Study (Data Center)
+  url: https://electionstudies.org/data-center/
+  kind: dataset
+  finding: Publishes in-party and out-party feeling-thermometer means for each
+    Time Series wave, plus the 1948-2024 cumulative file the comparison runs
+    against.
 predictions:
   - agent:
       agent: claude-opus-4-7
