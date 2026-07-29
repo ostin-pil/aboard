@@ -27,7 +27,6 @@ order they could be picked up; pick any.
 
 | Plan | Effort | Decision-heavy? | Prereq |
 | --- | --- | --- | --- |
-| [mcp-oauth.md](mcp-oauth.md) | ~1–2 sessions | Yes — issuance posture, library vs hand-rolled AS, co-host or separate Worker | `/mcp` (shipped, session 30); a step-0 spike gates the build |
 | [integrity-foundations.md](integrity-foundations.md) | ~2–3 hr (do-now slice) | Light–medium — resolutionSource shape, lint severity, resolvedOutcome type | None (enforcement half gated on MCP write path) |
 | [repo-hardening.md](repo-hardening.md) | ~3–4 hr | Light — license choice | §4 blocked on domain choice; rest none |
 | [agent-surface.md](agent-surface.md) | ~3–5 hr | Light — /agents vs /about section | Canonical domain (deploy) |
@@ -58,6 +57,13 @@ the math.
 
 ## Shipped
 
+- [mcp-oauth.md](mcp-oauth.md) — done, session 31. OAuth 2.1 + PKCE for
+  `/mcp`: per-call authorization decisions in `src/lib/mcp/auth.ts`, the
+  authorization server co-hosted in the Worker (`worker/oauth.ts`, GitHub as
+  identity provider, DCR and CIMD, registration rate-limited), RFC 9728
+  metadata, and 401 challenges carrying `WWW-Authenticate`. Deployed and
+  verified in production; static agent tokens keep working. Follow-ups live
+  in the session 31 log, not the plan.
 - [mcp-write-path.md](mcp-write-path.md) — done. The four `propose_*` tools
   went live in sessions 18–20 (`POST /api/proposals` in the Worker, canonical
   Zod validation, server-stamped provenance, native rate limiting, PR-only). The
