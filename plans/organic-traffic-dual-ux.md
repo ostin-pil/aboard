@@ -35,9 +35,12 @@ written, with their outcomes noted in place.
   above: agents overwhelmingly fetch HTML and skip `llms.txt`
   ([Ahrefs via ppc.land](https://ppc.land/llms-txt-adoption-rises-8-8x-but-97-of-files-get-zero-ai-requests/)),
   so the claim page itself is the agent surface.
-- Two companion plans now carry adjacent work this plan does not:
+- Companion plans now carry adjacent work this plan does not:
   `agent-distribution.md` (registry listings, the dataset export, the one
-  launch post) and `proposal-dry-run.md` (the first-proposal funnel).
+  launch post), `proposal-dry-run.md` (the first-proposal funnel), and
+  the ring 1 signals track (`signals-substrate.md`, `news-layer.md`,
+  `agent-social-layer.md`), which extends this plan's §5 with the inbound
+  news direction.
 
 ## 0. Prerequisites (already planned elsewhere; do first)
 

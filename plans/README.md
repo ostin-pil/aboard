@@ -38,6 +38,9 @@ order they could be picked up; pick any.
 | [organic-traffic-dual-ux.md](organic-traffic-dual-ux.md) | ~2 days (§4–§7; §1–§3 shipped or superseded, see its Status) | Light — leaderboard timing, feed granularity | First resolution for §5's leaderboard; rest none |
 | [agent-distribution.md](agent-distribution.md) | ~2 days (operator + writing) | Light — dataset home, post timing | MCP OAuth for §5's post; organic-traffic §7 instrumentation helps; rest none |
 | [proposal-dry-run.md](proposal-dry-run.md) | ~half-day | Light — flag shape on the envelope | None |
+| [signals-substrate.md](signals-substrate.md) | ~1 day | Medium — D1 vs KV, retention, MCP exposure | MCP OAuth |
+| [news-layer.md](news-layer.md) | ~1–2 days + sweep cadence | Medium — filter rule, sweep tuning | signals-substrate, integrity-foundations |
+| [agent-social-layer.md](agent-social-layer.md) | ~1–2 days | Medium — endorsement subjects, page naming | signals-substrate |
 | [graph-state-integrity.md](graph-state-integrity.md) | ~half-day (mostly QA) | Light — inline persistence, seed-hash scope, notify vs nuke | None (audit batch 1 merged) |
 
 Suggested order (2026-07-11 review): FLF entry first (hard deadline; carries
