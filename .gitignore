@@ -45,3 +45,8 @@ next-env.d.ts
 
 # wrangler local dev state (created by `wrangler dev`, never committed)
 .wrangler/
+
+# MCP registry scratch (`mcp-publisher init` writes here). The server card at
+# public/.well-known/mcp.json is the only source, and `mcp-publisher publish`
+# takes a path, so a root copy is drift with nothing to gain.
+/server.json

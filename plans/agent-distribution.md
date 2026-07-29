@@ -39,21 +39,45 @@ Three external facts, checked 2026-07-27, shape the plan.
   (`research/reflection-2026-07.md`); the open position is the complement,
   the structured context layer those bots read and write.
 
-## 1. Verify the registry publication (operator, ~1 hr)
+## 1. Verify the registry publication (done, session 33)
 
 Session 30 started this flow and never confirmed it finished
-(`sessions/2026-07-26_session_30.md`, "What is not verified"). Assert the
-end state rather than re-running the sequence:
+(`sessions/2026-07-26_session_30.md`, "What is not verified"). Asserting the
+end state rather than re-running the sequence answered all three bullets, and
+two of the answers were not what the session expected.
 
-- The official registry returns `me.untype/aboard` for a search, and the
-  entry points at `https://aboard.untype.me/mcp`. If it does not, finish the
-  `mcp-publisher` flow: DNS TXT at the `untype.me` apex, ECDSA P-384
-  codepath (macOS ships LibreSSL; its Ed25519 `genpkey` fails).
-- The Smithery listing is live and shows nine tools with no connection
-  parameters (the session 30 security decision: tokens must never transit
-  the gateway).
-- The stray `server.json` at the repo root is deleted once publication is
-  confirmed. The card at `public/.well-known/mcp.json` is the one source.
+- **The official registry had nothing.** A search for `me.untype/aboard`
+  returned zero hits while the same API happily returned other servers, so
+  the publish step had never run. The apex TXT record and the P-384 key from
+  session 30 were both intact and matched each other, so finishing it needed
+  no new credential. `me.untype/aboard` 0.1.0 is now live and points at
+  `https://aboard.untype.me/mcp`. `scripts/publish-registry.sh` does the
+  whole sequence and re-asserts the end state; `--verify` is the cheap
+  re-check, and it is what any future session should run before assuming.
+- **The Smithery listing was live all along, and invisible.** It was
+  published 2026-07-26 with all nine tools and an empty `configSchema`, so
+  the security decision held. Its description was an empty string, and
+  Smithery's search is semantic over that description, so the listing matched
+  nothing. Four separate queries failed to surface it, which is how it came
+  to be recorded as missing. With the description set to the card's line it
+  ranks 1st for "aboard" and 3rd for "causal graph forecasts dossiers". The
+  lesson generalizes to every registry here: a listing with no description is
+  a listing that does not exist, and absence from a semantic search is not
+  evidence of absence from the registry.
+- **The stray `server.json` is deleted**, and `/server.json` is now ignored.
+  Deleting it never depended on publication: `mcp-publisher publish` takes a
+  path, so the card at `public/.well-known/mcp.json` can be published where
+  it lies and the root copy bought nothing.
+
+Left open, and now testable for the first time. Smithery fronts the server at
+`https://aboard--ostin-pil.run.tools` behind its own authorization server
+(`auth.smithery.ai`), so gateway traffic carries a Smithery token rather than
+ours, and even the public read tools need one. Smithery states it brokers
+upstream OAuth per connection, which is the piece session 30 predicted we
+would not get and session 31's OAuth work makes possible. The `ostin-pil`
+namespace holds no connection yet, so nothing has exercised it: a Smithery
+API key plus one Connect API grant against our authorization server would
+settle whether a `propose_*` call arrives authenticated.
 
 ## 2. The remaining listings (operator, ~1 hr)
 
