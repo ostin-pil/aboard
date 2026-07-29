@@ -44,7 +44,16 @@ import {
   dossierPath,
 } from "../src/lib/data/serialize";
 import { isTransientStatus, withRetry } from "../src/lib/http-retry";
+import {
+  audienceMatches,
+  authorizeWrite,
+  parseBearer,
+  resolveStaticIdentity,
+  type ChallengeOptions,
+  type Credential,
+} from "../src/lib/mcp/auth";
 import { handleMcp } from "./mcp";
+import { whoamiResponse, withOAuth } from "./oauth";
 import { markdownTwinPath, prefersMarkdown } from "../src/lib/markdown-negotiation";
 import { withinRateLimit, type RateLimiter } from "../src/lib/rate-limit";
 import type { Claim, Dossier, Edge, Prediction } from "../src/lib/types";
@@ -63,7 +72,43 @@ interface Env {
   /** Native Workers rate-limit binding, keyed per credential. Optional: when
    *  unbound the write path still works (the limiter fails open). */
   PROPOSAL_LIMITER?: RateLimiter;
+  /** Injected into `env` by `@cloudflare/workers-oauth-provider` before it
+   *  calls the default handler. Always present once the wrapper is in place,
+   *  which is why it is not the signal for "OAuth is configured". */
+  OAUTH_PROVIDER?: OAuthHelpers;
+  /** The provider's storage. Its presence *is* the signal: without it there is
+   *  no authorization server to discover and no token that could resolve. */
+  OAUTH_KV?: unknown;
 }
+
+/** What an authorization-server grant carries about the human and the client
+ *  behind it. Stamped into the grant at consent, read back here. */
+type GrantProps = {
+  /** The verified GitHub login of the human who consented. */
+  login?: string;
+  /** The registered OAuth client's display name. */
+  clientName?: string;
+};
+
+/** A token as `unwrapToken` returns it. Narrowed to the fields we read, so a
+ *  library change surfaces here rather than deep in the request path.
+ *
+ *  `scope` is already an array in 0.8.2, not the space-delimited string the
+ *  wire format uses. Checked against the published build rather than the
+ *  repository's main branch, where other details differ. */
+type TokenSummary = {
+  userId: string;
+  scope: string[];
+  audience?: string | string[];
+  grant: { clientId: string; scope: string[]; props: GrantProps };
+};
+
+/** The slice of the provider's helper API the default handler uses. `/mcp`
+ *  cannot be an `apiRoute` (that would 401 anonymous reads), so it validates
+ *  tokens itself through this. */
+type OAuthHelpers = {
+  unwrapToken: (token: string) => Promise<TokenSummary | null>;
+};
 
 /** Mirrors the `period` on the PROPOSAL_LIMITER binding in wrangler.jsonc; used
  *  only for the `Retry-After` hint. Keep the two in sync. */
@@ -87,19 +132,73 @@ function issuesOf(error: { issues: readonly { path: readonly PropertyKey[]; mess
 
 // --- auth ------------------------------------------------------------------
 
-function resolveIdentity(env: Env, request: Request): TokenIdentity | null {
-  const header = request.headers.get("authorization") ?? "";
-  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
-  if (!match || !env.ABOARD_AGENT_TOKENS) return null;
+/**
+ * Resolve the request's credential from either source.
+ *
+ * Two doors, one definition of who may write. Static agent tokens are the
+ * shipped contract (session 20) and stay; OAuth tokens are minted by our own
+ * authorization server and resolved through it. The decision about what a
+ * resolved credential may do lives in `src/lib/mcp/auth.ts`, not here.
+ *
+ * Static wins where a token somehow matches both, because the table is
+ * operator-curated and an entry in it is a deliberate act.
+ */
+async function resolveCredential(env: Env, request: Request): Promise<Credential> {
+  const token = parseBearer(request.headers.get("authorization"));
+  if (!token) return { kind: "none" };
 
-  let table: Record<string, TokenIdentity>;
-  try {
-    table = JSON.parse(env.ABOARD_AGENT_TOKENS) as Record<string, TokenIdentity>;
-  } catch {
-    return null;
+  const staticIdentity = resolveStaticIdentity(token, env.ABOARD_AGENT_TOKENS);
+  if (staticIdentity) return { kind: "static", identity: staticIdentity };
+
+  if (!env.OAUTH_KV || !env.OAUTH_PROVIDER) {
+    // No authorization server on this deployment, so the static table was the
+    // only thing a token could have been.
+    return { kind: "invalid", reason: "Unrecognized agent token." };
   }
 
-  return table[match[1]] ?? null;
+  const grant = await env.OAUTH_PROVIDER.unwrapToken(token);
+  if (!grant) {
+    // unwrapToken returns null for a token that is unknown, expired, or not
+    // ours. All three are the same answer to the caller, and distinguishing
+    // them would tell an attacker which tokens exist.
+    return { kind: "invalid", reason: "The access token is invalid or has expired." };
+  }
+
+  if (!audienceMatches(grant.audience)) {
+    return {
+      kind: "invalid",
+      reason: "This access token was issued for a different resource.",
+    };
+  }
+
+  const props = grant.grant.props ?? {};
+  return {
+    kind: "oauth",
+    subject: grant.userId,
+    scopes: grant.scope,
+    identity: {
+      // The branch name carries this, so keep it short and filesystem-safe.
+      tokenId: `gh-${props.login ?? grant.userId}`.slice(0, 40).replace(/[^a-zA-Z0-9._-]/g, "-"),
+      // A verified GitHub login, rather than a string a human typed into a
+      // table. This is the provenance upgrade the whole slice is for.
+      operator: props.login ?? grant.userId,
+      agent: props.clientName ?? grant.grant.clientId,
+      agentId: grant.grant.clientId,
+    },
+  };
+}
+
+/** OAuth discovery is only advertised once there is something to discover.
+ *  See `ChallengeOptions` in `src/lib/mcp/auth.ts`. */
+function challengeOptions(env: Env): ChallengeOptions {
+  return { discovery: Boolean(env.OAUTH_KV) };
+}
+
+/** Memoize per request: an MCP write authorizes in the endpoint shell and
+ *  again in `runProposal`, and that should not be two KV reads. */
+function credentialOnce(env: Env, request: Request): () => Promise<Credential> {
+  let pending: Promise<Credential> | null = null;
+  return () => (pending ??= resolveCredential(env, request));
 }
 
 // --- the current graph, read from our own published API --------------------
@@ -726,22 +825,40 @@ async function handleDossier(
  * how those two things drift apart.
  *
  * The envelope arrives as a thunk rather than a value so the checks keep their
- * order: an unauthenticated caller is turned away before its body is read.
+ * order: an unauthenticated caller is turned away before its body is read. The
+ * credential arrives as one for a different reason: it is memoized per request,
+ * so an MCP write that authorizes here and in the endpoint shell costs one
+ * token lookup rather than two.
+ *
+ * A refusal carries `WWW-Authenticate`. This endpoint is not an MCP endpoint,
+ * but it is an OAuth protected resource, and RFC 9728 discovery is worth the
+ * one header on both doors.
  */
 async function runProposal(
   request: Request,
   env: Env,
+  credential: () => Promise<Credential>,
   readEnvelope: () => Promise<unknown>,
 ): Promise<Response> {
-  const identity = resolveIdentity(env, request);
-  if (!identity) {
-    return fail(401, "unauthorized", "A valid `Authorization: Bearer <token>` is required.");
+  const outcome = authorizeWrite(await credential(), challengeOptions(env));
+  if (!outcome.allowed) {
+    const { status, error, description, wwwAuthenticate } = outcome.challenge;
+    return new Response(
+      JSON.stringify(
+        { error: { code: error ?? "unauthorized", message: description } },
+        null,
+        2,
+      ),
+      { status, headers: { ...JSON_HEADERS, "www-authenticate": wwwAuthenticate } },
+    );
   }
+  const { identity, rateLimitKey } = outcome;
 
   // Flood brake: cap proposals per credential before touching GitHub. Keyed by
-  // the token's stable handle, so one leaked or runaway token cannot open an
-  // unbounded burst of PRs. Fails open (see withinRateLimit).
-  if (!(await withinRateLimit(env.PROPOSAL_LIMITER, `proposal:${identity.tokenId}`))) {
+  // the credential's stable handle (a token id, or an OAuth subject), so one
+  // leaked or runaway credential cannot open an unbounded burst of PRs. Fails
+  // open (see withinRateLimit).
+  if (!(await withinRateLimit(env.PROPOSAL_LIMITER, rateLimitKey))) {
     const body = {
       error: {
         code: "rate_limited",
@@ -788,11 +905,15 @@ async function runProposal(
   return fail(501, "not_implemented", `\`${kind}\` is declared but not wired.`);
 }
 
-async function handleProposal(request: Request, env: Env): Promise<Response> {
+async function handleProposal(
+  request: Request,
+  env: Env,
+  credential: () => Promise<Credential>,
+): Promise<Response> {
   if (request.method !== "POST") {
     return fail(405, "method_not_allowed", "POST a proposal envelope to this endpoint.");
   }
-  return runProposal(request, env, () => request.json());
+  return runProposal(request, env, credential, () => request.json());
 }
 
 // --- Markdown content negotiation ------------------------------------------
@@ -838,11 +959,30 @@ async function serveMarkdownTwin(request: Request, env: Env): Promise<Response |
   });
 }
 
-export default {
+/**
+ * aboard's own routing. Reached through the authorization server wrapper
+ * below, which handles the OAuth endpoints and injects `OAUTH_PROVIDER`
+ * before falling through to here for everything else.
+ */
+const siteHandler = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url);
+
+    // Resolved at most once per request, and only if something asks.
+    const credential = credentialOnce(env, request);
+
     if (pathname === "/api/proposals") {
-      return handleProposal(request, env);
+      return handleProposal(request, env, credential);
+    }
+
+    // What a credential resolves to. Served here rather than as an OAuth
+    // `apiRoute` because the provider validates a token's audience against the
+    // request path, and our tokens are bound to `/mcp` (see UNUSED_API_ROUTE).
+    if (pathname === "/api/whoami") {
+      const resolved = await credential();
+      const identity =
+        resolved.kind === "static" || resolved.kind === "oauth" ? resolved.identity : null;
+      return whoamiResponse(identity);
     }
 
     // The remote MCP endpoint. Read tools project the same published JSON-LD the
@@ -851,7 +991,9 @@ export default {
     if (pathname === "/mcp") {
       return handleMcp(request, {
         assets: env.ASSETS,
-        proposal: (envelope) => runProposal(request, env, async () => envelope),
+        credential,
+        challengeOptions: challengeOptions(env),
+        proposal: (envelope) => runProposal(request, env, credential, async () => envelope),
       });
     }
 
@@ -864,3 +1006,20 @@ export default {
     return env.ASSETS.fetch(request);
   },
 };
+
+/**
+ * The deployed Worker.
+ *
+ * The authorization server wraps aboard rather than the other way round,
+ * because the provider has to see a request before the site does: it owns the
+ * token, registration and OAuth metadata endpoints, and it injects
+ * `OAUTH_PROVIDER` into `env` on the way through. `/mcp` is deliberately not
+ * one of its `apiRoute`s, so anonymous reads reach `siteHandler` untouched and
+ * the per-call decision stays ours.
+ *
+ * With no `OAUTH_KV` bound and no GitHub OAuth App configured, the wrapper is
+ * inert: `/oauth/*` answers 503, no discovery is advertised, and every
+ * existing path behaves exactly as it did before. That is what lets this ship
+ * ahead of the operator steps in `worker/README.md`.
+ */
+export default withOAuth(siteHandler as never);
