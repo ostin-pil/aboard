@@ -25,7 +25,7 @@ import {
   type JsonRpcId,
   type McpPlan,
 } from "../src/lib/mcp/protocol";
-import { authorizeWrite, type ChallengeOptions, type Credential } from "../src/lib/mcp/auth";
+import { authorizeWrite, RESOURCE_URI, type ChallengeOptions, type Credential } from "../src/lib/mcp/auth";
 import type { ReadOp, ToolDescriptor } from "../src/lib/mcp/tools";
 
 export type ProposalEnvelopeInput = {
@@ -325,12 +325,19 @@ export async function handleMcp(request: Request, deps: McpDeps): Promise<Respon
     const outcome = authorizeWrite(await deps.credential(), deps.challengeOptions);
     if (!outcome.allowed) {
       const { status, error, description, wwwAuthenticate } = outcome.challenge;
+      // A rejected or under-scoped token is described accurately by
+      // authorizeWrite whatever asked. Absent credentials are not: here the
+      // caller has not reached a write tool, so say what this URL wants and
+      // where the public one is.
+      const message = error
+        ? description
+        : `This URL challenges at the handshake because it was opened with ?auth=required. Send an Authorization: Bearer credential, or use ${RESOURCE_URI}, where the five read tools are public.`;
       return new Response(
         JSON.stringify(
           {
             jsonrpc: "2.0",
             id: null,
-            error: { code: INTERNAL_ERROR, message: description, data: error ? { error } : undefined },
+            error: { code: INTERNAL_ERROR, message, data: error ? { error } : undefined },
           },
           null,
           2,
