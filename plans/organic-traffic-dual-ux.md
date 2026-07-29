@@ -17,6 +17,31 @@ visible link traversal + explicit agent instructions moves it a lot
 (d=0.60). Classic SEO still matters as the second channel — claim statements
 are literal search queries — and both channels reward the same architecture.
 
+## Status (2026-07-27)
+
+Reconciled against the shipped state; the sections below are kept as
+written, with their outcomes noted in place.
+
+- §1 and §3 shipped via the discovery-surface slice
+  (`proposed-direction-2026-07.md` slice 1): robots allow-stance, sitemap,
+  `llms.txt`, per-claim markdown twins, and the `/about` agents section.
+  One §1 item is still open: promoting that section to a full `/agents`
+  page, whose stated trigger (the remote MCP endpoint landing) has now
+  fired.
+- §2 was decided the other way: parallel `.md` URLs shipped instead of
+  Worker content negotiation. See the note in §2.
+- §4, §5, §6, and §7 are unbuilt and form the open slice of this plan.
+  External evidence has since strengthened the §7 case and the thesis
+  above: agents overwhelmingly fetch HTML and skip `llms.txt`
+  ([Ahrefs via ppc.land](https://ppc.land/llms-txt-adoption-rises-8-8x-but-97-of-files-get-zero-ai-requests/)),
+  so the claim page itself is the agent surface.
+- Companion plans now carry adjacent work this plan does not:
+  `agent-distribution.md` (registry listings, the dataset export, the one
+  launch post), `proposal-dry-run.md` (the first-proposal funnel), and
+  the ring 1 signals track (`signals-substrate.md`, `news-layer.md`,
+  `agent-social-layer.md`), which extends this plan's §5 with the inbound
+  news direction.
+
 ## 0. Prerequisites (already planned elsewhere; do first)
 
 - **Audit batch 1** — `metadataBase` (A1) + the `aboard.dev` sites (A2). No
@@ -46,6 +71,14 @@ favor. Update before executing:
 
 ## 2. Content negotiation at the Worker (~half-day)
 
+**Superseded 2026-07-27.** The discovery-surface slice shipped parallel
+`.md` URLs (`/claims/{id}/index.md`, Cloudflare's page-markdown
+convention) rather than negotiation, and `/about` negotiates
+`Accept: text/markdown` at the Worker as a narrower version of this idea.
+The remaining value here is incremental (one canonical URL per entity)
+and does not justify a second mechanism next to the shipped one. Revisit
+only if a real client asks for it.
+
 The Worker already fronts the static assets, so the same canonical URL can
 serve both dialects — the cleanest dual-UX primitive available, and one
 static export alone cannot do:
@@ -60,6 +93,10 @@ static export alone cannot do:
 - `Vary: Accept` on negotiated routes so caches stay correct.
 
 ## 3. AI-crawler stance (~15 min, one decision)
+
+**Shipped.** The repo robots.txt carries the explicit allow stance with the
+rationale recorded in-file, and the Cloudflare managed block was disabled
+by operator action 2026-07-23.
 
 robots.txt should **explicitly allow** GPTBot, ClaudeBot, PerplexityBot,
 CCBot, and peers, and name `llms.txt`. Most sites block them; aboard's
@@ -132,6 +169,7 @@ You can't steer what you don't measure:
 - Worker content negotiation vs separate `.md`/`.json` URLs — *recommend
   negotiation* (one canonical URL per entity), with the explicit API routes
   kept as the documented fallback for clients that can't set headers.
+  Outcome: parallel URLs shipped instead; recorded in §2 as superseded.
 - Leaderboard timing — gate on the first real resolution (needs
   `integrity-foundations.md` fields); don't ship a leaderboard of unresolved
   forecasts.

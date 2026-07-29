@@ -27,7 +27,6 @@ order they could be picked up; pick any.
 
 | Plan | Effort | Decision-heavy? | Prereq |
 | --- | --- | --- | --- |
-| [mcp-oauth.md](mcp-oauth.md) | ~1–2 sessions | Yes — issuance posture, library vs hand-rolled AS, co-host or separate Worker | `/mcp` (shipped, session 30); a step-0 spike gates the build |
 | [integrity-foundations.md](integrity-foundations.md) | ~2–3 hr (do-now slice) | Light–medium — resolutionSource shape, lint severity, resolvedOutcome type | None (enforcement half gated on MCP write path) |
 | [repo-hardening.md](repo-hardening.md) | ~3–4 hr | Light — license choice | §4 blocked on domain choice; rest none |
 | [agent-surface.md](agent-surface.md) | ~3–5 hr | Light — /agents vs /about section | Canonical domain (deploy) |
@@ -36,7 +35,12 @@ order they could be picked up; pick any.
 | [cross-domain-claim-drag.md](cross-domain-claim-drag.md) | ~half-day | Yes — extent strategy, confirm UX, coordinate math | None |
 | [editor-mode-posture.md](editor-mode-posture.md) | ~3 hr (Posture 2) / ~12+ hr (Posture 3) | Yes — three postures to choose between | None |
 | [open-weights-forecaster.md](open-weights-forecaster.md) | ~4–6 hr for the M2/F2 prototype | Yes — inference provider, model roster, aggregation rule | None |
-| [organic-traffic-dual-ux.md](organic-traffic-dual-ux.md) | ~3–4 days across phases | Light — content negotiation vs parallel URLs, crawler stance | Audit batches 1–2 (`code-quality-audit.md`), agent-surface refresh |
+| [organic-traffic-dual-ux.md](organic-traffic-dual-ux.md) | ~2 days (§4–§7; §1–§3 shipped or superseded, see its Status) | Light — leaderboard timing, feed granularity | First resolution for §5's leaderboard; rest none |
+| [agent-distribution.md](agent-distribution.md) | ~2 days (operator + writing) | Light — dataset home, post timing | MCP OAuth for §5's post; organic-traffic §7 instrumentation helps; rest none |
+| [proposal-dry-run.md](proposal-dry-run.md) | ~half-day | Light — flag shape on the envelope | None |
+| [signals-substrate.md](signals-substrate.md) | ~1 day | Medium — D1 vs KV, retention, MCP exposure | MCP OAuth |
+| [news-layer.md](news-layer.md) | ~1–2 days + sweep cadence | Medium — filter rule, sweep tuning | signals-substrate, integrity-foundations |
+| [agent-social-layer.md](agent-social-layer.md) | ~1–2 days | Medium — endorsement subjects, page naming | signals-substrate |
 | [graph-state-integrity.md](graph-state-integrity.md) | ~half-day (mostly QA) | Light — inline persistence, seed-hash scope, notify vs nuke | None (audit batch 1 merged) |
 
 Suggested order (2026-07-11 review): FLF entry first (hard deadline; carries
@@ -53,6 +57,13 @@ the math.
 
 ## Shipped
 
+- [mcp-oauth.md](mcp-oauth.md) — done, session 31. OAuth 2.1 + PKCE for
+  `/mcp`: per-call authorization decisions in `src/lib/mcp/auth.ts`, the
+  authorization server co-hosted in the Worker (`worker/oauth.ts`, GitHub as
+  identity provider, DCR and CIMD, registration rate-limited), RFC 9728
+  metadata, and 401 challenges carrying `WWW-Authenticate`. Deployed and
+  verified in production; static agent tokens keep working. Follow-ups live
+  in the session 31 log, not the plan.
 - [mcp-write-path.md](mcp-write-path.md) — done. The four `propose_*` tools
   went live in sessions 18–20 (`POST /api/proposals` in the Worker, canonical
   Zod validation, server-stamped provenance, native rate limiting, PR-only). The
