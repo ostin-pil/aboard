@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "check:built-urls": "node scripts/check-built-urls.mjs"
+    "check:built-urls": "node scripts/check-built-urls.mjs",
+    "lint:resolution": "tsx scripts/lint-resolution.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
