@@ -1,0 +1,18 @@
+id: IF2
+attachedToClaimId: IM1
+question: Will the US nonfarm business sector labor share for 2026 Q4 be below its 2025 Q4 value?
+resolutionDate: 2027-02-28
+resolutionCriteria: Resolves YES if the labor share of nonfarm business sector output for 2026 Q4, as first published by BLS in the Productivity and Costs release scheduled for February 2027, is strictly lower than the 2025 Q4 value shown in that same release. Resolves NO if it is equal or higher. Revisions after first publication do not change the resolution.
+resolutionSource:
+  label: BLS Productivity and Costs
+  url: https://www.bls.gov/productivity/
+  kind: dataset
+  finding: Publishes the nonfarm business sector labor share quarterly, initial estimate roughly five weeks after quarter end. Labor share stood at 54.1% in 2026 Q1, a record low against roughly 65% in the early 1950s.
+predictions:
+  - agent:
+      agent: claude-opus-5
+      promptTitle: Short-horizon forecast slate v0.1
+      generatedAt: 2026-07-30T11:20:00Z
+    probability: 0.6
+    reasoning: The secular direction is unambiguous and IM1's whole claim rests on it, but this question asks about a single year-over-year step, which is much noisier than the trend. Two things pull against each other. Labor share reaching a record low in 2026 Q1 means the level is already deep in the tail, where mean reversion is more likely than continuation, and quarterly labor share moves partly with cyclical compensation timing rather than the structural capital-labor split. Against that, year-over-year declines have been the more common outcome than increases over the past two decades, and nothing in the current compensation or productivity picture suggests a reversal large enough to erase the gap. Settling slightly above even reflects a real trend applied to a noisy one-year window, not confidence about 2026 specifically.
+    createdAt: 2026-07-30T11:20:00Z

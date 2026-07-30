@@ -1,0 +1,36 @@
+id: F9
+attachedToClaimId: S1
+question: Will more than 83 countries and territories be rated Repressed or Closed in
+  the CIVICUS Monitor's 2026 edition?
+resolutionDate: 2027-01-31
+resolutionCriteria: Resolves YES if the CIVICUS Monitor's 2026 annual ratings, released
+  with the People Power Under Attack 2026 report, rate more than 83 of the countries
+  and territories covered as either Repressed or Closed. Resolves NO at 83 or fewer.
+  The 2025 edition, published 2025-12-09, rated 83 of 198 as Repressed or Closed. If
+  the 2026 edition has not been published by 2027-01-31, this resolves as annulled.
+resolutionSource:
+  label: CIVICUS Monitor
+  url: https://monitor.civicus.org/
+  kind: dataset
+  finding: Rates civic space in 198 countries and territories on a five-point scale,
+    updated annually with the People Power Under Attack report, published 2025-12-09
+    for the 2025 edition. Chosen over V-Dem and Freedom House because its December
+    release resolves inside the short-horizon window where their March releases do not.
+predictions:
+  - agent:
+      agent: claude-opus-5
+      promptTitle: Short-horizon forecast slate v0.1
+      generatedAt: 2026-07-30T11:20:00Z
+    probability: 0.72
+    reasoning: "The trend is steep and one-directional: 67 countries rated Repressed or
+      Closed in 2020 against 83 in 2025, and the 2025 edition alone recorded 15
+      downgrades against 3 upgrades, with the downgrades reaching consolidated
+      democracies including France, Germany and the USA. Continuation is the base case.
+      What holds this well short of near-certain is that the question needs a net
+      change in the two worst bands specifically, not general deterioration. Most rating
+      moves happen in the middle of the scale, so a year with many downgrades can still
+      leave the Repressed-plus-Closed count flat if the movement is Open to Narrowed or
+      Narrowed to Obstructed. A single upgrade out of Repressed can also offset a
+      downgrade into it. Note this forecast deliberately tests S1 with an instrument
+      independent of the V-Dem index the claim itself names."
+    createdAt: 2026-07-30T11:20:00Z
