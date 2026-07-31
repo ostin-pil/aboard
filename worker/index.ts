@@ -989,10 +989,18 @@ const siteHandler = {
     // assets binding serves; write tools go through runProposal, so an MCP write
     // and an HTTP write are the same write.
     if (pathname === "/mcp") {
+      // `?auth=required` challenges at the handshake rather than at the first
+      // write (see `authRequired` in McpDeps). A query parameter rather than a
+      // second path, deliberately: RFC 9728 derives the metadata document from
+      // the path, so `/.well-known/oauth-protected-resource/mcp` still
+      // describes this endpoint and a token keeps one audience. A second path
+      // would fork both.
+      const authRequired = new URL(request.url).searchParams.get("auth") === "required";
       return handleMcp(request, {
         assets: env.ASSETS,
         credential,
         challengeOptions: challengeOptions(env),
+        authRequired,
         proposal: (envelope) => runProposal(request, env, credential, async () => envelope),
       });
     }

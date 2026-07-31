@@ -236,6 +236,25 @@ The challenge points at RFC 9728 Protected Resource Metadata, served at
 root as the fallback clients try second. Authorization server metadata is at
 `/.well-known/oauth-authorization-server`.
 
+**`?auth=required` moves the challenge to the handshake.** Some gateways decide
+whether a connection needs authentication once, when the connection is created,
+and never revisit it. Against the table above such a client succeeds: it calls
+`initialize`, reads answer `200`, the connection is recorded as needing nothing,
+and no authorization flow ever runs. The `401` a write raises later arrives long
+after the only moment that client would have acted on it, so its writes can
+never succeed. Smithery's Connect API behaves this way, and session 35 confirmed
+it against the Worker's own logs: discovery fetched the metadata document, the
+handshake answered `200`, and no client was ever registered.
+
+Adding `?auth=required` challenges an uncredentialed caller before the body is
+read, so the handshake itself carries `WWW-Authenticate` and such a client
+discovers the authorization server, registers, and completes a flow. Everything
+else is unchanged: same endpoint, same metadata document, same token audience,
+same `aboard:propose` scope. It changes when the challenge is raised, not what a
+token is good for. Point a gateway at
+`https://aboard.untype.me/mcp?auth=required`; leave every ordinary client on the
+plain URL, where reads stay public.
+
 **Stateless, and dual-era.** MCP revision `2026-07-28` removes the `initialize`
 handshake and the protocol-level session; `2025-11-25` and earlier require them.
 The endpoint serves both, selecting on how the client opens: an `initialize`
