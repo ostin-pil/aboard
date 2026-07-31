@@ -23,7 +23,7 @@ dataPoints:
     geography: US
     source:
       label: Chetty et al. — The Fading American Dream
-      url: 'https://opportunityinsights.org/wp-content/uploads/2018/04/abs_mobility_paper.pdf'
+      url: 'https://opportunityinsights.org/paper/the-fading-american-dream/'
       kind: paper
       year: 2017
       authors: Chetty, Grusky, Hell, Hendren, Manduca, Narang

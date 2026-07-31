@@ -9,8 +9,8 @@ pro:
       year: 2021
       authors: Bail
       finding: Field experiments and survey evidence showing that exposure to opposing partisan content on platforms increases, not decreases, affective polarization.
-    - label: Stanford Cyber Policy Center — platform research
-      url: https://cyber.fsi.stanford.edu/cpc
+    - label: Stanford Cyber Policy Center
+      url: https://cyber.fsi.stanford.edu/
       kind: report
       finding: Audit studies of ranking-system behavior and platform-internal-research synthesis on engagement-driven content distribution.
   authoredBy:
@@ -27,10 +27,10 @@ con:
       year: 2020
       authors: Allcott, Braghieri, Eichmeyer, Gentzkow
       finding: RCT deactivating Facebook for one month found small or null effects on issue-attitude polarization despite large effects on news consumption.
-    - label: Boxell, Gentzkow, Shapiro — Cross-country polarization
-      url: https://www.brown.edu/Research/Shapiro/
+    - label: Boxell, Gentzkow, Shapiro — Cross-Country Trends in Affective Polarization
+      url: https://doi.org/10.1162/rest_a_01160
       kind: paper
-      year: 2020
+      year: 2024
       authors: Boxell, Gentzkow, Shapiro
       finding: Cross-country comparison showing that affective-polarization growth is unrelated to internet/social-media penetration and predates platform dominance.
   authoredBy:
