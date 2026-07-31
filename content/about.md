@@ -46,6 +46,13 @@ spreadReadings:
   F3: Mild consensus that news HHI will not drop.
   F4: Was 0.02 with N=3 — see above.
   F5: Tighter consensus that no G7 binding law lands.
+  F6: Models discount registry growth the seed reads as near-certain.
+  F7: Widest spread in the corpus. Models read 43% as within reach of 50%; the seed reads most of calendar 2026 as already banked at 43%.
+  F8: Consensus that a legally mandated report does get published.
+  F9: Mild consensus on further civic-space deterioration.
+  IF1: One model at 0.65 against three clustered near 0.35.
+  IF2: Tightest agreement in the corpus on continued labor-share decline.
+  IF3: Even split on whether national permits clear a 1% rise.
 ---
 
 `aboard` runs open-weights LLM ensembles against falsifiable claims about

@@ -1,18 +1,70 @@
 id: IF3
 attachedToClaimId: IM2
-question: Will total US housing units authorized by building permits in calendar 2026 exceed the calendar 2025 total by at least 1%?
+question: Will total US housing units authorized by building permits in calendar
+  2026 exceed the calendar 2025 total by at least 1%?
 resolutionDate: 2027-03-31
-resolutionCriteria: Resolves YES if the sum of monthly not-seasonally-adjusted privately-owned housing units authorized in permit-issuing places for January through December 2026, as published in the Census Building Permits Survey tables, is at least 1% higher than the same sum for January through December 2025. Resolves NO otherwise. December 2026 preliminary data publishes on the 12th workday of January 2027 and revised data on the 17th workday, both well before the resolution date.
+resolutionCriteria: Resolves YES if the sum of monthly not-seasonally-adjusted
+  privately-owned housing units authorized in permit-issuing places for January
+  through December 2026, as published in the Census Building Permits Survey
+  tables, is at least 1% higher than the same sum for January through December
+  2025. Resolves NO otherwise. December 2026 preliminary data publishes on the
+  12th workday of January 2027 and revised data on the 17th workday, both well
+  before the resolution date.
 resolutionSource:
   label: US Census Building Permits Survey (BPS)
   url: https://www.census.gov/construction/bps/
   kind: dataset
-  finding: Publishes housing units authorized monthly at national, state, CBSA, county and place level, on the 12th workday for preliminary and the 17th for revised figures. The same survey resolves IF1 at metro level in 2028; this question uses the national monthly series so it can settle in early 2027.
+  finding: Publishes housing units authorized monthly at national, state, CBSA,
+    county and place level, on the 12th workday for preliminary and the 17th for
+    revised figures. The same survey resolves IF1 at metro level in 2028; this
+    question uses the national monthly series so it can settle in early 2027.
 predictions:
   - agent:
       agent: claude-opus-5
       promptTitle: Short-horizon forecast slate v0.1
       generatedAt: 2026-07-30T11:20:00Z
     probability: 0.35
-    reasoning: IM2 claims supply constraints are structural, and a 1% national increase is a low bar that a genuine supply response would clear easily, so this is close to a direct test of whether reform has begun to bite at national scale. The reasons to doubt it are mostly financing rather than zoning. Permit volumes have been soft under a sustained high-rate environment, and national totals are dominated by the large Sun Belt markets where the binding constraint is cost of capital, not entitlement. The upzoning measures that would move the number act on a 2 to 3 year lag and are concentrated in exactly the constrained metros that contribute least to the national count. A 1% threshold is small enough that a modest rate move could carry it, which is why this sits well above negligible rather than near zero.
+    reasoning: IM2 claims supply constraints are structural, and a 1% national
+      increase is a low bar that a genuine supply response would clear easily,
+      so this is close to a direct test of whether reform has begun to bite at
+      national scale. The reasons to doubt it are mostly financing rather than
+      zoning. Permit volumes have been soft under a sustained high-rate
+      environment, and national totals are dominated by the large Sun Belt
+      markets where the binding constraint is cost of capital, not entitlement.
+      The upzoning measures that would move the number act on a 2 to 3 year lag
+      and are concentrated in exactly the constrained metros that contribute
+      least to the national count. A 1% threshold is small enough that a modest
+      rate move could carry it, which is why this sits well above negligible
+      rather than near zero.
     createdAt: 2026-07-30T11:20:00Z
+  - agent:
+      agent: groq-llama-3.3-70b/llama-3.3-70b-versatile
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:05:08.309Z
+    probability: 0.55
+    reasoning: Historical trends in US housing units authorized by building permits
+      show variability, but a slight increase is possible given the current
+      demand for housing and potential policy responses to address supply
+      constraints.
+    createdAt: 2026-07-31T22:05:08.309Z
+  - agent:
+      agent: groq-gpt-oss-120b/openai/gpt-oss-120b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:05:09.276Z
+    probability: 0.38
+    reasoning: Historically, only about 4 of the last 10 years saw a ≥1% rise in
+      annual building permits, and recent data show a slowdown and occasional
+      declines, making a modest increase less likely than a flat or lower
+      outcome.
+    createdAt: 2026-07-31T22:05:09.276Z
+  - agent:
+      agent: groq-qwen-3.6-27b/qwen/qwen3.6-27b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:05:41.006Z
+    probability: 0.55
+    reasoning: Historical year-over-year changes in US building permits are highly
+      volatile, with positive growth occurring in roughly half of years over the
+      past three decades. The modest 1% threshold slightly favors YES, but
+      elevated construction financing costs and near-term demand uncertainty
+      keep the probability close to a coin flip.
+    createdAt: 2026-07-31T22:05:41.006Z

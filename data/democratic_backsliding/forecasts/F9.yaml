@@ -1,36 +1,71 @@
 id: F9
 attachedToClaimId: S1
-question: Will more than 83 countries and territories be rated Repressed or Closed in
-  the CIVICUS Monitor's 2026 edition?
+question: Will more than 83 countries and territories be rated Repressed or
+  Closed in the CIVICUS Monitor's 2026 edition?
 resolutionDate: 2027-01-31
-resolutionCriteria: Resolves YES if the CIVICUS Monitor's 2026 annual ratings, released
-  with the People Power Under Attack 2026 report, rate more than 83 of the countries
-  and territories covered as either Repressed or Closed. Resolves NO at 83 or fewer.
-  The 2025 edition, published 2025-12-09, rated 83 of 198 as Repressed or Closed. If
-  the 2026 edition has not been published by 2027-01-31, this resolves as annulled.
+resolutionCriteria: Resolves YES if the CIVICUS Monitor's 2026 annual ratings,
+  released with the People Power Under Attack 2026 report, rate more than 83 of
+  the countries and territories covered as either Repressed or Closed. Resolves
+  NO at 83 or fewer. The 2025 edition, published 2025-12-09, rated 83 of 198 as
+  Repressed or Closed. If the 2026 edition has not been published by 2027-01-31,
+  this resolves as annulled.
 resolutionSource:
   label: CIVICUS Monitor
   url: https://monitor.civicus.org/
   kind: dataset
-  finding: Rates civic space in 198 countries and territories on a five-point scale,
-    updated annually with the People Power Under Attack report, published 2025-12-09
-    for the 2025 edition. Chosen over V-Dem and Freedom House because its December
-    release resolves inside the short-horizon window where their March releases do not.
+  finding: Rates civic space in 198 countries and territories on a five-point
+    scale, updated annually with the People Power Under Attack report, published
+    2025-12-09 for the 2025 edition. Chosen over V-Dem and Freedom House because
+    its December release resolves inside the short-horizon window where their
+    March releases do not.
 predictions:
   - agent:
       agent: claude-opus-5
       promptTitle: Short-horizon forecast slate v0.1
       generatedAt: 2026-07-30T11:20:00Z
     probability: 0.72
-    reasoning: "The trend is steep and one-directional: 67 countries rated Repressed or
-      Closed in 2020 against 83 in 2025, and the 2025 edition alone recorded 15
-      downgrades against 3 upgrades, with the downgrades reaching consolidated
-      democracies including France, Germany and the USA. Continuation is the base case.
-      What holds this well short of near-certain is that the question needs a net
-      change in the two worst bands specifically, not general deterioration. Most rating
-      moves happen in the middle of the scale, so a year with many downgrades can still
-      leave the Repressed-plus-Closed count flat if the movement is Open to Narrowed or
-      Narrowed to Obstructed. A single upgrade out of Repressed can also offset a
-      downgrade into it. Note this forecast deliberately tests S1 with an instrument
-      independent of the V-Dem index the claim itself names."
+    reasoning: "The trend is steep and one-directional: 67 countries rated Repressed
+      or Closed in 2020 against 83 in 2025, and the 2025 edition alone recorded
+      15 downgrades against 3 upgrades, with the downgrades reaching
+      consolidated democracies including France, Germany and the USA.
+      Continuation is the base case. What holds this well short of near-certain
+      is that the question needs a net change in the two worst bands
+      specifically, not general deterioration. Most rating moves happen in the
+      middle of the scale, so a year with many downgrades can still leave the
+      Repressed-plus-Closed count flat if the movement is Open to Narrowed or
+      Narrowed to Obstructed. A single upgrade out of Repressed can also offset
+      a downgrade into it. Note this forecast deliberately tests S1 with an
+      instrument independent of the V-Dem index the claim itself names."
     createdAt: 2026-07-30T11:20:00Z
+  - agent:
+      agent: groq-llama-3.3-70b/llama-3.3-70b-versatile
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:07:22.616Z
+    probability: 0.55
+    reasoning: The trend of democratic backsliding and the number of countries rated
+      as Repressed or Closed in the CIVICUS Monitor have been increasing in
+      recent years, but the rate of this increase is uncertain, making it
+      difficult to predict with high confidence.
+    createdAt: 2026-07-31T22:07:22.616Z
+  - agent:
+      agent: groq-gpt-oss-120b/openai/gpt-oss-120b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:07:23.553Z
+    probability: 0.58
+    reasoning: The 2025 edition already hit the 83‑country threshold and the count
+      has risen in most recent years as global democratic backsliding
+      accelerates, suggesting a modestly higher than even chance of exceeding it
+      in 2026.
+    createdAt: 2026-07-31T22:07:23.553Z
+  - agent:
+      agent: groq-qwen-3.6-27b/qwen/qwen3.6-27b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:07:46.543Z
+    probability: 0.72
+    reasoning: The CIVICUS Monitor has shown a consistent year-over-year increase in
+      Repressed/Closed ratings over the past decade, driven by accelerating
+      democratic backsliding and geopolitical conflicts. Given the current count
+      sits exactly at the threshold, the established upward trend makes a
+      crossover to 84+ more likely than not, though methodological adjustments
+      or rare democratic improvements could cap the increase.
+    createdAt: 2026-07-31T22:07:46.543Z
