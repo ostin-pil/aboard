@@ -1,0 +1,149 @@
+attachedToClaimId: IM2
+pro:
+  thesis: >-
+    Regulatory supply constraints in high-productivity metros are a first-order
+    driver of both aggregate output loss and intergenerational immobility,
+    operating through a housing-mediated channel distinct from capital-income
+    concentration.
+  steelmannedSummary: >-
+    The mechanism has three measured links. First, constraints bind where
+    productivity is highest. Hsieh and Moretti estimate that relaxing land-use
+    restrictions in the most constrained US metros would have raised aggregate
+    output substantially over 1964 to 2009, because workers cannot move to
+    where their marginal product is greatest. Second, the resulting price wedge
+    is regulatory rather than physical. Glaeser and Gyourko document that in
+    constrained markets prices sit far above the physical cost of construction,
+    a gap that tracks regulatory stringency rather than land scarcity or build
+    costs. Third, and most directly on the immobility claim, Ganong and Shoag
+    show that regional income convergence in the US operated for a century and
+    then stopped, and that the break is explained by housing costs. Low-skill
+    households once moved to high-wage places and converged; now the housing
+    cost of that move exceeds the wage gain, so they sort the other way. That
+    is the compounding channel the claim describes. Incumbent owners capture
+    the appreciation as unearned wealth while the households who would have
+    gained most from access are precisely the ones priced out, which makes the
+    transfer regressive in both the static and the intergenerational sense.
+  keySources:
+    - label: Hsieh and Moretti, Housing Constraints and Spatial Misallocation
+      url: https://www.aeaweb.org/articles?id=10.1257/mac.20170388
+      kind: paper
+      year: 2019
+      authors: Hsieh, Moretti
+      finding: >-
+        Land-use constraints in high-productivity metros misallocate labour
+        across space, with large estimated aggregate output losses.
+    - label: Ganong and Shoag, Why has regional income convergence in the U.S. declined?
+      url: https://doi.org/10.1016/j.jue.2017.07.002
+      kind: paper
+      year: 2017
+      authors: Ganong, Shoag
+      finding: >-
+        A century of regional income convergence halts, and the break is
+        attributed to housing costs choking off migration by lower-income
+        households to high-wage places.
+    - label: Glaeser and Gyourko, The Economic Implications of Housing Supply
+      url: https://www.aeaweb.org/articles?id=10.1257/jep.32.1.3
+      kind: paper
+      year: 2018
+      authors: Glaeser, Gyourko
+      finding: >-
+        In constrained markets prices exceed physical construction cost by a
+        wide margin, and the wedge tracks regulatory stringency.
+  authoredBy:
+    agent: claude-opus-5
+    promptTitle: Dual-dossier author v0.1
+    generatedAt: 2026-07-31T22:30:00Z
+con:
+  thesis: >-
+    Supply constraints are real, but the claim overstates them as a lever. The
+    policy instrument that would relax them has not reliably produced units,
+    and the price dynamics in the affected metros are driven substantially by
+    demand composition that supply reform cannot reach.
+  steelmannedSummary: >-
+    The con case is not that zoning is harmless. It is that the causal chain
+    from deregulation to units to affordability to mobility breaks at the first
+    link, which is where the claim's policy relevance lives. Freemark's study
+    of Chicago's transit-oriented upzoning found that parcels upzoned by right
+    saw property values rise with no detectable increase in construction over
+    the following five years. If upzoning capitalises into land values without
+    producing housing, then either the constraint is not the binding one or the
+    reform does not release it, and either way the lever fails. Gyourko, Mayer
+    and Sinai's superstar-cities work supplies the demand-side alternative.
+    Persistent real price growth in a fixed set of desirable metros follows
+    from a growing national population of high-income households bidding for a
+    fixed stock of desirable locations, which produces the same price path and
+    the same exclusion of lower-income entrants without zoning being the
+    operative cause. On that reading, marginal supply is absorbed by the top of
+    the income distribution and the exclusion persists. Been, Ellen and
+    O'Regan, reviewing this literature sympathetically to supply, still concede
+    the qualifications that matter here. Affordability effects run at regional
+    rather than neighbourhood scale, they arrive through filtering over decades
+    rather than years, and they can be locally offset in the short run. A
+    mechanism operating at that latency is a weak account of the
+    intergenerational immobility the claim attributes to it.
+  keySources:
+    - label: Freemark, Upzoning Chicago
+      url: https://doi.org/10.1177/1078087418824672
+      kind: paper
+      year: 2019
+      authors: Freemark
+      finding: >-
+        By-right upzoning near transit raised parcel values with no detectable
+        increase in construction over five years, breaking the deregulation to
+        units link.
+    - label: Gyourko, Mayer and Sinai, Superstar Cities
+      url: https://doi.org/10.1257/pol.5.4.167
+      kind: paper
+      year: 2013
+      authors: Gyourko, Mayer, Sinai
+      finding: >-
+        Persistent price growth in desirable metros is driven by a growing
+        number of high-income bidders for a fixed set of locations, producing
+        exclusion without zoning as the operative cause.
+    - label: Been, Ellen and O'Regan, Supply Skepticism
+      url: https://doi.org/10.1080/10511482.2018.1476899
+      kind: paper
+      year: 2018
+      authors: Been, Ellen, O'Regan
+      finding: >-
+        Reviewing the evidence in supply's favour, still finds affordability
+        effects operate regionally and through multi-decade filtering rather
+        than locally and quickly.
+  authoredBy:
+    agent: claude-opus-5
+    promptTitle: Dual-dossier author v0.1
+    generatedAt: 2026-07-31T22:30:00Z
+cruxes:
+  - statement: >-
+      Does by-right upzoning produce units, or capitalise into land values?
+      This is the crux that would actually move policy. If Freemark's Chicago
+      null result generalises, IL2 is not a leverage point regardless of
+      whether IM2's diagnosis is correct, and the intervention has to shift to
+      public or subsidised production. If it does not generalise, the case for
+      deregulation is close to settled.
+    impactScore: 0.9
+    uncertainty: 0.65
+  - statement: >-
+      Is the halt in regional income convergence caused by housing costs, or by
+      non-housing changes in migration behaviour such as dual-earner
+      households, occupational licensing and place attachment? Resolving this
+      determines whether the immobility half of the claim survives. The wealth
+      transfer half is unaffected either way.
+    impactScore: 0.8
+    uncertainty: 0.55
+  - statement: >-
+      Over what horizon does new market-rate supply reach lower-income
+      households through filtering? Resolving this changes the argument less
+      than it appears. Both sides already accept that filtering is real and
+      slow, so a precise estimate mostly reprices the claim's urgency rather
+      than its truth.
+    impactScore: 0.45
+    uncertainty: 0.4
+  - statement: >-
+      Would supply sufficient to move prices be absorbed by high-income
+      in-migration, leaving the exclusion of lower-income entrants intact? This
+      is the superstar-cities challenge, and the one crux where the two
+      dossiers are not merely weighing the same evidence differently but
+      disagree about what the counterfactual metro looks like.
+    impactScore: 0.75
+    uncertainty: 0.7
