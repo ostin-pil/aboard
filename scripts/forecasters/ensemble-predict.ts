@@ -42,6 +42,7 @@ type Args = {
   providersFilter?: string[];
   configPath: string;
   update: boolean;
+  modelSources: boolean;
 };
 
 function parseArgs(argv: string[]): Args {
@@ -49,6 +50,7 @@ function parseArgs(argv: string[]): Args {
     forecastId: "",
     configPath: join(__dirname, "providers.local.json"),
     update: false,
+    modelSources: true,
   };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
@@ -56,6 +58,7 @@ function parseArgs(argv: string[]): Args {
     else if (a === "--providers") args.providersFilter = argv[++i].split(",").map((s) => s.trim()).filter(Boolean);
     else if (a === "--config") args.configPath = argv[++i];
     else if (a === "--update") args.update = true;
+    else if (a === "--no-model-sources") args.modelSources = false;
     else if (a === "--help" || a === "-h") {
       printHelp();
       process.exit(0);
@@ -86,6 +89,15 @@ Options:
   --update                 Append predictions to the forecast's YAML file.
                            Without this flag, predictions are printed to
                            stdout as a ready-to-paste YAML block.
+  --no-model-sources       Drop model-authored baseRates and dataAnchors,
+                           keeping probability, reasoning and attribution.
+                           Models invent citation URLs that look real and
+                           are not: a 2026-07 audit of the F1-F5 blocks
+                           found dead hosts, 404s and a fabricated DOI.
+                           CLAUDE.md requires every URL in data/ to be a
+                           real landing page, so pass this on any run whose
+                           output lands in data/ unless you intend to
+                           verify each URL by hand.
   -h, --help               Print this help.
 
 Environment:
@@ -188,7 +200,8 @@ type EnsembleResult = {
 async function runProvider(
   provider: Provider,
   forecast: RawForecast,
-  claim: RawClaim & { statement: string }
+  claim: RawClaim & { statement: string },
+  modelSources: boolean
 ): Promise<EnsembleResult> {
   const system = FORECASTER_PROMPT;
   const user = userPromptFor({
@@ -217,8 +230,12 @@ async function runProvider(
     reasoning: parsed.reasoning,
     createdAt: now,
   };
-  if (parsed.baseRates.length > 0) result.baseRates = parsed.baseRates;
-  if (parsed.dataAnchors.length > 0) result.dataAnchors = parsed.dataAnchors;
+  // Model-authored citations are dropped unless explicitly requested: the URLs
+  // are frequently invented, and data/ is meant to carry only real ones.
+  if (modelSources) {
+    if (parsed.baseRates.length > 0) result.baseRates = parsed.baseRates;
+    if (parsed.dataAnchors.length > 0) result.dataAnchors = parsed.dataAnchors;
+  }
   return result;
 }
 
@@ -243,7 +260,7 @@ async function main() {
       const provider = makeProvider(cfg);
       console.error(`  → ${provider.name}`);
       const t0 = Date.now();
-      const out = await runProvider(provider, forecastRaw, claim);
+      const out = await runProvider(provider, forecastRaw, claim, args.modelSources);
       console.error(`    ✓ ${provider.name}: P=${out.probability.toFixed(2)} (${Date.now() - t0}ms)`);
       return out;
     })
