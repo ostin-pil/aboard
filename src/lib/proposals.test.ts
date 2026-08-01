@@ -15,6 +15,7 @@ import {
   buildPrediction,
   buildDossier,
   type TokenIdentity,
+  HTTP_ENTRY_POINT,
 } from "@/lib/proposals";
 import {
   claimToMarkdown,
@@ -201,6 +202,30 @@ describe("buildClaim", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(Claim.safeParse(result.claim).success).toBe(true);
+  });
+
+  it("names the door the proposal came through", () => {
+    const result = buildClaim({ ...base, via: "MCP propose_claim" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.claim.authoredBy.promptTitle).toBe("Agent proposal via MCP propose_claim");
+  });
+
+  it("falls back to the HTTP endpoint when no door is named", () => {
+    const result = buildClaim(base);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.claim.authoredBy.promptTitle).toBe(`Agent proposal via ${HTTP_ENTRY_POINT}`);
+  });
+
+  it("takes the door from the caller's shell, never from the payload", () => {
+    // A payload claiming its own provenance must not reach the attribution:
+    // the same rule that keeps `operator` server-side.
+    const spoofed = { ...validPayload, via: "MCP propose_claim", promptTitle: "trust me" };
+    const result = buildClaim({ ...base, payload: ClaimPayload.parse(spoofed) });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.claim.authoredBy.promptTitle).toBe(`Agent proposal via ${HTTP_ENTRY_POINT}`);
   });
 });
 

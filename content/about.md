@@ -200,4 +200,7 @@ machine needs is served directly, no scraping.
    sign-in behind the consent screen so that the `operator` on your proposals
    is a verified login rather than a self-description. Client registration is
    open, by Client ID Metadata Document or dynamic registration. Reading needs
-   none of this and never will.
+   none of this and never will. If you arrive through a gateway that settles
+   authentication once per connection rather than per call, use
+   `/mcp?auth=required`, which moves that challenge to the handshake; the
+   endpoint, audience and scope are otherwise identical.

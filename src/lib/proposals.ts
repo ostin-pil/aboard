@@ -185,7 +185,26 @@ export function mintClaimId(
 
 // --- assembly --------------------------------------------------------------
 
+/**
+ * Which door a proposal came through. Stamped into `promptTitle` so a reader of
+ * the corpus can tell an HTTP filing from an MCP tool call; both routes share
+ * this pipeline, so nothing else in the record distinguishes them.
+ *
+ * Set by the transport shell, never read from the envelope: it is provenance,
+ * and provenance a caller can assert is worthless. Same rule as `operator`.
+ */
+export type ProposalEntryPoint = string;
+
+/** The default door, for a caller that does not name one. */
+export const HTTP_ENTRY_POINT: ProposalEntryPoint = "POST /api/proposals";
+
+function attributionPromptTitle(via: ProposalEntryPoint | undefined): string {
+  return `Agent proposal via ${via ?? HTTP_ENTRY_POINT}`;
+}
+
 export type BuildClaimInput = {
+  /** Which door this came through; see ProposalEntryPoint. */
+  via?: ProposalEntryPoint;
   payload: ClaimPayload;
   identity: TokenIdentity;
   /** Ids of claims already in the target domain. Used to infer its id prefix. */
@@ -210,6 +229,7 @@ export function buildClaim({
   existingIdsInDomain,
   allExistingIds,
   now,
+  via,
 }: BuildClaimInput): BuildClaimResult {
   const prefix = inferDomainPrefix(existingIdsInDomain);
   if (prefix === null) {
@@ -224,7 +244,7 @@ export function buildClaim({
 
   const authoredBy: AgentAttribution = {
     agent: identity.agent,
-    promptTitle: "Agent proposal via /api/proposals",
+    promptTitle: attributionPromptTitle(via),
     operator: identity.operator,
     agentId: identity.agentId,
     generatedAt: now,
@@ -340,6 +360,8 @@ export function buildEdge({
 }
 
 export type BuildPredictionInput = {
+  /** Which door this came through; see ProposalEntryPoint. */
+  via?: ProposalEntryPoint;
   payload: PredictionPayload;
   /** The forecaster's reasoning, from the proposal envelope. */
   reasoning: string;
@@ -365,6 +387,7 @@ export function buildPrediction({
   identity,
   knownForecastIds,
   now,
+  via,
 }: BuildPredictionInput): BuildPredictionResult {
   if (!knownForecastIds.has(payload.forecastId)) {
     return { ok: false, error: `Unknown forecast "${payload.forecastId}".` };
@@ -372,7 +395,7 @@ export function buildPrediction({
 
   const agent: AgentAttribution = {
     agent: identity.agent,
-    promptTitle: "Agent proposal via /api/proposals",
+    promptTitle: attributionPromptTitle(via),
     operator: identity.operator,
     agentId: identity.agentId,
     generatedAt: now,
@@ -399,6 +422,8 @@ export function buildPrediction({
 }
 
 export type BuildDossierInput = {
+  /** Which door this came through; see ProposalEntryPoint. */
+  via?: ProposalEntryPoint;
   payload: DossierPayload;
   identity: TokenIdentity;
   /** Whether the target claim exists in the graph. */
@@ -424,6 +449,7 @@ export function buildDossier({
   claimExists,
   dossierExists,
   now,
+  via,
 }: BuildDossierInput): BuildDossierResult {
   if (!claimExists) {
     return { ok: false, error: `Unknown claim "${payload.claimId}".` };
@@ -439,7 +465,7 @@ export function buildDossier({
 
   const authoredBy: AgentAttribution = {
     agent: identity.agent,
-    promptTitle: "Agent proposal via /api/proposals",
+    promptTitle: attributionPromptTitle(via),
     operator: identity.operator,
     agentId: identity.agentId,
     generatedAt: now,

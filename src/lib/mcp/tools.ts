@@ -135,6 +135,19 @@ const proposeDossierArgs = DossierPayload.extend({
  * The nine tools, in a stable order — the spec asks for deterministic ordering
  * so clients can cache the list.
  */
+/**
+ * Closing sentence on every write tool's description.
+ *
+ * The gateway hint rides here rather than in SERVER_INSTRUCTIONS because a
+ * gateway that aggregates several servers answers `initialize` with its own
+ * serverInfo and drops ours, while tool descriptions are passed through
+ * verbatim. This is the only text that reaches the caller who needs it.
+ */
+const WRITE_AUTH_NOTE =
+  "Requires an Authorization: Bearer token. If your client settles authentication when " +
+  "it connects rather than per call, point it at /mcp?auth=required, which raises the " +
+  "challenge at the handshake instead of here.";
+
 export const TOOLS: readonly ToolDescriptor[] = [
   tool(
     "list_claims",
@@ -186,7 +199,7 @@ export const TOOLS: readonly ToolDescriptor[] = [
     "Opens a pull request adding one claim to data/<domain>/claims/. The claim id, " +
       "timestamp, and authorship are stamped server-side from your agent token — do not " +
       "send them. At least one real source is required. The PR is NEVER auto-merged: a " +
-      "human reviews it and CI must pass. Requires an Authorization: Bearer token.",
+      "human reviews it and CI must pass. " + WRITE_AUTH_NOTE,
     proposeClaimArgs,
     { kind: "write", proposalKind: "claim", rationaleField: "rationale" },
   ),
@@ -196,8 +209,7 @@ export const TOOLS: readonly ToolDescriptor[] = [
     "Opens a pull request adding one directed edge between two existing claims. The edge " +
       "id and its target file (a domain's edges.yaml, or cross_domain_edges.yaml when the " +
       "endpoints span domains) are determined server-side — do not send an id. The PR is " +
-      "NEVER auto-merged: a human reviews it and CI must pass. Requires an " +
-      "Authorization: Bearer token.",
+      "NEVER auto-merged: a human reviews it and CI must pass. " + WRITE_AUTH_NOTE,
     proposeEdgeArgs,
     { kind: "write", proposalKind: "edge", rationaleField: "rationale" },
   ),
@@ -206,8 +218,7 @@ export const TOOLS: readonly ToolDescriptor[] = [
     "Propose a forecast prediction",
     "Opens a pull request appending one prediction to an existing forecast's predictions " +
       "list. The authoring agent and timestamp are stamped server-side. The PR is NEVER " +
-      "auto-merged: a human reviews it and CI must pass. Requires an Authorization: " +
-      "Bearer token.",
+      "auto-merged: a human reviews it and CI must pass. " + WRITE_AUTH_NOTE,
     proposePredictionArgs,
     { kind: "write", proposalKind: "prediction", rationaleField: "reasoning" },
   ),
@@ -218,7 +229,7 @@ export const TOOLS: readonly ToolDescriptor[] = [
       "and con case, plus optional ranked cruxes — for a contested claim that has none. " +
       "Both sides are required; a dossier is inherently two-sided. Refuses if the claim " +
       "already has a dossier (it will not overwrite a curated one). The authoring agent is " +
-      "stamped server-side. NEVER auto-merged. Requires an Authorization: Bearer token.",
+      "stamped server-side. NEVER auto-merged. " + WRITE_AUTH_NOTE,
     proposeDossierArgs,
     { kind: "write", proposalKind: "dossier", rationaleField: "rationale" },
   ),
