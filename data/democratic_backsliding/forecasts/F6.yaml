@@ -1,0 +1,67 @@
+id: F6
+attachedToClaimId: L3
+question: Will the OECD.AI Policy Navigator list more than 151 legally binding
+  policy initiatives as of 2027-03-31?
+resolutionDate: 2027-03-31
+resolutionCriteria: Resolves YES if, on 2027-03-31, the OECD.AI Policy
+  Navigator's all-initiatives view filtered to Legally Binding equals Yes
+  reports a count greater than 151. The count stood at exactly 151, out of 2457
+  initiatives in total, when this forecast was filed on 2026-07-30. Resolves NO
+  if the count is 151 or fewer.
+resolutionSource:
+  label: OECD.AI Policy Navigator
+  url: https://oecd.ai/en/dashboards/policy-initiatives
+  kind: policy
+  finding: Living repository of AI policy initiatives from more than 80
+    jurisdictions, with a legally-binding filter and a headline count on the
+    results view. Baseline of 151 binding of 2457 total read directly from that
+    view on 2026-07-30.
+predictions:
+  - agent:
+      agent: claude-opus-5
+      promptTitle: Short-horizon forecast slate v0.1
+      generatedAt: 2026-07-30T11:20:00Z
+    probability: 0.93
+    reasoning: "This is a registry-growth question and the prior is high by
+      construction, which is worth stating plainly rather than dressing up. The
+      Navigator is curated continuously, national implementations of the EU AI
+      Act are landing one country at a time (Greece's Law 5321/2026 is already
+      in the binding set), and eight months is a long window for a repository
+      that added binding instruments throughout 2025 and 2026. The residual risk
+      is almost entirely about the instrument rather than the world: OECD could
+      restructure the Navigator, retire the binding facet, or reclassify entries
+      in a way that moves the count without any legislative change. That
+      measurement risk, not a legislative drought, is what keeps this below
+      0.97."
+    createdAt: 2026-07-30T11:20:00Z
+  - agent:
+      agent: groq-llama-3.3-70b/llama-3.3-70b-versatile
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:05:43.996Z
+    probability: 0.6
+    reasoning: The OECD.AI Policy Navigator has been expanding its collection of
+      policy initiatives, and the current count of legally binding initiatives
+      is already at 151, suggesting a growing trend. Given the ongoing efforts
+      to regulate AI and digital platforms, it is plausible that more
+      initiatives will be added by 2027-03-31.
+    createdAt: 2026-07-31T22:05:43.996Z
+  - agent:
+      agent: groq-gpt-oss-120b/openai/gpt-oss-120b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:05:44.974Z
+    probability: 0.68
+    reasoning: The OECD AI Policy Navigator has added roughly 25 legally binding
+      initiatives per year over the past 4 years, making it likely that at least
+      one more will be recorded by the March 2027 deadline.
+    createdAt: 2026-07-31T22:05:44.974Z
+  - agent:
+      agent: groq-qwen-3.6-27b/qwen/qwen3.6-27b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:06:14.559Z
+    probability: 0.85
+    reasoning: Global AI regulation is accelerating, with multiple jurisdictions
+      enacting or finalizing legally binding frameworks on quarterly cycles.
+      Given the 8-month window and the established upward trajectory of
+      statutory AI measures, it is highly probable that at least one new
+      initiative will be added to the OECD tracker.
+    createdAt: 2026-07-31T22:06:14.559Z

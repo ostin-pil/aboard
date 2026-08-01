@@ -1,20 +1,64 @@
 id: IF1
 attachedToClaimId: IM2
-question: Will at least one of the five most housing-supply-constrained US metros (NY, SF Bay, LA, Boston, San Diego) post net positive housing-permit-per-capita growth in 2027 vs. 2024?
+question: Will at least one of the five most housing-supply-constrained US
+  metros (NY, SF Bay, LA, Boston, San Diego) post net positive
+  housing-permit-per-capita growth in 2027 vs. 2024?
 resolutionDate: 2028-06-30
-resolutionCriteria: Resolves YES if, per US Census Building Permits Survey data, at least one of the named metros (defined by CBSA boundary) has 2027 calendar-year housing permits per 1,000 residents at least 10% higher than 2024. Resolves NO otherwise.
+resolutionCriteria: Resolves YES if, per US Census Building Permits Survey data,
+  at least one of the named metros (defined by CBSA boundary) has 2027
+  calendar-year housing permits per 1,000 residents at least 10% higher than
+  2024. Resolves NO otherwise.
 resolutionSource:
   label: US Census Building Permits Survey (BPS)
   url: https://www.census.gov/construction/bps/
   kind: dataset
-  finding: Housing units authorised by permit-issuing place, published annually
-    at CBSA level, which is the boundary definition the criteria name. Final
-    annual estimates land in the May following the calendar year.
+  finding: Housing units authorised by permit-issuing place, published annually at
+    CBSA level, which is the boundary definition the criteria name. Final annual
+    estimates land in the May following the calendar year.
 predictions:
   - agent:
       agent: claude-opus-4-7
       promptTitle: Seed claim author v0.1
       generatedAt: 2026-05-11T12:00:00Z
     probability: 0.35
-    reasoning: "Multiple supply-constrained metros have passed upzoning measures in 2023-2025 (LA citywide ADU, SF state-mandated rezonings, Boston regional MBTA Communities Act). But permit response lags policy by 2-3 years on average; 2027 is on the optimistic side. Base rate: in jurisdictions with comparable reforms (Auckland 2016, Minneapolis 2018) permits-per-capita rose 20-40% within 3-5 years. Weighting toward partial response given regulatory friction and rate environment."
+    reasoning: "Multiple supply-constrained metros have passed upzoning measures in
+      2023-2025 (LA citywide ADU, SF state-mandated rezonings, Boston regional
+      MBTA Communities Act). But permit response lags policy by 2-3 years on
+      average; 2027 is on the optimistic side. Base rate: in jurisdictions with
+      comparable reforms (Auckland 2016, Minneapolis 2018) permits-per-capita
+      rose 20-40% within 3-5 years. Weighting toward partial response given
+      regulatory friction and rate environment."
     createdAt: 2026-05-11T12:30:00Z
+  - agent:
+      agent: groq-llama-3.3-70b/llama-3.3-70b-versatile
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:04:37.941Z
+    probability: 0.4
+    reasoning: Historical data on housing permit growth in US metros suggests that
+      supply-constrained areas often struggle to increase housing production,
+      but occasional policy changes or economic shifts can lead to temporary
+      growth spurts, making a 10% increase in permits per capita plausible but
+      not highly likely.
+    createdAt: 2026-07-31T22:04:37.941Z
+  - agent:
+      agent: groq-gpt-oss-120b/openai/gpt-oss-120b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:04:39.173Z
+    probability: 0.32
+    reasoning: Recent permit-per-capita trends in the five metros have been flat or
+      declining, and historically only a small fraction of constrained metros
+      achieve >10% annual growth, making a positive jump by 2027 unlikely but
+      not impossible.
+    createdAt: 2026-07-31T22:04:39.173Z
+  - agent:
+      agent: groq-qwen-3.6-27b/qwen/qwen3.6-27b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:04:43.020Z
+    probability: 0.65
+    reasoning: A 10% increase over three years is a modest threshold (~3.2% CAGR)
+      that most major metros historically clear during cyclical rebounds or
+      policy-driven upturns. While high construction costs and strict zoning
+      suppress absolute volumes, covering five large metros significantly raises
+      the probability that at least one will exceed the 2024 baseline by 2027,
+      especially if 2024 serves as a rate-sensitive trough.
+    createdAt: 2026-07-31T22:04:43.020Z

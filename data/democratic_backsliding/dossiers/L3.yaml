@@ -1,0 +1,147 @@
+attachedToClaimId: L3
+pro:
+  thesis: >-
+    Ranking systems demonstrably shape which political content circulates, a
+    small number of firms control them, and mandated auditing plus structural
+    competition remedies is the only intervention that reaches the control
+    point rather than its symptoms.
+  steelmannedSummary: >-
+    The premise is measurable rather than assumed. Huszar and colleagues,
+    working with Twitter's own internal data and a randomised holdout of users
+    kept on a reverse-chronological timeline, found that the algorithmic
+    timeline amplified political content from elected officials relative to
+    chronological, and did so unevenly across parties in six of seven countries
+    studied. That is a first-party demonstration that a ranking system exerts
+    differential leverage over political discourse, established by exactly the
+    kind of internal-data access that only a mandate produces. The Stigler
+    Center's digital platforms report supplies the market-structure half. Where
+    a small number of firms operate the ranking systems through which most
+    political information flows, ordinary competitive pressure does not
+    generate alternatives, because network effects and data advantages protect
+    the incumbent ranking from entry. The Digital Services Act is the
+    instrument that operationalises both halves, obliging very large platforms
+    to submit to independent audit and to open data to vetted researchers. The
+    leverage-point argument is therefore modest and structural. It does not
+    claim that changing a feed changes minds, but that a single unaudited
+    ranking system holding this much of public discourse is a governance
+    failure, and that contestability plus inspection is how that class of
+    failure is normally addressed.
+  keySources:
+    - label: Huszar et al., Algorithmic amplification of politics on Twitter
+      url: https://doi.org/10.1073/pnas.2025334119
+      kind: paper
+      year: 2021
+      authors: Huszar, Ktena, O'Brien
+      finding: >-
+        Using a randomised chronological holdout inside Twitter, the
+        algorithmic timeline amplified political content unevenly across
+        parties in six of seven countries.
+    - label: Stigler Center Committee on Digital Platforms
+      url: https://www.chicagobooth.edu/research/stigler
+      kind: report
+      authors: Stigler Center for the Study of the Economy and the State
+      finding: >-
+        Diagnoses entrenched platform market power and sets out structural and
+        regulatory remedies aimed at contestability.
+    - label: Regulation (EU) 2022/2065, Digital Services Act
+      url: https://eur-lex.europa.eu/eli/reg/2022/2065/oj
+      kind: statute
+      year: 2022
+      finding: >-
+        Obliges very large platforms to independent auditing, risk assessment
+        and vetted-researcher data access, creating the inspection regime the
+        leverage point assumes.
+  authoredBy:
+    agent: claude-opus-5
+    promptTitle: Dual-dossier author v0.1
+    generatedAt: 2026-07-31T22:30:00Z
+con:
+  thesis: >-
+    The best available experimental evidence is that changing the ranking
+    system does not change political attitudes, so a leverage point justified
+    by its effect on polarization is aimed at a link the evidence does not
+    support, and transparency mandates deliver documents rather than
+    accountability.
+  steelmannedSummary: >-
+    This is the rare case where the intervention was actually run at scale. In
+    the 2020 US election cycle, with Meta's cooperation and preregistration,
+    Guess and colleagues moved consenting Facebook and Instagram users from the
+    algorithmic feed to a reverse-chronological one for three months. The
+    chronological feed substantially changed what users saw and sharply reduced
+    time on platform, and it produced no detectable change in affective
+    polarization, issue polarization, political knowledge or turnout. A
+    companion study reducing exposure to like-minded sources found the same
+    null. The most direct available test of the mechanism L3 depends on came
+    back negative, and it did so with adequate power on the outcome variables
+    the claim cares about. The transparency half faces a distinct objection.
+    Ananny and Crawford argue that seeing inside an algorithmic system does not
+    confer the ability to govern it. Disclosure produces artefacts that are
+    unreadable at the relevant scale, shifts the burden of interpretation onto
+    parties without the capacity to act, and can substitute the appearance of
+    accountability for the thing itself. Combined, the objection is that L3
+    pulls a lever experiment says is not connected, and inspects a system that
+    inspection does not make governable.
+  keySources:
+    - label: Guess et al., How do social media feed algorithms affect attitudes and behavior in an election campaign?
+      url: https://doi.org/10.1126/science.abp9364
+      kind: paper
+      year: 2023
+      authors: Guess, Malhotra, Pan, Barbera
+      finding: >-
+        Three months on a reverse-chronological feed changed exposure and cut
+        platform time, with no detectable effect on polarization, knowledge or
+        turnout.
+    - label: Nyhan et al., Like-minded sources on Facebook are prevalent but not polarizing
+      url: https://doi.org/10.1038/s41586-023-06297-w
+      kind: paper
+      year: 2023
+      authors: Nyhan, Settle, Thorson
+      finding: >-
+        Experimentally reducing exposure to like-minded content did not shift
+        affective polarization or issue attitudes.
+    - label: Ananny and Crawford, Seeing without knowing
+      url: https://doi.org/10.1177/1461444816676645
+      kind: paper
+      year: 2016
+      authors: Ananny, Crawford
+      finding: >-
+        Argues the transparency ideal fails for algorithmic systems, producing
+        disclosure without the capacity to govern what is disclosed.
+  authoredBy:
+    agent: claude-opus-5
+    promptTitle: Dual-dossier author v0.1
+    generatedAt: 2026-07-31T22:30:00Z
+cruxes:
+  - statement: >-
+      Can a three-month individual-level feed swap detect the effect at all?
+      The pro reading is that polarization is a general-equilibrium property of
+      the information environment, so reassigning individuals inside an
+      unchanged environment cannot move it, and the nulls are uninformative
+      about the population-level intervention. The con reading is that this
+      makes the claim unfalsifiable by any feasible experiment. This is the
+      crux the whole disagreement turns on.
+    impactScore: 0.9
+    uncertainty: 0.75
+  - statement: >-
+      Does contestability produce less polarizing ranking systems, or more?
+      Nothing in the antitrust case guarantees that entrants rank for something
+      better, and the fragmented alternatives that already exist are not
+      obviously healthier. Resolving this would decide the direction of L3's
+      effect, not merely its size.
+    impactScore: 0.85
+    uncertainty: 0.8
+  - statement: >-
+      Does mandated auditing change platform behaviour, or only generate
+      compliance artefacts? The DSA regime is now producing reports on a fixed
+      schedule, so this becomes empirically answerable within a few years
+      rather than remaining a matter of priors.
+    impactScore: 0.6
+    uncertainty: 0.55
+  - statement: >-
+      Is L3 better defended on non-discourse grounds such as consumer welfare,
+      market entry, or accountability as an intrinsic good? This crux resolves
+      the debate by dissolving it. If the answer is yes, both dossiers are
+      arguing about a rationale the policy does not need, and the polarization
+      evidence stops being decisive either way.
+    impactScore: 0.5
+    uncertainty: 0.35

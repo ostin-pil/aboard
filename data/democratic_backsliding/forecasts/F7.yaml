@@ -1,0 +1,56 @@
+id: F7
+attachedToClaimId: M4
+question: Will fully automated decisions exceed 50% of statements of reasons
+  submitted to the DSA Transparency Database for calendar 2026?
+resolutionDate: 2027-03-31
+resolutionCriteria: Resolves YES if, computed over statements of reasons whose
+  decision date falls between 2026-01-01 and 2026-12-31 inclusive, as obtained
+  from the DSA Transparency Database daily dumps or its research API, the share
+  recorded as fully automated exceeds 50%. Resolves NO at 50% or below. The
+  database reported 43% fully automated across a rolling 180-day window when
+  this forecast was filed on 2026-07-30.
+resolutionSource:
+  label: EU DSA Transparency Database
+  url: https://transparency.dsa.ec.europa.eu/
+  kind: dataset
+  finding: Official EU database of content-moderation statements of reasons, 3.32
+    billion submitted from 359 active platforms as of 2026-07-30, with a
+    fully-automated flag on each record and daily dumps plus a research API for
+    recomputation.
+predictions:
+  - agent:
+      agent: claude-opus-5
+      promptTitle: Short-horizon forecast slate v0.1
+      generatedAt: 2026-07-30T11:20:00Z
+    probability: 0.12
+    reasoning: The arithmetic does most of the work here. The trailing 180-day
+      figure of 43% already covers roughly February to July 2026, so those
+      months are close to locked in, and clearing 50% for the calendar year
+      would require the second half to run far above 50% to drag the annual
+      average across. A seven-point annual move is large for a metric that
+      reflects platform tooling choices and reporting conventions rather than
+      anything that shifts quickly. The scenario that would do it is
+      compositional rather than behavioural, a single very high-volume platform
+      changing how it classifies or submits, since the totals are dominated by a
+      handful of submitters. That tail is real, which is why this is not nearer
+      zero, but it is not the way to bet.
+    createdAt: 2026-07-30T11:20:00Z
+  - agent:
+      agent: groq-llama-3.3-70b/llama-3.3-70b-versatile
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:06:17.433Z
+    probability: 0.58
+    reasoning: The current trend of 43% fully automated decisions, as reported by
+      the DSA Transparency Database, suggests a possible increase towards the
+      50% threshold by the end of 2026, considering the ongoing development and
+      integration of automated decision-making systems.
+    createdAt: 2026-07-31T22:06:17.433Z
+  - agent:
+      agent: groq-gpt-oss-120b/openai/gpt-oss-120b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:06:19.979Z
+    probability: 0.57
+    reasoning: The share of fully automated decisions was 43% in mid‑2026 and has
+      risen roughly 5‑6 percentage points per year in prior DSA reporting years,
+      making it likely to exceed the 50% threshold by year‑end.
+    createdAt: 2026-07-31T22:06:19.979Z

@@ -11,10 +11,10 @@ sources:
     year: 2016
     authors: Saez, Zucman
     finding: Historical analysis showing that the rise of estate taxation in the 1916-1980 period coincided with the largest compression of US top wealth shares since records began; recent erosion of the estate tax tracks the subsequent re-concentration.
-  - label: Brookings — The case for a stronger estate tax
-    url: 'https://www.brookings.edu/articles/the-case-for-a-stronger-estate-tax/'
+  - label: Brookings — Taxing wealth transfers through an expanded estate tax
+    url: 'https://www.brookings.edu/articles/taxing-wealth-transfers-through-an-expanded-estate-tax/'
     kind: report
-    finding: Argument that lowering the estate-tax exemption threshold and eliminating step-up-in-basis for inherited assets would significantly reduce the rate of multi-generational wealth concentration with modest revenue loss.
+    finding: Costs two expanded estate-tax designs, one at a $1m exemption with a flat 40% rate and one with a low exemption and rates rising to 75% above $20m, as instruments for reducing wealth concentration.
 authoredBy:
   agent: claude-opus-4-7
   promptTitle: Seed claim author v0.1

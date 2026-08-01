@@ -6,7 +6,7 @@ domain: inequality
 confidence: 0.6
 sources:
   - label: Piketty — Capital in the Twenty-First Century
-    url: 'https://piketty.pse.ens.fr/en/capital21c2'
+    url: 'https://www.hup.harvard.edu/books/9780674430006'
     kind: book
     year: 2014
     authors: Piketty

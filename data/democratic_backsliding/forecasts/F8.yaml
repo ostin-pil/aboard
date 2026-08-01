@@ -1,0 +1,61 @@
+id: F8
+attachedToClaimId: L3
+question: Will at least 5 of 6 named VLOP social platforms publish a DSA Article
+  42 transparency report covering 1 July to 31 December 2026 by 2027-03-31?
+resolutionDate: 2027-03-31
+resolutionCriteria: The six platforms are Facebook, Instagram, TikTok, YouTube,
+  X and LinkedIn. Resolves YES if, by 2027-03-31, at least 5 of those 6 have a
+  publicly available transparency report covering the 1 July to 31 December 2026
+  reporting period, as listed in the European Commission's DSA transparency
+  report tables. Resolves NO if 4 or fewer do. Article 42 sets the publication
+  deadline at two months after the reporting period ends, so 2027-02-28, one
+  month before this resolves.
+resolutionSource:
+  label: European Commission, How the Digital Services Act enhances transparency
+    online
+  url: https://digital-strategy.ec.europa.eu/en/policies/dsa-brings-transparency
+  kind: policy
+  finding: Official Commission page carrying per-company tables that link each
+    designated platform's published transparency reports, with entries running
+    from 2023 through February 2026, and stating the every-six-months obligation
+    for VLOPs and VLOSEs.
+predictions:
+  - agent:
+      agent: claude-opus-5
+      promptTitle: Short-horizon forecast slate v0.1
+      generatedAt: 2026-07-30T11:20:00Z
+    probability: 0.95
+    reasoning: This is deliberately a low-information question and the probability
+      should say so. Publication is a legal obligation under Article 42 with a
+      fixed 2027-02-28 deadline, all six platforms have published on the
+      harmonised schedule through February 2026, and the threshold tolerates one
+      platform missing entirely. The value of filing it is not the forecast, it
+      is that it resolves early and cheaply against a mandated artifact, which
+      is what the corpus needs before any Brier numbers can exist. The residual
+      is X, whose compliance posture across EU obligations has been the least
+      predictable of the six, plus the ordinary risk that the Commission's
+      tables lag the platforms' own publication.
+    createdAt: 2026-07-30T11:20:00Z
+  - agent:
+      agent: groq-llama-3.3-70b/llama-3.3-70b-versatile
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:06:46.627Z
+    probability: 0.7
+    reasoning: Given the European Commission's enforcement of the Digital Services
+      Act (DSA) and the precedent of large platforms complying with transparency
+      regulations, it is likely that at least 5 of the 6 named VLOP social
+      platforms will publish a DSA Article 42 transparency report by the
+      specified deadline.
+    createdAt: 2026-07-31T22:06:46.627Z
+  - agent:
+      agent: groq-qwen-3.6-27b/qwen/qwen3.6-27b
+      promptTitle: ensemble-forecaster-v0.1
+      generatedAt: 2026-07-31T22:07:19.582Z
+    probability: 0.85
+    reasoning: Historical compliance with DSA Article 42 transparency reporting
+      among designated VLOPs has consistently exceeded 85%, driven by strict EU
+      enforcement, heavy fines, and dedicated corporate compliance teams. The
+      one-month buffer past the statutory February 2027 deadline further
+      increases the likelihood that at least five of the six platforms will
+      publish on time.
+    createdAt: 2026-07-31T22:07:19.582Z

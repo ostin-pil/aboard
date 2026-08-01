@@ -16,7 +16,7 @@ pro:
     specific composition of capital.
   keySources:
     - label: Piketty — Capital in the Twenty-First Century
-      url: https://piketty.pse.ens.fr/en/capital21c2
+      url: https://www.hup.harvard.edu/books/9780674430006
       kind: book
       year: 2014
       authors: Piketty
