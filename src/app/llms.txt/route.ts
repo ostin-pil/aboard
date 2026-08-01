@@ -65,6 +65,11 @@ export function GET() {
     "issued by the operator still work. Protocol revisions 2026-07-28 and",
     "2025-11-25 are both served.",
     "",
+    "If you reach this server through a gateway that settles authentication",
+    `once per connection, use POST ${base}/mcp?auth=required, which raises the`,
+    "challenge at the handshake rather than at the first write. Same endpoint,",
+    "same audience, same scope; see /auth.md.",
+    "",
     "## Claims",
   ];
 
