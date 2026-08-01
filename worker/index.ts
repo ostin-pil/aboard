@@ -30,6 +30,8 @@ import {
   DossierPayload,
   ProposalEnvelope,
   buildClaim,
+  HTTP_ENTRY_POINT,
+  type ProposalEntryPoint,
   buildEdge,
   buildPrediction,
   buildDossier,
@@ -571,6 +573,7 @@ async function handleClaim(
   identity: TokenIdentity,
   rawPayload: unknown,
   rationale: string,
+  via: ProposalEntryPoint,
 ): Promise<Response> {
   const payload = ClaimPayload.safeParse(rawPayload);
   if (!payload.success) {
@@ -594,6 +597,7 @@ async function handleClaim(
     existingIdsInDomain: graph.claimIdsByDomain.get(payload.data.domain) ?? [],
     allExistingIds: graph.claimIds,
     now: new Date().toISOString(),
+    via,
   });
   if (!built.ok) return fail(422, "cannot_build_claim", built.error);
 
@@ -693,6 +697,7 @@ async function handlePrediction(
   identity: TokenIdentity,
   rawPayload: unknown,
   rationale: string,
+  via: ProposalEntryPoint,
 ): Promise<Response> {
   const payload = PredictionPayload.safeParse(rawPayload);
   if (!payload.success) {
@@ -710,6 +715,7 @@ async function handlePrediction(
     identity,
     knownForecastIds: new Set(graph.forecastDomains.keys()),
     now: new Date().toISOString(),
+    via,
   });
   if (!built.ok) {
     return fail(422, "cannot_build_prediction", built.error, {
@@ -765,6 +771,7 @@ async function handleDossier(
   identity: TokenIdentity,
   rawPayload: unknown,
   rationale: string,
+  via: ProposalEntryPoint,
 ): Promise<Response> {
   const payload = DossierPayload.safeParse(rawPayload);
   if (!payload.success) {
@@ -782,6 +789,7 @@ async function handleDossier(
     claimExists: graph.claimDomains.has(payload.data.claimId),
     dossierExists: graph.claimsWithDossier.has(payload.data.claimId),
     now: new Date().toISOString(),
+    via,
   });
   if (!built.ok) return fail(422, "cannot_build_dossier", built.error);
 
@@ -839,6 +847,7 @@ async function runProposal(
   env: Env,
   credential: () => Promise<Credential>,
   readEnvelope: () => Promise<unknown>,
+  via: ProposalEntryPoint,
 ): Promise<Response> {
   const outcome = authorizeWrite(await credential(), challengeOptions(env));
   if (!outcome.allowed) {
@@ -897,10 +906,10 @@ async function runProposal(
   };
   const { kind, payload, rationale } = envelope.data;
 
-  if (kind === "claim") return handleClaim(request, env, ctx, identity, payload, rationale);
+  if (kind === "claim") return handleClaim(request, env, ctx, identity, payload, rationale, via);
   if (kind === "edge") return handleEdge(request, env, ctx, identity, payload, rationale);
-  if (kind === "prediction") return handlePrediction(request, env, ctx, identity, payload, rationale);
-  if (kind === "dossier") return handleDossier(request, env, ctx, identity, payload, rationale);
+  if (kind === "prediction") return handlePrediction(request, env, ctx, identity, payload, rationale, via);
+  if (kind === "dossier") return handleDossier(request, env, ctx, identity, payload, rationale, via);
 
   return fail(501, "not_implemented", `\`${kind}\` is declared but not wired.`);
 }
@@ -913,7 +922,7 @@ async function handleProposal(
   if (request.method !== "POST") {
     return fail(405, "method_not_allowed", "POST a proposal envelope to this endpoint.");
   }
-  return runProposal(request, env, credential, () => request.json());
+  return runProposal(request, env, credential, () => request.json(), HTTP_ENTRY_POINT);
 }
 
 // --- Markdown content negotiation ------------------------------------------
@@ -1001,7 +1010,8 @@ const siteHandler = {
         credential,
         challengeOptions: challengeOptions(env),
         authRequired,
-        proposal: (envelope) => runProposal(request, env, credential, async () => envelope),
+        proposal: (envelope) =>
+          runProposal(request, env, credential, async () => envelope, envelope.via),
       });
     }
 

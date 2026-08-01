@@ -32,6 +32,14 @@ export type ProposalEnvelopeInput = {
   kind: string;
   payload: unknown;
   rationale: string;
+  /**
+   * The tool this arrived through, stamped into the claim's attribution so a
+   * reader can tell an MCP filing from an HTTP one. Set here rather than taken
+   * from `args`, because a caller must not be able to assert its own
+   * provenance. It rides alongside the envelope rather than inside it: the
+   * envelope is Zod-validated and would drop an unknown key.
+   */
+  via: string;
 };
 
 export type McpDeps = {
@@ -248,6 +256,7 @@ async function runWriteTool(
   const response = await deps.proposal({
     kind: proposalKind,
     payload,
+    via: `MCP ${tool.name}`,
     // An absent rationale is left as an empty string so the envelope's own
     // validator produces the error, rather than this shell inventing one.
     rationale: typeof rationale === "string" ? rationale : "",
