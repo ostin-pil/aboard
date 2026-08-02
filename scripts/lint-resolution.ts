@@ -50,12 +50,16 @@ function forecastFiles(): { domain: string; path: string }[] {
 const files = forecastFiles();
 const findings: (ResolutionFinding & { domain: string })[] = [];
 const unparseable: { path: string; error: string }[] = [];
+const superseded: { id: string; by: string[]; domain: string }[] = [];
 
 for (const { domain, path } of files) {
   const parsed = Forecast.safeParse(YAML.parse(readFileSync(path, "utf8")));
   if (!parsed.success) {
     unparseable.push({ path, error: parsed.error.issues[0]?.message ?? "invalid" });
     continue;
+  }
+  if (parsed.data.supersededBy?.length) {
+    superseded.push({ id: parsed.data.id, by: parsed.data.supersededBy, domain });
   }
   for (const finding of lintForecast(parsed.data)) {
     findings.push({ ...finding, domain });
@@ -87,10 +91,19 @@ if (findings.length === 0 && unparseable.length === 0) {
   }
 }
 
+if (superseded.length > 0) {
+  out();
+  out(`  Superseded, not linted (criteria are historical record):`);
+  for (const s of superseded) {
+    out(`    ${s.domain}/${s.id} → ${s.by.join(", ")}`);
+  }
+}
+
 out();
 const flagged = new Set(findings.map((f) => f.forecastId)).size;
 out(
   `${findings.length} finding(s) on ${flagged} of ${files.length} forecast(s).` +
+    (superseded.length > 0 ? ` ${superseded.length} superseded forecast(s) skipped.` : "") +
     (unparseable.length > 0 ? ` ${unparseable.length} file(s) failed to parse.` : "")
 );
 out(
