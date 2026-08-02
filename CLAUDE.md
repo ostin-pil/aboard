@@ -13,13 +13,17 @@ npm run build        # production build (full type-check)
 npx tsc --noEmit     # type-check only, faster
 npm run lint         # eslint
 npm run test         # vitest
-npm run lint:resolution   # advisory: forecast resolution-criteria rigor
+npm run lint:resolution   # forecast resolution-criteria rigor; session-end gates on --strict
 ```
 
-`lint:resolution` is warn-only and deliberately outside the build. It reports
-forecasts a distrustful reader could not settle: criteria resolving on an
-utterance, criteria with no checkable threshold, and forecasts with no
-`resolutionSource`. Findings are a prompt to reread the criteria, not a gate.
+`lint:resolution` reports forecasts a distrustful reader could not settle:
+criteria resolving on an utterance, criteria with no checkable threshold, and
+forecasts with no `resolutionSource`. Forecasts marked `supersededBy` are
+skipped and listed — their criteria are historical record, repaired by the
+replacements they name. Warn-only by default and outside `npm run build`, but
+the session-end gate runs it with `--strict` (`build_commands` in
+`.claude/lifecycle-manifest.md`), so a session cannot land a forecast a
+distrustful reader could not settle.
 
 ## Architecture
 

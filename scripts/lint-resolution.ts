@@ -5,10 +5,11 @@
  *   npm run lint:resolution            # report, always exit 0
  *   npm run lint:resolution -- --strict  # exit 1 if anything is flagged
  *
- * Warn-only by default and deliberately outside the build: the corpus still
- * has forecasts written before the external-resolution anchor existed, and
- * failing `npm run build` on prose heuristics would be the wrong trade. Switch
- * the session-end gate to `--strict` once the corpus reports clean.
+ * Warn-only by default and deliberately outside `npm run build`: failing the
+ * product build on prose heuristics would be the wrong trade. The session-end
+ * gate is stricter — `build_commands` in `.claude/lifecycle-manifest.md` runs
+ * this with `--strict` since session 38, when the live corpus first reported
+ * clean (pre-anchor forecasts are marked `supersededBy` and skipped).
  *
  * The rules live in `src/lib/resolution-lint.ts` (pure, unit-tested); this
  * file is the filesystem half. It parses `data/` directly rather than through
