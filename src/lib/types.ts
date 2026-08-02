@@ -165,6 +165,14 @@ export const Forecast = z
      */
     resolvedOutcome: ResolvedOutcome.nullable().optional(),
     resolvedAt: z.string().optional(),
+    /**
+     * IDs of the forecasts that replace this one. A forecast whose criteria
+     * turn out to be under-specified is never edited in place — editing
+     * criteria under existing predictions changes what those predictions
+     * were answering — so the repair is new forecasts, and this field points
+     * at them. The superseded forecast stays filed as historical record.
+     */
+    supersededBy: z.array(z.string()).min(1).optional(),
     predictions: z.array(Prediction),
   })
   // A resolution without a date cannot be audited or scored in order, so the

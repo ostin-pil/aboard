@@ -29,7 +29,7 @@ export type ResolutionFinding = {
 /** The fields the lint reads. Keeps the checker usable on parsed YAML. */
 export type LintableForecast = Pick<
   Forecast,
-  "id" | "resolutionCriteria" | "resolutionSource"
+  "id" | "resolutionCriteria" | "resolutionSource" | "supersededBy"
 >;
 
 /**
@@ -54,6 +54,12 @@ const THRESHOLD_MARKER =
 
 /** Run every rule against one forecast. */
 export function lintForecast(f: LintableForecast): ResolutionFinding[] {
+  // A superseded forecast's criteria are historical record, not a live
+  // resolution path: its defects are what the replacement forecasts named in
+  // supersededBy exist to repair, so re-flagging them every run is noise.
+  // The CLI reports which forecasts were skipped for this reason.
+  if (f.supersededBy && f.supersededBy.length > 0) return [];
+
   const findings: ResolutionFinding[] = [];
   const criteria = f.resolutionCriteria ?? "";
 

@@ -5,10 +5,11 @@
  *   npm run lint:resolution            # report, always exit 0
  *   npm run lint:resolution -- --strict  # exit 1 if anything is flagged
  *
- * Warn-only by default and deliberately outside the build: the corpus still
- * has forecasts written before the external-resolution anchor existed, and
- * failing `npm run build` on prose heuristics would be the wrong trade. Switch
- * the session-end gate to `--strict` once the corpus reports clean.
+ * Warn-only by default and deliberately outside `npm run build`: failing the
+ * product build on prose heuristics would be the wrong trade. The session-end
+ * gate is stricter — `build_commands` in `.claude/lifecycle-manifest.md` runs
+ * this with `--strict` since session 38, when the live corpus first reported
+ * clean (pre-anchor forecasts are marked `supersededBy` and skipped).
  *
  * The rules live in `src/lib/resolution-lint.ts` (pure, unit-tested); this
  * file is the filesystem half. It parses `data/` directly rather than through
@@ -50,12 +51,16 @@ function forecastFiles(): { domain: string; path: string }[] {
 const files = forecastFiles();
 const findings: (ResolutionFinding & { domain: string })[] = [];
 const unparseable: { path: string; error: string }[] = [];
+const superseded: { id: string; by: string[]; domain: string }[] = [];
 
 for (const { domain, path } of files) {
   const parsed = Forecast.safeParse(YAML.parse(readFileSync(path, "utf8")));
   if (!parsed.success) {
     unparseable.push({ path, error: parsed.error.issues[0]?.message ?? "invalid" });
     continue;
+  }
+  if (parsed.data.supersededBy?.length) {
+    superseded.push({ id: parsed.data.id, by: parsed.data.supersededBy, domain });
   }
   for (const finding of lintForecast(parsed.data)) {
     findings.push({ ...finding, domain });
@@ -87,10 +92,19 @@ if (findings.length === 0 && unparseable.length === 0) {
   }
 }
 
+if (superseded.length > 0) {
+  out();
+  out(`  Superseded, not linted (criteria are historical record):`);
+  for (const s of superseded) {
+    out(`    ${s.domain}/${s.id} → ${s.by.join(", ")}`);
+  }
+}
+
 out();
 const flagged = new Set(findings.map((f) => f.forecastId)).size;
 out(
   `${findings.length} finding(s) on ${flagged} of ${files.length} forecast(s).` +
+    (superseded.length > 0 ? ` ${superseded.length} superseded forecast(s) skipped.` : "") +
     (unparseable.length > 0 ? ` ${unparseable.length} file(s) failed to parse.` : "")
 );
 out(

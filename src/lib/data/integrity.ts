@@ -100,12 +100,26 @@ export function integrityErrors(
     }
   }
 
+  const forecastIds = new Set(graph.forecasts.map((f) => f.id));
+
   for (const forecast of graph.forecasts) {
     if (!claimIds.has(forecast.attachedToClaimId)) {
       errors.push(
         `${at("forecast", forecast.id)}: forecast "${forecast.id}" is attached to ` +
           `unknown claim "${forecast.attachedToClaimId}"`,
       );
+    }
+    for (const id of forecast.supersededBy ?? []) {
+      if (id === forecast.id) {
+        errors.push(
+          `${at("forecast", forecast.id)}: forecast "${forecast.id}" names itself in supersededBy`,
+        );
+      } else if (!forecastIds.has(id)) {
+        errors.push(
+          `${at("forecast", forecast.id)}: forecast "${forecast.id}" supersededBy references ` +
+            `unknown forecast "${id}"`,
+        );
+      }
     }
   }
 

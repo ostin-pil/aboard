@@ -85,6 +85,22 @@ describe("lintForecast", () => {
     });
   });
 
+  describe("supersededBy", () => {
+    it("skips a superseded forecast no matter how broken its criteria are", () => {
+      const f = clean({
+        resolutionCriteria: "Resolves when the minister announces success.",
+        resolutionSource: undefined,
+        supersededBy: ["T2"],
+      });
+      expect(lintForecast(f)).toEqual([]);
+    });
+
+    it("still lints a forecast whose supersededBy is absent", () => {
+      const f = clean({ resolutionSource: undefined });
+      expect(rules(f)).toEqual(["no-source"]);
+    });
+  });
+
   it("reports every broken rule at once", () => {
     const f = clean({
       resolutionCriteria: "Resolves YES if the chair announces success.",

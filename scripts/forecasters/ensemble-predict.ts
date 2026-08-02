@@ -22,6 +22,10 @@
  * The orchestrator is intentionally append-only — it never overwrites
  * existing predictions. Re-running for the same forecast adds more
  * predictions rather than replacing them, so an audit trail is preserved.
+ *
+ * Model-authored citations (baseRates, dataAnchors) are dropped by default
+ * and restored only by an explicit --model-sources: models invent URLs that
+ * look real and are not, and data/ carries only real landing pages.
  */
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "fs";
 import { join, dirname } from "path";
@@ -50,7 +54,7 @@ function parseArgs(argv: string[]): Args {
     forecastId: "",
     configPath: join(__dirname, "providers.local.json"),
     update: false,
-    modelSources: true,
+    modelSources: false,
   };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
@@ -58,7 +62,8 @@ function parseArgs(argv: string[]): Args {
     else if (a === "--providers") args.providersFilter = argv[++i].split(",").map((s) => s.trim()).filter(Boolean);
     else if (a === "--config") args.configPath = argv[++i];
     else if (a === "--update") args.update = true;
-    else if (a === "--no-model-sources") args.modelSources = false;
+    else if (a === "--model-sources") args.modelSources = true;
+    else if (a === "--no-model-sources") args.modelSources = false; // the default; kept so older invocations still parse
     else if (a === "--help" || a === "-h") {
       printHelp();
       process.exit(0);
@@ -89,15 +94,14 @@ Options:
   --update                 Append predictions to the forecast's YAML file.
                            Without this flag, predictions are printed to
                            stdout as a ready-to-paste YAML block.
-  --no-model-sources       Drop model-authored baseRates and dataAnchors,
-                           keeping probability, reasoning and attribution.
-                           Models invent citation URLs that look real and
-                           are not: a 2026-07 audit of the F1-F5 blocks
-                           found dead hosts, 404s and a fabricated DOI.
-                           CLAUDE.md requires every URL in data/ to be a
-                           real landing page, so pass this on any run whose
-                           output lands in data/ unless you intend to
-                           verify each URL by hand.
+  --model-sources          Keep model-authored baseRates and dataAnchors.
+                           Off by default: models invent citation URLs that
+                           look real and are not (a 2026-07 audit of the
+                           F1-F5 blocks found dead hosts, 404s and a
+                           fabricated DOI), and CLAUDE.md requires every
+                           URL in data/ to be a real landing page. Pass
+                           this only if you intend to verify each URL by
+                           hand before committing.
   -h, --help               Print this help.
 
 Environment:

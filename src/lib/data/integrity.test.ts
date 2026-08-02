@@ -164,6 +164,53 @@ describe("integrityErrors", () => {
     expect(errors[0]).toContain('unknown claim "GHOST"');
   });
 
+  it("catches a supersededBy reference to an unknown forecast", () => {
+    const { graph, refs } = cleanGraph();
+    graph.forecasts.push(
+      forecast({ id: "F9", attachedToClaimId: "S1", supersededBy: ["GONE"] }),
+    );
+    refs.push({
+      kind: "forecast",
+      id: "F9",
+      file: "data/democratic_backsliding/forecasts/F9.yaml",
+    });
+
+    const errors = integrityErrors(graph, refs, DOMAINS);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('forecast "F9"');
+    expect(errors[0]).toContain('unknown forecast "GONE"');
+  });
+
+  it("catches a forecast naming itself in supersededBy", () => {
+    const { graph, refs } = cleanGraph();
+    graph.forecasts.push(
+      forecast({ id: "F9", attachedToClaimId: "S1", supersededBy: ["F9"] }),
+    );
+    refs.push({
+      kind: "forecast",
+      id: "F9",
+      file: "data/democratic_backsliding/forecasts/F9.yaml",
+    });
+
+    const errors = integrityErrors(graph, refs, DOMAINS);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("names itself in supersededBy");
+  });
+
+  it("accepts a supersededBy chain between filed forecasts", () => {
+    const { graph, refs } = cleanGraph();
+    graph.forecasts.push(
+      forecast({ id: "F9", attachedToClaimId: "S1", supersededBy: ["F10"] }),
+      forecast({ id: "F10", attachedToClaimId: "S1" }),
+    );
+    refs.push(
+      { kind: "forecast", id: "F9", file: "forecasts/F9.yaml" },
+      { kind: "forecast", id: "F10", file: "forecasts/F10.yaml" },
+    );
+
+    expect(integrityErrors(graph, refs, DOMAINS)).toEqual([]);
+  });
+
   it("catches a dossier attached to an unknown claim", () => {
     const { graph, refs } = cleanGraph();
     graph.dossiers.push(dossier("GHOST"));

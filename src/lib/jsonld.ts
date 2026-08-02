@@ -126,6 +126,13 @@ export function forecastLD(forecast: Forecast, base: string) {
       ? { "aboard:resolvedOutcome": forecast.resolvedOutcome }
       : {}),
     ...(forecast.resolvedAt ? { "aboard:resolvedAt": forecast.resolvedAt } : {}),
+    ...(forecast.supersededBy
+      ? {
+          "aboard:supersededBy": forecast.supersededBy.map((id) => ({
+            "@id": `${base}/forecasts/${id}`,
+          })),
+        }
+      : {}),
     "aboard:predictions": forecast.predictions.map((p) => ({
       "@type": "aboard:Prediction",
       "aboard:probability": p.probability,
