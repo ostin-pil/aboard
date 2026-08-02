@@ -385,6 +385,18 @@ is a forecast still waiting on the world. No forecast in the v0 seed carries
 either field — the earliest resolution date is 2027-12-31 — so the numeric arm
 and the annulled case are both reserved shapes today, not observed ones.
 
+**Supersession.** `aboard:supersededBy` is an optional, non-empty array of
+`@id` references to the forecasts that replace this one. A forecast whose
+criteria turn out to be under-specified is never edited in place, because
+editing criteria under existing predictions changes what those predictions
+were answering; the repair is new, better-specified forecasts, and this field
+points at them. The superseded forecast stays filed as historical record —
+its predictions remain scoreable against its original criteria if it ever
+resolves — but `npm run lint:resolution` no longer holds its criteria to the
+live-corpus bar. Consumers computing corpus statistics should prefer the
+replacements and treat a superseded forecast as an archival entry. First
+observed on `F4` (replaced by `F7`) and `F5` (replaced by `F6` and `F8`).
+
 **Ensemble semantics.** When `aboard:predictions` holds more than one entry it
 is an *ensemble* — the same question put to multiple independent agents
 (typically one Claude seed plus several open-weights models from distinct
