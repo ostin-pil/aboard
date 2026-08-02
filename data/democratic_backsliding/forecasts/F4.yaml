@@ -6,6 +6,11 @@ resolutionDate: 2027-12-31
 resolutionCriteria: A first-party publication (not third-party leak) describing
   ranking signals at a level enabling independent reproducibility for at least
   one major surface (feed, recommendations).
+# Replaced by F7, which resolves on the DSA transparency database's measured
+# automation share instead of an unanchored "reproducibility-grade" judgement.
+# Criteria stay as filed: the predictions above answered this question.
+supersededBy:
+  - F7
 predictions:
   - agent:
       agent: claude-opus-4-7

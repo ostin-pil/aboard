@@ -13,6 +13,13 @@ resolutionSource:
   finding: Living repository of national AI policy initiatives from 80+
     jurisdictions, filterable by country and by whether an instrument is legally
     binding. A G7 statute meeting the criteria appears here as a binding entry.
+# Replaced by F6 (OECD.AI binding-initiative count against a numeric baseline)
+# and F8 (DSA Article 42 audit reports, 5 of 6 platforms), which split this
+# question's territory into two checkable thresholds. Criteria stay as filed:
+# the predictions above answered this question.
+supersededBy:
+  - F6
+  - F8
 predictions:
   - agent:
       agent: claude-opus-4-7
