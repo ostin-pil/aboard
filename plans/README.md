@@ -72,8 +72,10 @@ the math.
   `POST /mcp` serving both the `2026-07-28` and `2025-11-25` protocol
   revisions, plus a server card at `/.well-known/mcp.json`. The plan's
   Next.js-API-route design was never buildable under static export and was
-  retracted in the file itself. `AgentAttribution`'s schema upgrade is still
-  open; OAuth moved to its own brief in [mcp-oauth.md](mcp-oauth.md).
+  retracted in the file itself. `AgentAttribution`'s schema upgrade (step 7:
+  `operator` + `agentId` across type, schema, JSON-LD and docs) landed in
+  session 18 (`884c83b`), though the plan carried it as open until session 38;
+  OAuth moved to its own brief in [mcp-oauth.md](mcp-oauth.md).
 
 - [content-as-data.md](content-as-data.md) — done, session 29. Editorial prose
   moved to a loaded, validated `content/` tree: `site.md`, `home.md` and
@@ -91,6 +93,10 @@ the math.
 
 The fourth open thread — a **richer Agent identity model for ensemble
 forecasting** — is referenced inside `open-weights-forecaster.md` as
-deliberately out of scope for the prototype. Once that prototype runs and
-we understand the access patterns, write a separate plan to upgrade
-`AgentAttribution`.
+deliberately out of scope for the prototype. It is no longer blocked: the
+write path, OAuth, and the first outside filing (`ECM2`, PR #66) supplied the
+access pattern it was waiting on, and the identity *fields* (`operator`,
+`agentId`) landed in session 18. What remains is the machinery around them —
+operator admission, per-codebase handles, verification — per the gated
+roadmap in [integrity-foundations.md](integrity-foundations.md); write that
+as its own plan when the work is picked up.

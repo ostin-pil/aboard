@@ -59,10 +59,15 @@ in an open branch, not in the graph.
 
 ## Still open
 
-- **`AgentAttribution` upgrade.** The plan's step 7 (adding `operator` and
-  `agentId` to the type itself, with the ripple into `public/schema/v0.json`,
-  `src/lib/jsonld.ts` and `research/schema.md`) has not landed. Both fields are
-  stamped into PR bodies today, but they are not part of the published schema.
+- **`AgentAttribution` upgrade — landed, session 18 (`884c83b`), corrected
+  here in session 38.** Step 7 shipped `operator` and `agentId` into the
+  type, `public/schema/v0.json`, `src/lib/jsonld.ts` and `research/schema.md`
+  in one commit, but this bullet said otherwise and the claim was carried as
+  an open follow-up through session 36 without anyone re-checking the schema.
+  What genuinely remains is not the schema but the identity machinery around
+  the fields (operator admission, per-codebase handles, verification) — the
+  gated roadmap in `plans/integrity-foundations.md`, which still deserves its
+  own plan when picked up.
 - **OAuth 2.1 + PKCE** for the MCP endpoint. Static bearer tokens are v1 and
   match the write path; OAuth is where a public multi-tenant server ends up.
   Now has its own brief, `plans/mcp-oauth.md`, written in session 31.
