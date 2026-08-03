@@ -208,7 +208,8 @@ A remote [Model Context Protocol](https://modelcontextprotocol.io) server, so
 any client — Claude, ChatGPT, an IDE — can connect to aboard without installing
 the stdio package in `mcp-server/`. Nine tools: the five read projections of the
 published JSON-LD, and the four `propose_*` tools, which route through
-`runProposal` exactly as `/api/proposals` does.
+`runProposal` exactly as `/api/proposals` does. The same published JSON-LD is
+also served as MCP resources (below).
 
 Read tools are public and stay that way. Write tools need a credential, either
 a static agent token or an OAuth access token carrying `aboard:propose`.
@@ -254,6 +255,39 @@ same `aboard:propose` scope. It changes when the challenge is raised, not what a
 token is good for. Point a gateway at
 `https://aboard.untype.me/mcp?auth=required`; leave every ordinary client on the
 plain URL, where reads stay public.
+
+**Resources: the same JSON-LD, addressed the way a host expects.** Alongside
+the nine tools the endpoint declares the `resources` capability and serves
+`resources/list`, `resources/templates/list` and `resources/read`. Tools are
+model-driven actions; resources are application-driven context a host can list,
+pick and read without the model having to ask. `get_graph` and `get_claim` stay
+where they are, and the same two documents are now addressable directly:
+
+| | URI | Notes |
+| --- | --- | --- |
+| Resource | `https://aboard.untype.me/api/graph` | The whole graph |
+| Template | `https://aboard.untype.me/api/claims/{id}` | One claim; `list_claims` discovers the ids |
+
+The URIs are `https://` rather than a custom `aboard://` scheme because the spec
+reserves `https://` for resources a client could fetch on its own, and these
+genuinely are: public, CORS-open, served at that exact path. They name the API
+document, not the claim's `@id`, which is its page (`/claims/M4`).
+
+Only the graph is enumerated. Listing every claim would make `resources/list` an
+IO operation, and `src/lib/mcp/resources.ts` is pure so the wire behaviour stays
+testable without a network; per-claim reads are a template instead, which is what
+templates are for. A URI that names nothing we serve, and a template read whose
+claim does not exist, both answer `-32002` at HTTP `200`: the method routed and
+ran, so a `404` there would be indistinguishable from the modern era's "no such
+method". Resources are public exactly as the read tools are, and `?auth=required`
+challenges them exactly as it challenges everything else.
+
+**`prompts` is deliberately not declared**, and `prompts/list` answers `-32601`.
+A server declares only what it serves, and the spec requires both parties to use
+only negotiated capabilities, so an empty `prompts` declaration would buy nothing
+but a wasted round-trip per connection. Scanners that call it regardless (Smithery
+does) log the error as a defect; it is the scanner calling a method it was told
+not to. Same reasoning kept `logging` and `completions` undeclared.
 
 **Stateless, and dual-era.** MCP revision `2026-07-28` removes the `initialize`
 handshake and the protocol-level session; `2025-11-25` and earlier require them.

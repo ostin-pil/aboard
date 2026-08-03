@@ -16,9 +16,11 @@
 import {
   INTERNAL_ERROR,
   PARSE_ERROR,
+  RESOURCE_NOT_FOUND,
   isAllowedOrigin,
   jsonToolResult,
   planMessage,
+  resourceResult,
   toolResult,
   type Era,
   type JsonRpcErrorBody,
@@ -400,6 +402,22 @@ export async function handleMcp(request: Request, deps: McpDeps): Promise<Respon
   }
   if (plan.kind === "result") {
     return rpcResult(plan.id, plan.era, plan.result, origin);
+  }
+
+  // Resources are the published JSON-LD, so they are public exactly as the read
+  // tools are: no credential is asked for here. A URI that resolved but whose
+  // document is absent (an id that names no claim) is the same -32002 the
+  // protocol layer raises for a URI that never resolved.
+  if (plan.kind === "resource") {
+    const document = await fetchAsset(deps, plan.path, request.url);
+    if (document === null) {
+      return rpcError(plan.id, 200, {
+        code: RESOURCE_NOT_FOUND,
+        message: `No resource at '${plan.uri}'.`,
+        data: { uri: plan.uri },
+      }, origin);
+    }
+    return rpcResult(plan.id, plan.era, resourceResult(plan.uri, document), origin);
   }
 
   // A write tool needs a credential, and a missing or insufficient one is a

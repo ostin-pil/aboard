@@ -6,6 +6,7 @@ import {
   METHOD_NOT_FOUND,
   MODERN_PROTOCOL_VERSION,
   LATEST_LEGACY_PROTOCOL_VERSION,
+  RESOURCE_NOT_FOUND,
   SUPPORTED_PROTOCOL_VERSIONS,
   UNSUPPORTED_PROTOCOL_VERSION,
   decodeHeaderValue,
@@ -18,6 +19,8 @@ import {
   type HeaderReader,
   type McpPlan,
 } from "@/lib/mcp/protocol";
+import { CLAIM_RESOURCE_TEMPLATE, GRAPH_RESOURCE_URI } from "@/lib/mcp/resources";
+import { CANONICAL_ORIGIN } from "@/lib/site";
 
 /** A case-insensitive header bag, the way `Headers` behaves. */
 function headers(entries: Record<string, string> = {}): HeaderReader {
@@ -255,7 +258,7 @@ describe("protocol version support", () => {
 });
 
 describe("planMessage", () => {
-  it("answers a legacy initialize with the negotiated version and the tools capability", () => {
+  it("answers a legacy initialize with the negotiated version and its capabilities", () => {
     const plan = expectResult(
       planMessage(
         {
@@ -269,7 +272,7 @@ describe("planMessage", () => {
     );
     expect(plan.era).toBe("legacy");
     expect(plan.result.protocolVersion).toBe("2025-06-18");
-    expect(plan.result.capabilities).toEqual({ tools: {} });
+    expect(plan.result.capabilities).toEqual({ tools: {}, resources: {} });
     expect(plan.result.serverInfo).toMatchObject({ name: "aboard" });
     expect(typeof plan.result.instructions).toBe("string");
   });
@@ -293,7 +296,7 @@ describe("planMessage", () => {
     const { body, headers: h } = modern("server/discover");
     const plan = expectResult(planMessage(body, h));
     expect(plan.result.supportedVersions).toEqual([...SUPPORTED_PROTOCOL_VERSIONS]);
-    expect(plan.result.capabilities).toEqual({ tools: {} });
+    expect(plan.result.capabilities).toEqual({ tools: {}, resources: {} });
   });
 
   it("lists all nine tools", () => {
@@ -303,15 +306,26 @@ describe("planMessage", () => {
 
   it("reports an unknown method as -32601, with 404 in the modern era only", () => {
     const legacy = expectError(
-      planMessage({ jsonrpc: "2.0", id: 4, method: "resources/list" }, headers()),
+      planMessage({ jsonrpc: "2.0", id: 4, method: "prompts/list" }, headers()),
     );
     expect(legacy.error.code).toBe(METHOD_NOT_FOUND);
     expect(legacy.status).toBe(200);
 
-    const { body, headers: h } = modern("resources/list");
+    const { body, headers: h } = modern("prompts/list");
     const mod = expectError(planMessage(body, h));
     expect(mod.error.code).toBe(METHOD_NOT_FOUND);
     expect(mod.status).toBe(404);
+  });
+
+  // `prompts` is deliberately not declared, so a client MUST NOT call it and
+  // -32601 is the correct answer. Pinned as a test because a scanner that calls
+  // it anyway (Smithery does) reads the error as a defect, and the temptation is
+  // to silence the warning by declaring a capability this server does not have.
+  it("leaves prompts undeclared and unimplemented", () => {
+    const plan = expectResult(
+      planMessage({ jsonrpc: "2.0", id: 1, method: "server/discover" }, headers()),
+    );
+    expect(plan.result.capabilities).not.toHaveProperty("prompts");
   });
 
   it("reports a malformed body as -32600", () => {
@@ -373,6 +387,97 @@ describe("tools/call argument handling", () => {
     );
     if (plan.kind !== "call") throw new Error("expected a call plan");
     expect(plan.args).toEqual({ domain: "inequality" });
+  });
+});
+
+describe("resources", () => {
+  function expectResource(plan: McpPlan): Extract<McpPlan, { kind: "resource" }> {
+    if (plan.kind !== "resource") throw new Error(`expected a resource plan, got ${plan.kind}`);
+    return plan;
+  }
+
+  it("lists the graph, and the claim template separately", () => {
+    const list = expectResult(
+      planMessage({ jsonrpc: "2.0", id: 1, method: "resources/list" }, headers()),
+    );
+    expect(list.result.resources).toEqual([
+      expect.objectContaining({ uri: GRAPH_RESOURCE_URI }),
+    ]);
+
+    const templates = expectResult(
+      planMessage({ jsonrpc: "2.0", id: 2, method: "resources/templates/list" }, headers()),
+    );
+    expect(templates.result.resourceTemplates).toEqual([
+      expect.objectContaining({ uriTemplate: CLAIM_RESOURCE_TEMPLATE }),
+    ]);
+  });
+
+  it("omits nextCursor, which is what says the page is the whole list", () => {
+    const list = expectResult(
+      planMessage({ jsonrpc: "2.0", id: 1, method: "resources/list" }, headers()),
+    );
+    expect(list.result).not.toHaveProperty("nextCursor");
+  });
+
+  it("plans a read of the graph and of a claim, resolving each to an asset path", () => {
+    const graph = expectResource(
+      planMessage(
+        { jsonrpc: "2.0", id: 1, method: "resources/read", params: { uri: GRAPH_RESOURCE_URI } },
+        headers(),
+      ),
+    );
+    expect(graph.path).toBe("/api/graph");
+    expect(graph.uri).toBe(GRAPH_RESOURCE_URI);
+
+    const claim = expectResource(
+      planMessage(
+        {
+          jsonrpc: "2.0",
+          id: 2,
+          method: "resources/read",
+          params: { uri: `${CANONICAL_ORIGIN}/api/claims/M4` },
+        },
+        headers(),
+      ),
+    );
+    expect(claim.path).toBe("/api/claims/M4");
+  });
+
+  it("answers an unknown URI with -32002 at HTTP 200, naming what does exist", () => {
+    const plan = expectError(
+      planMessage(
+        {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "resources/read",
+          params: { uri: "https://elsewhere.example/api/graph" },
+        },
+        headers(),
+      ),
+    );
+    expect(plan.error.code).toBe(RESOURCE_NOT_FOUND);
+    // Not 404: that status is how the modern era says "no such method", and a
+    // resolved method answering about a missing document is a different thing.
+    expect(plan.status).toBe(200);
+    expect(plan.error.data?.known).toEqual([GRAPH_RESOURCE_URI]);
+    expect(plan.error.data?.templates).toEqual([CLAIM_RESOURCE_TEMPLATE]);
+  });
+
+  it("requires a string uri", () => {
+    const plan = expectError(
+      planMessage(
+        { jsonrpc: "2.0", id: 1, method: "resources/read", params: { uri: 42 } },
+        headers(),
+      ),
+    );
+    expect(plan.error.code).toBe(INVALID_PARAMS);
+  });
+
+  it("serves resources in the modern era too", () => {
+    const { body, headers: h } = modern("resources/read", { uri: GRAPH_RESOURCE_URI });
+    const plan = expectResource(planMessage(body, h));
+    expect(plan.era).toBe("modern");
+    expect(plan.path).toBe("/api/graph");
   });
 });
 

@@ -28,6 +28,12 @@
  * Serving both is the point: no shipping client speaks `2026-07-28` yet, and
  * every client will eventually.
  */
+import {
+  RESOURCE_MIME_TYPE,
+  resolveResourceUri,
+  resourceListing,
+  resourceTemplateListing,
+} from "@/lib/mcp/resources";
 import { findTool, toolListing, type ToolDescriptor } from "@/lib/mcp/tools";
 import { CANONICAL_ORIGIN } from "@/lib/site";
 
@@ -74,6 +80,8 @@ export const INVALID_REQUEST = -32600;
 export const METHOD_NOT_FOUND = -32601;
 export const INVALID_PARAMS = -32602;
 export const INTERNAL_ERROR = -32603;
+/** MCP-allocated: the URI in a `resources/read` names nothing this server serves. */
+export const RESOURCE_NOT_FOUND = -32002;
 /** MCP-allocated: headers do not match the body, or a required one is missing. */
 export const HEADER_MISMATCH = -32020;
 /** MCP-allocated: carries the server's supported versions in `data.supported`. */
@@ -258,12 +266,22 @@ export function validateModernHeaders(
 
 // --- results ---------------------------------------------------------------
 
+/**
+ * What this server offers.
+ *
+ * `tools` and `resources` only. No `listChanged` on either: the tool catalogue
+ * is compiled in, the resource list is one entry, and this server opens no
+ * stream to announce a change on. No `subscribe`, for the same reason. No
+ * `prompts`, `logging` or `completions` — declaring a capability is a promise
+ * to serve it, and a client MUST only use what was negotiated, so an empty
+ * declaration would buy nothing but two wasted round-trips per connection.
+ */
+const CAPABILITIES = { tools: {}, resources: {} } as const;
+
 export function initializeResult(requestedVersion: unknown): Record<string, unknown> {
   return {
     protocolVersion: negotiateLegacyVersion(requestedVersion),
-    // No listChanged: the catalogue is compiled in, and this server opens no
-    // stream to announce a change on.
-    capabilities: { tools: {} },
+    capabilities: CAPABILITIES,
     serverInfo: SERVER_INFO,
     instructions: SERVER_INSTRUCTIONS,
   };
@@ -272,7 +290,7 @@ export function initializeResult(requestedVersion: unknown): Record<string, unkn
 export function discoverResult(): Record<string, unknown> {
   return {
     supportedVersions: [...SUPPORTED_PROTOCOL_VERSIONS],
-    capabilities: { tools: {} },
+    capabilities: CAPABILITIES,
     instructions: SERVER_INSTRUCTIONS,
     _meta: {
       "io.modelcontextprotocol/serverInfo": {
@@ -291,6 +309,16 @@ export function toolResult(text: string, isError = false): Record<string, unknow
 
 export function jsonToolResult(payload: unknown): Record<string, unknown> {
   return toolResult(JSON.stringify(payload, null, 2));
+}
+
+/** A `resources/read` result. The `uri` is echoed because a client may have
+ *  read several and matches contents back to requests by it. */
+export function resourceResult(uri: string, payload: unknown): Record<string, unknown> {
+  return {
+    contents: [
+      { uri, mimeType: RESOURCE_MIME_TYPE, text: JSON.stringify(payload, null, 2) },
+    ],
+  };
 }
 
 // --- planning --------------------------------------------------------------
@@ -312,7 +340,10 @@ export type McpPlan =
       /** Validated for read tools; passed through for writes, which are
        *  validated by the canonical schemas on the proposal path. */
       args: Record<string, unknown>;
-    };
+    }
+  /** A `resources/read` whose URI resolved. The Worker fetches `path` and
+   *  echoes `uri` back in the contents, as the spec requires. */
+  | { kind: "resource"; id: JsonRpcId; era: Era; uri: string; path: string };
 
 function errorPlan(
   id: JsonRpcId | null,
@@ -374,6 +405,39 @@ export function planMessage(raw: unknown, headers: HeaderReader): McpPlan {
   }
   if (method === "tools/list") {
     return { kind: "result", id, era, result: { tools: toolListing() } };
+  }
+  // Both listings fit in one page, so neither returns a `nextCursor`; its
+  // absence is what tells a paginating client it has the whole list.
+  if (method === "resources/list") {
+    return { kind: "result", id, era, result: { resources: resourceListing() } };
+  }
+  if (method === "resources/templates/list") {
+    return { kind: "result", id, era, result: { resourceTemplates: resourceTemplateListing() } };
+  }
+  if (method === "resources/read") {
+    const uri = params.uri;
+    if (typeof uri !== "string") {
+      return errorPlan(id, era, 400, {
+        code: INVALID_PARAMS,
+        message: 'resources/read requires a string "uri".',
+      });
+    }
+    const path = resolveResourceUri(uri);
+    if (path === null) {
+      // HTTP 200, not 404: the method routed and ran, and this is its answer.
+      // A 404 here would be indistinguishable from the modern era's
+      // "no such method" below, which is a different thing entirely.
+      return errorPlan(id, era, 200, {
+        code: RESOURCE_NOT_FOUND,
+        message: `No resource at '${uri}'.`,
+        data: {
+          uri,
+          known: resourceListing().map((r) => r.uri),
+          templates: resourceTemplateListing().map((t) => t.uriTemplate),
+        },
+      });
+    }
+    return { kind: "resource", id, era, uri, path };
   }
   if (method === "tools/call") {
     const name = params.name;
