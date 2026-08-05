@@ -321,6 +321,27 @@ Discovery: the server card is a static file, served at
 `/.well-known/mcp.json` (the registry's `server.schema.json` shape) and
 mirrored at `/.well-known/mcp/server-card.json`.
 
+The two paths are not interchangeable, even though they serve the same bytes.
+`scripts/publish-registry.sh` hard-codes the first one: it validates that file
+with `mcp-publisher validate`, compares it against production, and uploads it.
+The registry is push-based and never fetches either URL. So `mcp.json` is
+machinery with a validator attached, and the SEP-era path is a mirror kept for
+probes that only know that spelling. `src/lib/mcp/server-card.test.ts` holds
+them together, along with the version, which otherwise has four hand-written
+homes (`package.json`, `SERVER_VERSION`, and both cards).
+
+**The card is deliberately not in Smithery's shape.** Smithery documents a
+static card at the SEP-era path carrying `serverInfo`/`tools`/`resources`/
+`prompts`, which "bypasses scanning entirely". Adopting it was considered in
+session 42 and declined. That card exists for servers whose scan *cannot
+complete* — an auth wall, bot protection, required config. Ours completes: the
+Smithery registry API reports all nine tools, the claim-graph resource, and an
+empty prompt list, read live from the endpoint. Serving the static shape would
+replace working scanned metadata with hand-maintained assertions that need a
+generator and a gate to stay honest, and it would drop `remotes`, which is the
+only field in the card telling a generic agent where to connect. If the
+resources or prompts warnings reappear in a release log, this is the answer.
+
 ## Known gaps
 
 - **`authorization_response_iss_parameter_supported` is not advertised**, though
