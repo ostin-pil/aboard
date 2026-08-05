@@ -310,3 +310,45 @@ universally, so the autopin branch was abandoned (deleted; recover from
 `ae36481` if ever needed). Don't re-add the env var — the pin covers it.
 
 Status: resolved — `packageManager` pinned to npm.
+
+---
+
+## 2026-08-05 — the prose gate runs claude-plugins' working tree, whatever branch it is on
+
+**Symptom.** `bin/check-prose.sh` produces different results over time with
+no change to this repo, and results that a fresh clone of aboard on another
+machine would not reproduce.
+
+**Cause.** The resolver tries `prose-mint` on `PATH`, then
+`~/Projects/prose-mint/bin/prose-mint`. On this machine the first branch
+finds nothing, so the second is the live path rather than a fallback. And
+`~/Projects/prose-mint` is a symlink to
+`~/Projects/claude-plugins/prose-mint`, where `bin/prose-mint` is a launcher
+that runs the package straight from the checkout with no install. So the
+gate executes whatever claude-plugins currently has checked out, including
+uncommitted edits and whatever feature branch is open there.
+
+**Observed.** While claude-plugins sat on `feature/session-1-refetch` on
+2026-08-05, a `bin/check-prose.sh` run here would have linted against that
+branch's detectors. Nothing in aboard changed, and nothing in the output
+says which code ran.
+
+**Second-order.** The coupling currently runs in aboard's favour. The
+prose-mint plugin published through the marketplace is eight commits behind
+its source, and the tool it installs comes from PyPI via `uvx`, so a fresh
+install would lint with older code than this checkout does. Pinning to the
+published version would move the gate backwards until a release is cut.
+
+**Not fixed.** Two coherent options, and the choice is a real one. Pin to a
+released version (reproducible, currently older, needs a PyPI release to
+catch up), or keep the symlink and accept that the gate tracks a working
+tree (immediate iteration, not reproducible off this machine). Worth
+deciding on purpose rather than by default.
+
+**Dead link, found on the way.** `.claude/rules/prose-style.md` links
+prose-mint to `github.com/ostin-pil/prose-mint`, which returns 404. The
+code lives in `ostin-pil/claude-plugins` under `prose-mint/`. Left for
+whoever fixes the link, since correcting it is a separate edit from
+deciding the pinning question.
+
+Status: open — behaviour understood, decision deferred.
