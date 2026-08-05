@@ -6,7 +6,8 @@ What the prose gate checks, where it is relaxed, and why. Referenced by
 
 ## What runs, and when
 
-`bin/check-prose.sh` wraps [prose-mint](https://github.com/ostin-pil/prose-mint),
+`bin/check-prose.sh` wraps
+[prose-mint](https://github.com/ostin-pil/claude-plugins/tree/main/prose-mint),
 which scans markdown for structural AI-writing tells: em dashes, ASCII arrows,
 "not X but Y", bold-colon openers, AI-attribution boilerplate, hard-wrapped
 paragraphs, and a few more.

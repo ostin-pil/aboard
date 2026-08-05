@@ -345,10 +345,10 @@ catch up), or keep the symlink and accept that the gate tracks a working
 tree (immediate iteration, not reproducible off this machine). Worth
 deciding on purpose rather than by default.
 
-**Dead link, found on the way.** `.claude/rules/prose-style.md` links
-prose-mint to `github.com/ostin-pil/prose-mint`, which returns 404. The
-code lives in `ostin-pil/claude-plugins` under `prose-mint/`. Left for
-whoever fixes the link, since correcting it is a separate edit from
-deciding the pinning question.
+**Dead link, found on the way, since fixed.** `.claude/rules/prose-style.md`
+linked prose-mint to `github.com/ostin-pil/prose-mint`, which returns 404.
+The code lives in `ostin-pil/claude-plugins` under `prose-mint/`, and the
+link now points there. That was a separate edit from the pinning question
+above, which is still open.
 
 Status: open — behaviour understood, decision deferred.
