@@ -12,6 +12,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # First, because it needs nothing installed and a broken shell script
+      # should not wait on npm. The session-end gate runs the same command
+      # (`build_commands` in .claude/lifecycle-manifest.md), but only when a
+      # session actually ends on a developer machine that has shellcheck. This
+      # step is the unconditional one: bin/check-prose.sh is the prose gate
+      # itself and scripts/publish-registry.sh handles a signing key, and
+      # neither is reachable from any Node command in this file.
+      - name: Shellcheck
+        run: shellcheck $(git ls-files '*.sh')
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22

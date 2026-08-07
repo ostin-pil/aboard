@@ -51,6 +51,10 @@ verify() {
   body="$(curl -fsS --max-time 30 --get "$REGISTRY/v0/servers" \
     --data-urlencode "search=$SERVER_NAME")" || die "registry unreachable"
 
+  # The single quotes are load-bearing: this is a JavaScript program, and its
+  # `${...}` and `$env` must reach node unexpanded. The values it needs arrive
+  # through the environment on the line below, not through shell interpolation.
+  # shellcheck disable=SC2016
   name="$SERVER_NAME" endpoint="$ENDPOINT" node -e '
     const { name, endpoint } = process.env
     const servers = JSON.parse(process.argv[1]).servers ?? []

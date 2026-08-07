@@ -34,8 +34,11 @@ log_glob: "sessions/[0-9]*_session*.md"
 log_presence_regex: '^sessions/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_session.*\.md$'
 
 # build / test gate (run in order, abort on first failure)
-code_globs: ["*.ts", "*.tsx", "*.js"]
-build_commands: ["npx tsc --noEmit", "npm run lint:resolution -- --strict", "npm run build"]
+# "*.sh" is in code_globs only because shellcheck is in build_commands. The
+# Node commands below never read a shell script, so classifying a shell-only
+# change as a code session buys nothing on its own. See session 45.
+code_globs: ["*.ts", "*.tsx", "*.js", "*.sh"]
+build_commands: ["shellcheck $(git ls-files '*.sh')", "npx tsc --noEmit", "npm run lint:resolution -- --strict", "npm run build"]
 test_commands: ["npm test"]          # vitest, unit tests over the pure lib modules
 subpkg_guard: none
 

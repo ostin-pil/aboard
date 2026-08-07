@@ -14,6 +14,7 @@ npx tsc --noEmit     # type-check only, faster
 npm run lint         # eslint
 npm run test         # vitest
 npm run lint:resolution   # forecast resolution-criteria rigor; session-end gates on --strict
+shellcheck $(git ls-files '*.sh')   # shell scripts; session-end and CI both gate on it
 ```
 
 `lint:resolution` reports forecasts a distrustful reader could not settle:
@@ -24,6 +25,13 @@ replacements they name. Warn-only by default and outside `npm run build`, but
 the session-end gate runs it with `--strict` (`build_commands` in
 `.claude/lifecycle-manifest.md`), so a session cannot land a forecast a
 distrustful reader could not settle.
+
+The repo's two shell scripts are `bin/check-prose.sh`, which is the prose gate
+itself, and `scripts/publish-registry.sh`, which handles a signing key and
+writes to a public registry. Both are executable behaviour that no Node command
+here can reach, so `shellcheck` runs in `build_commands` and as the first step
+in CI. That is also why `"*.sh"` is in `code_globs`: the classification only
+means something because a shell-aware command sits behind it.
 
 ## Architecture
 
@@ -164,3 +172,6 @@ After any change to `src/`, confirm it type-checks and builds:
 ```bash
 npx tsc --noEmit 2>&1 | tail -10
 ```
+
+After any change under `bin/` or `scripts/*.sh`, run `shellcheck` on it. Nothing
+else in the gate reads shell, so this is the only automated check that will.
