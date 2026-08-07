@@ -26,15 +26,36 @@ import {
 /** What an agent sends for `propose_claim`. Note what is absent: no `id`, no
  *  `authoredBy`, no `createdAt`. Those are the server's to mint. */
 export const ClaimPayload = z.object({
-  domain: z.string().min(1),
-  kind: ClaimKind,
-  title: z.string().min(1),
-  statement: z.string().min(1),
-  confidence: z.number().min(0).max(1),
+  domain: z
+    .string()
+    .min(1)
+    .describe(
+      "Domain the claim belongs to, e.g. 'inequality' or 'democratic_backsliding'. " +
+        "Call list_claims to see the domains in use.",
+    ),
+  kind: ClaimKind.describe(
+    "Where the claim sits in the problem tree: 'symptom' (an observed harm), " +
+      "'mechanism' (what produces it), or 'leverage_point' (where intervention acts).",
+  ),
+  title: z.string().min(1).describe("Short noun phrase naming the claim, used as its label."),
+  statement: z
+    .string()
+    .min(1)
+    .describe("The falsifiable claim itself, stated so a distrustful reader could check it."),
+  confidence: z
+    .number()
+    .min(0)
+    .max(1)
+    .describe("Your credence that the statement is true, 0 to 1."),
   // At least one source. A claim with no citation is exactly the thing this
   // project exists not to publish, so it is rejected at the door rather than
   // left for a reviewer to catch.
-  sources: z.array(Source).min(1),
+  sources: z
+    .array(Source)
+    .min(1)
+    .describe(
+      "At least one real source with a resolvable URL. A claim with no citation is rejected.",
+    ),
 });
 export type ClaimPayload = z.infer<typeof ClaimPayload>;
 
@@ -43,11 +64,21 @@ export type ClaimPayload = z.infer<typeof ClaimPayload>;
  *  The rationale is not here — it rides the envelope (like a claim's), and for an
  *  edge it is also stored as the edge's own `rationale`. */
 export const EdgePayload = z.object({
-  from: z.string().min(1).describe("Source claim id."),
-  to: z.string().min(1).describe("Target claim id."),
-  kind: EdgeKind,
-  strength: z.number().min(0).max(1),
-  sources: z.array(Source).default([]),
+  from: z.string().min(1).describe("Source claim id, the cause end of the relation."),
+  to: z.string().min(1).describe("Target claim id, the effect end of the relation."),
+  kind: EdgeKind.describe(
+    "How the source acts on the target: 'causes', 'moderates' (changes the strength of " +
+      "another relation), 'reduces', or 'evidences' (supports rather than produces).",
+  ),
+  strength: z
+    .number()
+    .min(0)
+    .max(1)
+    .describe("How strongly the source acts on the target, 0 to 1."),
+  sources: z
+    .array(Source)
+    .default([])
+    .describe("Optional sources evidencing that the relation holds."),
 });
 export type EdgePayload = z.infer<typeof EdgePayload>;
 
@@ -56,7 +87,13 @@ export type EdgePayload = z.infer<typeof EdgePayload>;
  *  `createdAt` are stamped server-side. */
 export const PredictionPayload = z.object({
   forecastId: z.string().min(1).describe("Id of an existing forecast to append to."),
-  probability: z.number().min(0).max(1),
+  probability: z
+    .number()
+    .min(0)
+    .max(1)
+    .describe(
+      "Your probability that the forecast's resolution criteria will be met, 0 to 1.",
+    ),
   dataAnchors: z
     .array(Source)
     .default([])
@@ -66,15 +103,32 @@ export type PredictionPayload = z.infer<typeof PredictionPayload>;
 
 /** One steel-manned side of a dossier. The `authoredBy` is stamped server-side. */
 const ArgumentPayload = z.object({
-  thesis: z.string().min(1),
-  steelmannedSummary: z.string().min(1),
-  keySources: z.array(Source).min(1),
+  thesis: z.string().min(1).describe("One sentence stating what this side holds."),
+  steelmannedSummary: z
+    .string()
+    .min(1)
+    .describe(
+      "The strongest honest version of this side's case, argued as its ablest proponent " +
+        "would argue it rather than as its opponents characterise it.",
+    ),
+  keySources: z.array(Source).min(1).describe("At least one real source this side rests on."),
 });
 
 const CruxPayload = z.object({
-  statement: z.string().min(1),
-  impactScore: z.number().min(0).max(1),
-  uncertainty: z.number().min(0).max(1),
+  statement: z
+    .string()
+    .min(1)
+    .describe("A question whose answer would move a reasonable holder of one side toward the other."),
+  impactScore: z
+    .number()
+    .min(0)
+    .max(1)
+    .describe("How much settling this crux would move the overall disagreement, 0 to 1."),
+  uncertainty: z
+    .number()
+    .min(0)
+    .max(1)
+    .describe("How unsettled the crux currently is, 0 to 1."),
 });
 
 /** What an agent sends for `propose_dossier`: a COMPLETE dual-dossier for a claim
@@ -82,10 +136,16 @@ const CruxPayload = z.object({
  *  form a valid one — the caller supplies both, and the server refuses to
  *  overwrite an existing dossier. */
 export const DossierPayload = z.object({
-  claimId: z.string().min(1),
-  pro: ArgumentPayload,
-  con: ArgumentPayload,
-  cruxes: z.array(CruxPayload).default([]),
+  claimId: z
+    .string()
+    .min(1)
+    .describe("Id of the contested claim this dossier is for. Refused if it already has one."),
+  pro: ArgumentPayload.describe("The steel-manned case that the claim holds."),
+  con: ArgumentPayload.describe("The steel-manned case against it. Required; a dossier is two-sided."),
+  cruxes: z
+    .array(CruxPayload)
+    .default([])
+    .describe("Optional ranked questions that would move the disagreement if settled."),
 });
 export type DossierPayload = z.infer<typeof DossierPayload>;
 

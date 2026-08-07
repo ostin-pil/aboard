@@ -92,3 +92,102 @@ describe("tool annotations", () => {
     }
   });
 });
+
+describe("parameter descriptions", () => {
+  // Every published parameter carries a description. This is what a caller
+  // reads to fill the argument in, and it is separately what the Smithery
+  // listing scores; 5 of 9 tools failed it before the payload schemas in
+  // proposals.ts were described.
+  it("describes every parameter of every tool", () => {
+    const undescribed: string[] = [];
+    for (const tool of toolListing()) {
+      const properties = (tool.inputSchema.properties ?? {}) as Record<
+        string,
+        { description?: string }
+      >;
+      for (const [field, schema] of Object.entries(properties)) {
+        if (!schema.description?.trim()) undescribed.push(`${tool.name}.${field}`);
+      }
+    }
+    expect(undescribed).toEqual([]);
+  });
+});
+
+// The point of deriving these from the canonical Zod payloads is that a client
+// is told exactly what the validator will accept. These assert the derivation
+// survived, not the wording of any particular field.
+describe("write tool schemas, derived from the canonical payloads", () => {
+  it("requires on propose_claim exactly what ClaimPayload requires, plus a rationale", () => {
+    const { required, properties } = shape("propose_claim");
+    expect(required.sort()).toEqual([
+      "confidence",
+      "domain",
+      "kind",
+      "rationale",
+      "sources",
+      "statement",
+      "title",
+    ]);
+    // Server-stamped fields are absent, so a caller cannot even name them.
+    expect(properties.id).toBeUndefined();
+    expect(properties.authoredBy).toBeUndefined();
+    expect(properties.createdAt).toBeUndefined();
+  });
+
+  it("carries the one-source-minimum onto the wire", () => {
+    const { properties } = shape("propose_claim");
+    expect(properties.sources.minItems).toBe(1);
+  });
+
+  it("carries the 0..1 bounds on a probability", () => {
+    const { properties } = shape("propose_forecast_prediction");
+    expect(properties.probability).toMatchObject({ type: "number", minimum: 0, maximum: 1 });
+  });
+
+  it("leaves defaulted fields optional", () => {
+    // Each of these has a default in its payload schema, so a caller may omit it.
+    expect(shape("propose_edge").required).not.toContain("sources");
+    expect(shape("propose_forecast_prediction").required).not.toContain("dataAnchors");
+    expect(shape("propose_dossier").required).not.toContain("cruxes");
+  });
+
+  it("requires both sides of a dossier", () => {
+    const { required } = shape("propose_dossier");
+    expect(required).toContain("pro");
+    expect(required).toContain("con");
+  });
+
+  it("names the rationale field each write tool actually reads", () => {
+    for (const tool of TOOLS) {
+      if (tool.handler.kind !== "write") continue;
+      const { required } = shape(tool.name);
+      expect(required).toContain(tool.handler.rationaleField);
+    }
+  });
+
+  it("tells the caller a token is needed and that nothing auto-merges", () => {
+    for (const tool of TOOLS) {
+      if (tool.handler.kind !== "write") continue;
+      expect(tool.description).toMatch(/Bearer/);
+      expect(tool.description).toMatch(/NEVER auto-merged/);
+    }
+  });
+});
+
+describe("read tool schemas", () => {
+  it("requires an id where one is needed and nothing where none is", () => {
+    expect(shape("get_claim").required).toEqual(["id"]);
+    expect(shape("get_forecast").required).toEqual(["id"]);
+    expect(shape("get_dossier").required).toEqual(["claim_id"]);
+    expect(shape("get_graph").required).toEqual([]);
+    expect(shape("list_claims").required).toEqual([]);
+  });
+});
+
+describe("findTool", () => {
+  it("finds a tool by name and is case-sensitive", () => {
+    expect(findTool("get_claim")?.name).toBe("get_claim");
+    expect(findTool("Get_Claim")).toBeUndefined();
+    expect(findTool("nope")).toBeUndefined();
+  });
+});
