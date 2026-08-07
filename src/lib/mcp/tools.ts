@@ -52,12 +52,62 @@ export type ReadOp =
   | "get_forecast"
   | "get_dossier";
 
+/**
+ * The behavioural hints `tools/list` publishes alongside a tool.
+ *
+ * The spec is explicit that a client **MUST** treat these as untrusted unless
+ * the server is trusted, so they are a display and reasoning aid, never an
+ * access-control decision. That cuts both ways: they buy a caller nothing if
+ * they are wrong, so the only version worth publishing is the honest one.
+ *
+ * `destructiveHint` and `idempotentHint` are meaningful only when
+ * `readOnlyHint` is false, so they are omitted on the read tools rather than
+ * set to a value that reads as a claim about a question that does not arise.
+ */
+export type ToolAnnotations = {
+  readOnlyHint: boolean;
+  destructiveHint?: boolean;
+  idempotentHint?: boolean;
+  openWorldHint: boolean;
+};
+
+/**
+ * Annotations are *derived* from the handler, not written per tool.
+ *
+ * The handler already encodes the only thing the hints depend on: whether a
+ * tool reads a projection of the published graph or files a proposal. Writing
+ * them out per tool would be a second statement of that same fact, free to
+ * drift the moment a tool changes kind, which is the duplication the input
+ * schemas are derived to avoid.
+ */
+function annotationsFor(handler: ToolHandler): ToolAnnotations {
+  if (handler.kind === "read") {
+    // Reads a projection of our own published API: a closed, known domain, so
+    // not "open world" in the sense the spec means (a web search or a fetch of
+    // an arbitrary URL).
+    return { readOnlyHint: true, openWorldHint: false };
+  }
+  return {
+    readOnlyHint: false,
+    // Opens a pull request. It adds, never edits or deletes, and the PR is
+    // never auto-merged, so nothing a caller does here can destroy existing
+    // graph data. This is the substantive claim in the whole set.
+    destructiveHint: false,
+    // Two identical calls open two pull requests. Nothing dedupes them.
+    idempotentHint: false,
+    // The proposal lands on GitHub, which is an external system.
+    openWorldHint: true,
+  };
+}
+
 export type ToolDescriptor = {
   name: string;
   title: string;
   description: string;
   /** Rendered from `args`; what `tools/list` publishes. */
   inputSchema: JsonSchema;
+  /** Derived from `handler`; what `tools/list` publishes. */
+  annotations: ToolAnnotations;
   /** The same shape as `inputSchema`, still executable. Validates read args. */
   args: z.ZodType;
   handler: ToolHandler;
@@ -77,7 +127,15 @@ function tool(
   args: z.ZodType,
   handler: ToolHandler,
 ): ToolDescriptor {
-  return { name, title, description, inputSchema: schemaOf(args), args, handler };
+  return {
+    name,
+    title,
+    description,
+    inputSchema: schemaOf(args),
+    annotations: annotationsFor(handler),
+    args,
+    handler,
+  };
 }
 
 // --- read tools ------------------------------------------------------------
@@ -240,11 +298,18 @@ export function findTool(name: string): ToolDescriptor | undefined {
 }
 
 /** What `tools/list` publishes: the catalogue without the executable schema. */
-export function toolListing(): { name: string; title: string; description: string; inputSchema: JsonSchema }[] {
-  return TOOLS.map(({ name, title, description, inputSchema }) => ({
+export function toolListing(): {
+  name: string;
+  title: string;
+  description: string;
+  inputSchema: JsonSchema;
+  annotations: ToolAnnotations;
+}[] {
+  return TOOLS.map(({ name, title, description, inputSchema, annotations }) => ({
     name,
     title,
     description,
     inputSchema,
+    annotations,
   }));
 }

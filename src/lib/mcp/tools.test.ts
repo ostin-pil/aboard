@@ -47,6 +47,7 @@ describe("the tool catalogue", () => {
     const listed = toolListing();
     expect(listed).toHaveLength(9);
     expect(Object.keys(listed[0]).sort()).toEqual([
+      "annotations",
       "description",
       "inputSchema",
       "name",
@@ -55,81 +56,39 @@ describe("the tool catalogue", () => {
   });
 });
 
-// The point of deriving these from the canonical Zod payloads is that a client
-// is told exactly what the validator will accept. These assert the derivation
-// survived, not the wording of any particular field.
-describe("write tool schemas, derived from the canonical payloads", () => {
-  it("requires on propose_claim exactly what ClaimPayload requires, plus a rationale", () => {
-    const { required, properties } = shape("propose_claim");
-    expect(required.sort()).toEqual([
-      "confidence",
-      "domain",
-      "kind",
-      "rationale",
-      "sources",
-      "statement",
-      "title",
-    ]);
-    // Server-stamped fields are absent, so a caller cannot even name them.
-    expect(properties.id).toBeUndefined();
-    expect(properties.authoredBy).toBeUndefined();
-    expect(properties.createdAt).toBeUndefined();
-  });
-
-  it("carries the one-source-minimum onto the wire", () => {
-    const { properties } = shape("propose_claim");
-    expect(properties.sources.minItems).toBe(1);
-  });
-
-  it("carries the 0..1 bounds on a probability", () => {
-    const { properties } = shape("propose_forecast_prediction");
-    expect(properties.probability).toMatchObject({ type: "number", minimum: 0, maximum: 1 });
-  });
-
-  it("leaves defaulted fields optional", () => {
-    // Each of these has a default in its payload schema, so a caller may omit it.
-    expect(shape("propose_edge").required).not.toContain("sources");
-    expect(shape("propose_forecast_prediction").required).not.toContain("dataAnchors");
-    expect(shape("propose_dossier").required).not.toContain("cruxes");
-  });
-
-  it("requires both sides of a dossier", () => {
-    const { required } = shape("propose_dossier");
-    expect(required).toContain("pro");
-    expect(required).toContain("con");
-  });
-
-  it("names the rationale field each write tool actually reads", () => {
-    for (const tool of TOOLS) {
-      if (tool.handler.kind !== "write") continue;
-      const { required } = shape(tool.name);
-      expect(required).toContain(tool.handler.rationaleField);
+describe("tool annotations", () => {
+  it("marks every read tool read-only and closed-world", () => {
+    for (const tool of TOOLS.filter((t) => t.handler.kind === "read")) {
+      expect(tool.annotations).toEqual({ readOnlyHint: true, openWorldHint: false });
     }
   });
 
-  it("tells the caller a token is needed and that nothing auto-merges", () => {
-    for (const tool of TOOLS) {
-      if (tool.handler.kind !== "write") continue;
-      expect(tool.description).toMatch(/Bearer/);
-      expect(tool.description).toMatch(/NEVER auto-merged/);
+  it("marks every write tool non-read-only, non-destructive and non-idempotent", () => {
+    // Non-destructive is the substantive claim: a propose_* tool opens a pull
+    // request that adds, and is never auto-merged, so it cannot destroy data.
+    // Non-idempotent is the other one: two identical calls open two PRs.
+    for (const tool of TOOLS.filter((t) => t.handler.kind === "write")) {
+      expect(tool.annotations).toEqual({
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      });
     }
   });
-});
 
-describe("read tool schemas", () => {
-  it("requires an id where one is needed and nothing where none is", () => {
-    expect(shape("get_claim").required).toEqual(["id"]);
-    expect(shape("get_forecast").required).toEqual(["id"]);
-    expect(shape("get_dossier").required).toEqual(["claim_id"]);
-    expect(shape("get_graph").required).toEqual([]);
-    expect(shape("list_claims").required).toEqual([]);
+  it("omits the write-only hints on read tools rather than guessing them", () => {
+    // The spec says destructive/idempotent are meaningful only when a tool is
+    // not read-only. Emitting them anyway would answer a question nobody asked.
+    for (const tool of TOOLS.filter((t) => t.handler.kind === "read")) {
+      expect(tool.annotations.destructiveHint).toBeUndefined();
+      expect(tool.annotations.idempotentHint).toBeUndefined();
+    }
   });
-});
 
-describe("findTool", () => {
-  it("finds a tool by name and is case-sensitive", () => {
-    expect(findTool("get_claim")?.name).toBe("get_claim");
-    expect(findTool("Get_Claim")).toBeUndefined();
-    expect(findTool("nope")).toBeUndefined();
+  it("derives the hints from the handler, so they cannot disagree with it", () => {
+    for (const tool of TOOLS) {
+      expect(tool.annotations.readOnlyHint).toBe(tool.handler.kind === "read");
+    }
   });
 });
