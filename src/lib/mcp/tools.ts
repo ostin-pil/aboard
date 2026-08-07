@@ -15,6 +15,7 @@
  * Zod and rendered through the same path.
  */
 import { z } from "zod";
+import { envelopeSchema, publishedDocumentSchema } from "@/lib/mcp/output-schemas";
 import {
   ClaimPayload,
   DossierPayload,
@@ -52,12 +53,72 @@ export type ReadOp =
   | "get_forecast"
   | "get_dossier";
 
+/**
+ * The behavioural hints `tools/list` publishes alongside a tool.
+ *
+ * The spec is explicit that a client **MUST** treat these as untrusted unless
+ * the server is trusted, so they are a display and reasoning aid, never an
+ * access-control decision. That cuts both ways: they buy a caller nothing if
+ * they are wrong, so the only version worth publishing is the honest one.
+ *
+ * `destructiveHint` and `idempotentHint` are meaningful only when
+ * `readOnlyHint` is false, so they are omitted on the read tools rather than
+ * set to a value that reads as a claim about a question that does not arise.
+ */
+export type ToolAnnotations = {
+  readOnlyHint: boolean;
+  destructiveHint?: boolean;
+  idempotentHint?: boolean;
+  openWorldHint: boolean;
+};
+
+/**
+ * Annotations are *derived* from the handler, not written per tool.
+ *
+ * The handler already encodes the only thing the hints depend on: whether a
+ * tool reads a projection of the published graph or files a proposal. Writing
+ * them out per tool would be a second statement of that same fact, free to
+ * drift the moment a tool changes kind, which is the duplication the input
+ * schemas are derived to avoid.
+ */
+function annotationsFor(handler: ToolHandler): ToolAnnotations {
+  if (handler.kind === "read") {
+    // Reads a projection of our own published API: a closed, known domain, so
+    // not "open world" in the sense the spec means (a web search or a fetch of
+    // an arbitrary URL).
+    return { readOnlyHint: true, openWorldHint: false };
+  }
+  return {
+    readOnlyHint: false,
+    // Opens a pull request. It adds, never edits or deletes, and the PR is
+    // never auto-merged, so nothing a caller does here can destroy existing
+    // graph data. This is the substantive claim in the whole set.
+    destructiveHint: false,
+    // Two identical calls open two pull requests. Nothing dedupes them.
+    idempotentHint: false,
+    // The proposal lands on GitHub, which is an external system.
+    openWorldHint: true,
+  };
+}
+
 export type ToolDescriptor = {
   name: string;
   title: string;
   description: string;
   /** Rendered from `args`; what `tools/list` publishes. */
   inputSchema: JsonSchema;
+  /**
+   * What the tool's `structuredContent` conforms to.
+   *
+   * The spec makes this binding: declaring it obliges the server to return
+   * structured results that match. It is therefore declared only where the
+   * shape is actually guaranteed — the published documents, whose contract
+   * `public/schema/v0.json` already holds, and the envelopes this layer builds
+   * itself.
+   */
+  outputSchema: JsonSchema;
+  /** Derived from `handler`; what `tools/list` publishes. */
+  annotations: ToolAnnotations;
   /** The same shape as `inputSchema`, still executable. Validates read args. */
   args: z.ZodType;
   handler: ToolHandler;
@@ -76,9 +137,73 @@ function tool(
   description: string,
   args: z.ZodType,
   handler: ToolHandler,
+  outputSchema: JsonSchema,
 ): ToolDescriptor {
-  return { name, title, description, inputSchema: schemaOf(args), args, handler };
+  return {
+    name,
+    title,
+    description,
+    inputSchema: schemaOf(args),
+    outputSchema,
+    annotations: annotationsFor(handler),
+    args,
+    handler,
+  };
 }
+
+// --- output shapes ---------------------------------------------------------
+//
+// Three read tools return a document `public/schema/v0.json` already describes,
+// so those schemas are lifted from it rather than restated. The other two
+// return an envelope this layer builds, so those are declared here in Zod and
+// rendered through the same path as the input schemas.
+
+/** One row of `list_claims`, matching `toClaimSummary` in `worker/mcp.ts`. */
+const claimSummary = z.object({
+  id: z.string().describe("Claim id, e.g. 'M4'."),
+  kind: z.string().describe("'symptom', 'mechanism' or 'leverage_point'."),
+  title: z.string().describe("The claim's short name."),
+  domain: z.string().describe("Domain the claim belongs to."),
+  confidence: z.number().describe("The author's credence, 0 to 1."),
+});
+
+const listClaimsOutput = z.object({
+  count: z.number().int().describe("How many claims matched."),
+  domains: z.array(z.string()).describe("Every domain in the graph, not only the matched ones."),
+  claims: z.array(claimSummary).describe("The matching claims, as compact summaries."),
+});
+
+/**
+ * `get_forecast` resolves its id two ways and says which one it used, so the
+ * output is a discriminated union rather than one shape with optional halves.
+ * Modelling it as the latter would tell a client both fields might be absent,
+ * which is never true of either branch.
+ */
+const getForecastOutput = {
+  oneOf: [
+    {
+      type: "object",
+      description: "The id was a claim id; every forecast attached to it is returned.",
+      required: ["resolvedBy", "claimId", "forecasts"],
+      properties: {
+        resolvedBy: { const: "claim-id" },
+        claimId: { type: "string", description: "The claim id that was matched." },
+        forecasts: { type: "array", items: { $ref: "#/$defs/Forecast" } },
+      },
+      additionalProperties: false,
+    },
+    {
+      type: "object",
+      description: "The id was a forecast id; that one forecast is returned.",
+      required: ["resolvedBy", "forecast"],
+      properties: {
+        resolvedBy: { const: "forecast-id" },
+        forecast: { $ref: "#/$defs/Forecast" },
+      },
+      additionalProperties: false,
+    },
+  ],
+};
 
 // --- read tools ------------------------------------------------------------
 
@@ -143,6 +268,28 @@ const proposeDossierArgs = DossierPayload.extend({
  * serverInfo and drops ours, while tool descriptions are passed through
  * verbatim. This is the only text that reaches the caller who needs it.
  */
+/**
+ * What every `propose_*` tool returns on success.
+ *
+ * `merged` is a literal `false` rather than a boolean: the write path never
+ * auto-merges, so a schema saying "this might be true" would describe a state
+ * the server cannot produce. The description says it in prose and the type says
+ * it to a validator.
+ *
+ * A rejected proposal is an `isError` result carrying the validator's field
+ * paths as text, and no `structuredContent`. That is the shape the spec's own
+ * error examples use, and there is no honest structured value for "this did not
+ * happen".
+ */
+const proposalOutput = z.object({
+  proposalId: z.string().describe("Id assigned to the proposal, stamped server-side."),
+  pullRequest: z.string().describe("URL of the pull request that was opened."),
+  path: z.string().describe("Repository path the proposal writes to."),
+  merged: z
+    .literal(false)
+    .describe("Always false. A human reviews the PR and CI must pass; nothing auto-merges."),
+});
+
 const WRITE_AUTH_NOTE =
   "Requires an Authorization: Bearer token. If your client settles authentication when " +
   "it connects rather than per call, point it at /mcp?auth=required, which raises the " +
@@ -156,6 +303,7 @@ export const TOOLS: readonly ToolDescriptor[] = [
       "Optionally filter by domain (e.g. 'inequality', 'democratic_backsliding').",
     listClaimsArgs,
     { kind: "read", op: "list_claims" },
+    envelopeSchema(schemaOf(listClaimsOutput)),
   ),
   tool(
     "get_claim",
@@ -165,6 +313,7 @@ export const TOOLS: readonly ToolDescriptor[] = [
       "and dossier if present.",
     claimIdArgs,
     { kind: "read", op: "get_claim" },
+    publishedDocumentSchema("FullClaimResponse"),
   ),
   tool(
     "get_graph",
@@ -173,6 +322,7 @@ export const TOOLS: readonly ToolDescriptor[] = [
       "across all domains. Verbatim API response.",
     z.object({}),
     { kind: "read", op: "get_graph" },
+    publishedDocumentSchema("ClaimGraphResponse"),
   ),
   tool(
     "get_forecast",
@@ -183,6 +333,7 @@ export const TOOLS: readonly ToolDescriptor[] = [
       "the full graph.",
     forecastArgs,
     { kind: "read", op: "get_forecast" },
+    envelopeSchema(getForecastOutput, ["Forecast"]),
   ),
   tool(
     "get_dossier",
@@ -192,6 +343,7 @@ export const TOOLS: readonly ToolDescriptor[] = [
       "claim response under aboard:dossier.",
     dossierArgs,
     { kind: "read", op: "get_dossier" },
+    publishedDocumentSchema("Dossier"),
   ),
   tool(
     "propose_claim",
@@ -202,6 +354,7 @@ export const TOOLS: readonly ToolDescriptor[] = [
       "human reviews it and CI must pass. " + WRITE_AUTH_NOTE,
     proposeClaimArgs,
     { kind: "write", proposalKind: "claim", rationaleField: "rationale" },
+    envelopeSchema(schemaOf(proposalOutput)),
   ),
   tool(
     "propose_edge",
@@ -212,6 +365,7 @@ export const TOOLS: readonly ToolDescriptor[] = [
       "NEVER auto-merged: a human reviews it and CI must pass. " + WRITE_AUTH_NOTE,
     proposeEdgeArgs,
     { kind: "write", proposalKind: "edge", rationaleField: "rationale" },
+    envelopeSchema(schemaOf(proposalOutput)),
   ),
   tool(
     "propose_forecast_prediction",
@@ -221,6 +375,7 @@ export const TOOLS: readonly ToolDescriptor[] = [
       "auto-merged: a human reviews it and CI must pass. " + WRITE_AUTH_NOTE,
     proposePredictionArgs,
     { kind: "write", proposalKind: "prediction", rationaleField: "reasoning" },
+    envelopeSchema(schemaOf(proposalOutput)),
   ),
   tool(
     "propose_dossier",
@@ -232,6 +387,7 @@ export const TOOLS: readonly ToolDescriptor[] = [
       "stamped server-side. NEVER auto-merged. " + WRITE_AUTH_NOTE,
     proposeDossierArgs,
     { kind: "write", proposalKind: "dossier", rationaleField: "rationale" },
+    envelopeSchema(schemaOf(proposalOutput)),
   ),
 ];
 
@@ -240,11 +396,20 @@ export function findTool(name: string): ToolDescriptor | undefined {
 }
 
 /** What `tools/list` publishes: the catalogue without the executable schema. */
-export function toolListing(): { name: string; title: string; description: string; inputSchema: JsonSchema }[] {
-  return TOOLS.map(({ name, title, description, inputSchema }) => ({
+export function toolListing(): {
+  name: string;
+  title: string;
+  description: string;
+  inputSchema: JsonSchema;
+  outputSchema: JsonSchema;
+  annotations: ToolAnnotations;
+}[] {
+  return TOOLS.map(({ name, title, description, inputSchema, outputSchema, annotations }) => ({
     name,
     title,
     description,
     inputSchema,
+    outputSchema,
+    annotations,
   }));
 }
