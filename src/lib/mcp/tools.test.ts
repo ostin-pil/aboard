@@ -51,6 +51,7 @@ describe("the tool catalogue", () => {
       "description",
       "inputSchema",
       "name",
+      "outputSchema",
       "title",
     ]);
   });
@@ -189,5 +190,73 @@ describe("findTool", () => {
     expect(findTool("get_claim")?.name).toBe("get_claim");
     expect(findTool("Get_Claim")).toBeUndefined();
     expect(findTool("nope")).toBeUndefined();
+  });
+});
+
+describe("output schemas", () => {
+  it("declares one for every tool", () => {
+    for (const tool of toolListing()) {
+      expect(tool.outputSchema, tool.name).toBeTruthy();
+      expect(Object.keys(tool.outputSchema).length, tool.name).toBeGreaterThan(1);
+    }
+  });
+
+  it("leaves no dangling $ref, so a client can validate offline", () => {
+    // The whole reason the closures are inlined rather than referenced by URL.
+    // A schema that names a definition it does not carry is worse than none:
+    // a validator fails open on it and the caller never learns why.
+    for (const tool of TOOLS) {
+      const carried = new Set(
+        Object.keys((tool.outputSchema.$defs ?? {}) as Record<string, unknown>),
+      );
+      const named = new Set<string>();
+      const walk = (node: unknown): void => {
+        if (node === null || typeof node !== "object") return;
+        if (Array.isArray(node)) return node.forEach(walk);
+        for (const [key, value] of Object.entries(node)) {
+          if (key === "$ref" && typeof value === "string") named.add(value);
+          else walk(value);
+        }
+      };
+      walk(tool.outputSchema);
+      for (const ref of named) {
+        expect(ref.startsWith("#/$defs/"), `${tool.name} uses a non-local $ref: ${ref}`).toBe(true);
+        expect(carried.has(ref.slice("#/$defs/".length)), `${tool.name} -> ${ref}`).toBe(true);
+      }
+    }
+  });
+
+  it("declares the dialect its $defs are actually written in", () => {
+    // v0.json is 2020-12, so any schema carrying its definitions is 2020-12. An
+    // envelope rendered from Zod declares draft-07, and an earlier draft of
+    // this module let that label survive onto a document that had 2020-12
+    // definitions spliced into it. Ajv refused to compile the result, which is
+    // the good outcome; a laxer validator would have accepted a lie.
+    for (const tool of TOOLS) {
+      if (tool.outputSchema.$defs === undefined) continue;
+      expect(String(tool.outputSchema.$schema), tool.name).toContain("2020-12");
+    }
+  });
+
+  it("says a proposal is never auto-merged, in the type and not only the prose", () => {
+    // The write path has no branch that merges, so `merged` is a constant. A
+    // plain boolean would describe a state the server cannot reach.
+    for (const tool of TOOLS.filter((t) => t.handler.kind === "write")) {
+      const properties = tool.outputSchema.properties as Record<string, JsonSchema>;
+      expect(properties.merged.const, tool.name).toBe(false);
+      expect(tool.outputSchema.required).toContain("merged");
+    }
+  });
+
+  it("gives the read tools the published document shapes rather than a restatement", () => {
+    const graph = findTool("get_graph")?.outputSchema ?? {};
+    const claim = findTool("get_claim")?.outputSchema ?? {};
+    // `const` on @type is what v0.json uses to discriminate the two documents;
+    // finding it here is how we know the definition was lifted, not retyped.
+    expect((graph.properties as Record<string, JsonSchema>)["@type"].const).toBe(
+      "aboard:ClaimGraph",
+    );
+    expect(graph.required).toContain("aboard:claims");
+    expect(claim.required).toContain("aboard:id");
   });
 });

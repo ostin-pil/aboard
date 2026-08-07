@@ -19,6 +19,7 @@ import {
   RESOURCE_NOT_FOUND,
   isAllowedOrigin,
   jsonToolResult,
+  narratedToolResult,
   planMessage,
   resourceResult,
   toolResult,
@@ -276,17 +277,23 @@ async function runWriteTool(
     };
   };
 
-  if (response.status === 201 && body.pullRequest) {
-    return toolResult(
-      [
-        `Proposed ${body.id} — pull request opened.`,
-        ``,
-        `  ${body.pullRequest}`,
-        ``,
-        `File: ${body.path}`,
-        `It is NOT merged. A human reviews it, and CI (build, referential integrity, tests) must pass.`,
-      ].join("\n"),
-    );
+  if (response.status === 201 && body.pullRequest && body.id && body.path) {
+    const narrative = [
+      `Proposed ${body.id} — pull request opened.`,
+      ``,
+      `  ${body.pullRequest}`,
+      ``,
+      `File: ${body.path}`,
+      `It is NOT merged. A human reviews it, and CI (build, referential integrity, tests) must pass.`,
+    ].join("\n");
+    // The structured half is what the tool's outputSchema promises. `merged` is
+    // a constant because the write path has no branch that sets it otherwise.
+    return narratedToolResult(narrative, {
+      proposalId: body.id,
+      pullRequest: body.pullRequest,
+      path: body.path,
+      merged: false,
+    });
   }
 
   const issues = body.error?.issues?.map((i) => `  - ${i.path || "(root)"}: ${i.message}`).join("\n");

@@ -307,8 +307,31 @@ export function toolResult(text: string, isError = false): Record<string, unknow
   return { content: [{ type: "text", text }], ...(isError ? { isError: true } : {}) };
 }
 
+/**
+ * A tool result whose two halves say the same thing differently: prose written
+ * for a reader, and structured data for a validator. Used where the useful
+ * summary is not just the payload stringified.
+ */
+export function narratedToolResult(
+  text: string,
+  structured: Record<string, unknown>,
+): Record<string, unknown> {
+  return { content: [{ type: "text", text }], structuredContent: structured };
+}
+
+/**
+ * A tool result carrying structured data.
+ *
+ * Both halves are sent. `structuredContent` is what a client validates against
+ * the tool's `outputSchema`; the serialized copy in a text block is what the
+ * spec asks for alongside it, so a client that predates structured content (or
+ * a model reading the transcript directly) still sees the payload.
+ */
 export function jsonToolResult(payload: unknown): Record<string, unknown> {
-  return toolResult(JSON.stringify(payload, null, 2));
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    structuredContent: payload,
+  };
 }
 
 /** A `resources/read` result. The `uri` is echoed because a client may have
