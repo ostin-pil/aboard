@@ -71,11 +71,11 @@ data/                                   filesystem CMS (source of truth)
   cross_domain_edges.yaml               edges spanning domains
 
 public/schema/v0.json                   JSON Schema (validates JSON-LD API)
-public/graph-engine.js                  client-side interactive graph
 
 src/
   app/                                  Next.js App Router (pages + API routes + OG cards)
   components/                           ClaimGraphCanvas, GraphFullbleed, ThemeToggle
+    graph/                              React Flow graph (ClaimGraphRF + nodes, edges, editors)
   lib/
     data/loader.ts                      walks data/, validates with Zod
     types.ts                            Zod schemas + TS types
