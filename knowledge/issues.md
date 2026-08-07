@@ -339,16 +339,28 @@ its source, and the tool it installs comes from PyPI via `uvx`, so a fresh
 install would lint with older code than this checkout does. Pinning to the
 published version would move the gate backwards until a release is cut.
 
-**Not fixed.** Two coherent options, and the choice is a real one. Pin to a
-released version (reproducible, currently older, needs a PyPI release to
-catch up), or keep the symlink and accept that the gate tracks a working
-tree (immediate iteration, not reproducible off this machine). Worth
-deciding on purpose rather than by default.
+**Second-order, resolved 2026-08-07.** The objection above evaporated once
+prose-mint 0.1.1 reached PyPI. It had been tagged since 2026-07-12 and never
+published: the release workflow failed on a Trusted Publisher exchange, was
+never retried, and PyPI served 0.1.0. Re-running that same workflow published
+it. The published 0.1.1 package is byte-identical to the source checkout, so
+switching to the release costs nothing in behaviour.
+
+**Fixed.** The local-checkout fallback is gone. `bin/check-prose.sh` now
+resolves `prose-mint` on `PATH`, then `uvx prose-mint`, which runs a published
+release without installing anything. `PROSE_MINT_VERSION` pins an exact version
+if reproducibility over time is wanted; empty by default, tracking the latest,
+which is what the prose-mint plugin's own resolver does.
+
+Verified by re-scanning a file the old symlink path had scanned earlier the
+same day: `sessions/2026-08-05_session_41.md`, one em-dash hit before and one
+after. The stdin path that session-end uses also still detects and still exits
+1 under `--strict`, and the gate still fails open with a loud warning when
+neither `prose-mint` nor `uvx` is present.
 
 **Dead link, found on the way, since fixed.** `.claude/rules/prose-style.md`
 linked prose-mint to `github.com/ostin-pil/prose-mint`, which returns 404.
 The code lives in `ostin-pil/claude-plugins` under `prose-mint/`, and the
-link now points there. That was a separate edit from the pinning question
-above, which is still open.
+link now points there.
 
-Status: open — behaviour understood, decision deferred.
+Status: resolved — the gate runs a published release, not a working tree.

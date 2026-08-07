@@ -46,7 +46,26 @@ walked. Detector settings there are the shipped defaults.
 installed, rather than failing closed. The caller treats a non-zero exit as
 "findings to fix" and re-scans until clean, so failing closed on a missing tool
 would spin forever. A skipped gate is therefore visible in the session-end
-output but not fatal. Install prose-mint (or put it on `PATH`) to re-arm it.
+output but not fatal. Install prose-mint (or `uv`, so `uvx` can fetch it) to
+re-arm it.
+
+## Which build the gate runs
+
+`prose-mint` on `PATH` first, then `uvx prose-mint`. An explicit install wins
+because that is the operator naming a build; otherwise the gate runs the latest
+published release, fetched without installing anything.
+
+There is no local-checkout fallback, and its absence is deliberate. The script
+used to try `~/Projects/prose-mint/bin/prose-mint`, which on the author's
+machine is a symlink into the claude-plugins working tree. The gate therefore
+ran whatever branch that checkout happened to be on, uncommitted edits
+included, and nothing in the output said which code had run. Two machines could
+disagree, and one machine could disagree with itself between branch switches.
+
+`PROSE_MINT_VERSION` pins an exact release (`PROSE_MINT_VERSION=0.1.1`). Empty
+by default, which tracks the latest and matches what the prose-mint plugin's own
+resolver does. Set it if you want the gate reproducible over time as well as
+across machines, and accept bumping it on each release.
 
 ## Judgement still applies
 
