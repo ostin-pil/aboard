@@ -5,6 +5,7 @@
   "description": "Reference adapters for the aboard JSON-LD API. Independent of the Next.js app.",
   "type": "module",
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "validate": "tsx validate.ts",
     "briefing": "tsx briefing.ts"
   },
