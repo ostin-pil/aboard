@@ -11,7 +11,7 @@ npm install
 npm run dev          # http://localhost:3000
 npm run build        # production build (full type-check)
 npx tsc --noEmit     # type-check only, faster
-npm run lint         # eslint
+npm run lint         # eslint; session-end and CI both gate on it (only reader of .js/.mjs)
 npm run test         # vitest
 npm run lint:resolution   # forecast resolution-criteria rigor; session-end gates on --strict
 shellcheck $(git ls-files '*.sh')   # shell scripts; session-end and CI both gate on it
@@ -33,6 +33,13 @@ here can reach, so `shellcheck` runs in `build_commands` and as the first step
 in CI. That is also why `"*.sh"` is in `code_globs`: the classification only
 means something because a shell-aware command sits behind it.
 
+The same rule governs `"*.js"` and `"*.mjs"`. `tsconfig.json`'s `include` covers
+`**/*.ts`, `**/*.tsx` and `**/*.mts` but neither `*.js` nor `*.mjs`, and vitest
+reads only `src/**/*.test.ts`, so `eslint` is the sole command in the gate that
+reads them. `scripts/check-built-urls.mjs` is real code that CI runs, and until
+session 46 a syntax error in it passed the whole session-end gate. `npm run
+lint` is now in `build_commands`, matching the hard gate CI already had.
+
 ## Architecture
 
 The data layer is a filesystem CMS — each claim is a Markdown file with YAML frontmatter; forecasts, dossiers, and edges are YAML. The runtime reads `data/` at module load and validates everything against the Zod types.
@@ -48,7 +55,8 @@ The data layer is a filesystem CMS — each claim is a Markdown file with YAML f
 - `src/lib/types.ts` — Zod schemas + derived TS types. Validates incoming data at load time.
 - `src/lib/graph.ts` — thin accessor layer over the loader's `ClaimGraph`.
 - `src/lib/jsonld.ts` — serializes a `ClaimGraph` to JSON-LD with `schema.org` + `aboard:` context.
-- `public/graph-engine.js` — vanilla JS interactive graph engine, mounted via `ClaimGraphCanvas.tsx`.
+- `src/components/graph/` — the React Flow graph: `ClaimGraphRF.tsx` plus node, edge, popover and modal components, and `persist.ts` for localStorage layout.
+- `src/lib/engine-adapter.ts` — `ClaimGraph` to `EngineGraphData`; `src/components/graph/engine-to-rf.ts` takes that to React Flow nodes and edges. The "engine" in both names is the data shape, which outlived the vanilla-JS engine it was built for.
 - `src/app/api/` — JSON-LD endpoints (`/api/graph`, `/api/claims/[id]`). Output validates against `public/schema/v0.json`.
 - `clients/` — independent npm package with a TypeScript reference adapter (`validate.ts`, `briefing.ts`) consuming the JSON-LD endpoints.
 
@@ -76,7 +84,6 @@ data/                                   source of truth for claims (filesystem C
   cross_domain_edges.yaml               (empty in v0; reserved for cross-domain)
 
 public/schema/v0.json                   JSON Schema validating the JSON-LD API
-public/graph-engine.js                  client-side interactive graph
 
 src/
   app/
@@ -93,9 +100,18 @@ src/
     layout.tsx                          header, footer, fonts
     globals.css                         Tailwind v4 + design tokens
   components/
-    ClaimGraphCanvas.tsx                React wrapper around graph-engine
+    ClaimGraphCanvas.tsx                mounts ClaimGraphRF; inline/fullbleed modes
     GraphFullbleed.tsx                  fullbleed page chrome + toolbar
+    InterpretationCard.tsx              claim interpretation panel
     ThemeToggle.tsx                     system/light/dark
+    graph/                              React Flow graph
+      ClaimGraphRF.tsx                  the canvas
+      ClaimNode.tsx, ClaimEdge.tsx, DomainGroupNode.tsx, RowLabels.tsx
+      NodeEditorModal.tsx, EdgeEditorModal.tsx, BulkActionsToolbar.tsx
+      NodePopover.tsx, EdgePopover.tsx
+      engine-to-rf.ts                   EngineGraphData to React Flow
+      persist.ts                        localStorage layout
+      GraphContext.tsx, align.ts, jsonld-export.ts, types.ts
   lib/
     data/loader.ts                      walks data/, validates with Zod
     graph.ts                            accessor layer
@@ -175,3 +191,6 @@ npx tsc --noEmit 2>&1 | tail -10
 
 After any change under `bin/` or `scripts/*.sh`, run `shellcheck` on it. Nothing
 else in the gate reads shell, so this is the only automated check that will.
+
+After any change to a `.js` or `.mjs` file, run `npm run lint`. `tsc` does not
+read either extension, so eslint is the only automated check that will.
