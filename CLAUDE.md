@@ -13,7 +13,10 @@ npm run build        # production build (full type-check)
 npx tsc --noEmit     # type-check only, faster
 npm run lint         # eslint; session-end and CI both gate on it (only reader of .js/.mjs)
 npm run test         # vitest
-npm run lint:resolution   # forecast resolution-criteria rigor; session-end gates on --strict
+npm run lint:resolution   # forecast resolution-criteria rigor; session-end and CI gate on --strict
+npm run typecheck:mcp     # mcp-server/, which the root tsconfig excludes
+npm run typecheck:clients # clients/, likewise excluded
+npm run check:built-urls  # asserts over out/; run it after a build
 shellcheck $(git ls-files '*.sh')   # shell scripts; session-end and CI both gate on it
 ```
 
@@ -39,6 +42,22 @@ reads only `src/**/*.test.ts`, so `eslint` is the sole command in the gate that
 reads them. `scripts/check-built-urls.mjs` is real code that CI runs, and until
 session 46 a syntax error in it passed the whole session-end gate. `npm run
 lint` is now in `build_commands`, matching the hard gate CI already had.
+
+`tsconfig.json` excludes `clients` and `mcp-server`, so `npx tsc --noEmit`
+covers `src/`, `scripts/` and `worker/` and nothing else. Both sub-packages have
+their own tsconfig, and until session 48 the session gate ran neither: a type
+error planted in each passed all six commands. `npm run typecheck:mcp` and
+`npm run typecheck:clients` are now in `build_commands`. Each provisions its own
+`node_modules` before running, so a fresh clone gets a real check rather than a
+silent skip.
+
+The session gate and `.github/workflows/ci.yml` are two lists that drift apart
+without anything reporting it. Read them against each other whenever either
+changes. Two checks stay CI-only on purpose, both argued at their step in
+`ci.yml`: the Worker dry-run bundle, which only meaningfully covers the config's
+wiring to the entry point, and the schema validation of the served export, which
+needs a running server. The second is a real hole in the session gate — nothing
+in `npm test` validates serializer output against `public/schema/v0.json`.
 
 ## Architecture
 
@@ -194,3 +213,12 @@ else in the gate reads shell, so this is the only automated check that will.
 
 After any change to a `.js` or `.mjs` file, run `npm run lint`. `tsc` does not
 read either extension, so eslint is the only automated check that will.
+
+After any change under `clients/` or `mcp-server/`, run `npm run typecheck:clients`
+or `npm run typecheck:mcp`. The root `tsc` excludes both directories, and `tsx`
+runs them without type-checking, so nothing else reads them.
+
+After any change to `src/lib/jsonld.ts` or `src/lib/types.ts`, check the output
+against the schema by hand — build, serve `out/`, and run
+`clients/validate.ts`, the way `ci.yml` does. The serializers have no declared
+return types, so `tsc` will not notice a dropped field.

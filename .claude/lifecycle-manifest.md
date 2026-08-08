@@ -37,15 +37,31 @@ log_presence_regex: '^sessions/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_session.*\.md$'
 # Every glob here is paired with a command below that actually reads it; a glob
 # without one classifies a session as code and then verifies nothing, which is
 # worse than skipping, because a green gate reads as verification.
-#   *.ts/*.tsx  tsc, vitest, next build
-#   *.sh        shellcheck            (session 45)
-#   *.js/*.mjs  eslint                (session 46)
+#   *.ts/*.tsx  tsc, vitest, next build          (root tsconfig only)
+#   *.ts        typecheck:mcp, typecheck:clients (the two excluded sub-packages)
+#   *.sh        shellcheck                       (session 45)
+#   *.js/*.mjs  eslint                           (session 46)
 # tsconfig's include covers *.ts/*.tsx/*.mts but not *.js or *.mjs, and vitest
 # only reads src/**/*.test.ts, so eslint is the one command in this gate that
 # reads them. It was already a hard gate in CI and was missing here.
+#
+# The root tsconfig also *excludes* clients and mcp-server, so "*.ts" only ever
+# half-covered its own glob: a type error in either package passed all six
+# commands. Session 48 proved that by planting one in each. They now have
+# readers of their own, which is what makes the glob honest.
+#
+# Not listed, deliberately: "*.jsonc". wrangler.jsonc is deployment-critical and
+# no command here reads it. CI's wrangler dry-run is its only reader anywhere,
+# and a weak one — session 48 measured it exiting 0 on an unknown compatibility
+# flag and on a node: import with no nodejs_compat. Adding the glob without a
+# command would be the hollow-glob mistake this comment exists to prevent.
 code_globs: ["*.ts", "*.tsx", "*.js", "*.mjs", "*.sh"]
-build_commands: ["shellcheck $(git ls-files '*.sh')", "npx tsc --noEmit", "npm run lint", "npm run lint:resolution -- --strict", "npm run build"]
+build_commands: ["shellcheck $(git ls-files '*.sh')", "npx tsc --noEmit", "npm run lint", "npm run typecheck:mcp", "npm run typecheck:clients", "npm run lint:resolution -- --strict", "npm run build", "npm run check:built-urls"]
 test_commands: ["npm test"]          # vitest, unit tests over the pure lib modules
+# none, because the two sub-package commands provision themselves: each is
+# `test -d node_modules || npm ci` before its typecheck, so it fails closed on a
+# real error instead of skipping quietly on a fresh clone. A guard here would
+# reintroduce the fail-open the rest of this gate was just fixed to avoid.
 subpkg_guard: none
 
 # merge
