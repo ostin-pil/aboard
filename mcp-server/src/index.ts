@@ -4,8 +4,10 @@
  *
  * Exposes the aboard claim graph to any MCP-speaking agent. Read tools fetch
  * the published JSON-LD over HTTP (no local `data/` access, mirroring the
- * `clients/` reference adapters). Write tools are declared but stubbed; the
- * gated PR-opening path is not built yet (see CONTRIBUTING.md).
+ * `clients/` reference adapters). Write tools post to `/api/proposals` on the
+ * Worker, which opens a gated PR — nothing merges without human review. That
+ * endpoint is Worker-only, so `ABOARD_API_BASE_URL` must point at a deploy that
+ * serves it; `next dev` does not (see `http.ts`).
  *
  * Run over stdio:
  *
