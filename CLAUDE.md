@@ -81,7 +81,7 @@ data/                                   source of truth for claims (filesystem C
     forecasts/<id>.yaml
     dossiers/<claim-id>.yaml
     edges.yaml
-  cross_domain_edges.yaml               (empty in v0; reserved for cross-domain)
+  cross_domain_edges.yaml               edges spanning domains (CE1–CE3 live)
 
 public/schema/v0.json                   JSON Schema validating the JSON-LD API
 
@@ -117,6 +117,8 @@ src/
     graph.ts                            accessor layer
     types.ts                            Zod schemas + TS types
     jsonld.ts                           JSON-LD serializers
+    vocab.ts                            published IRIs: context, schema URL, version
+    site.ts                             deploy-following display origin (SITE_URL)
     engine-adapter.ts                   ClaimGraph → engine data shape
 
 clients/                                independent npm package
@@ -124,7 +126,11 @@ clients/                                independent npm package
   briefing.ts                           renders Markdown briefing from API
   package.json, tsconfig.json
 scripts/
-  generate-prediction.ts                live agent forecast generator
+  forecasters/ensemble-predict.ts       multi-provider ensemble forecast generator
+  forecast-sanity.ts                    assertion suite over the forecast math
+  lint-resolution.ts                    resolution-criteria rigor lint
+  check-built-urls.mjs                  post-build check: no localhost in out/
+  publish-registry.sh                   signs and publishes the MCP server card
 research/                               landscape, vision, schema docs
 sessions/                               per-session work logs (created by /lifecycle-kit:session-end)
 knowledge/                              issues.md and other long-lived notes
