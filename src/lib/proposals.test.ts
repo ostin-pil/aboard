@@ -16,7 +16,9 @@ import {
   buildDossier,
   type TokenIdentity,
   HTTP_ENTRY_POINT,
+  LIMITS,
 } from "@/lib/proposals";
+import { claimPrBody } from "@/lib/pr-body";
 import {
   claimToMarkdown,
   claimPath,
@@ -88,6 +90,97 @@ describe("ClaimPayload", () => {
     expect(parsed).not.toHaveProperty("id");
     expect(parsed).not.toHaveProperty("authoredBy");
     expect(parsed).not.toHaveProperty("createdAt");
+  });
+
+  it("rejects a source whose url carries an unsafe scheme", () => {
+    const result = ClaimPayload.safeParse({
+      ...validPayload,
+      sources: [{ label: "Not a source", url: "javascript:alert(1)" }],
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+/**
+ * Every one of these values is interpolated into a PR body, and GitHub rejects
+ * a body over 65,536 characters with a 422 the agent sees as an opaque
+ * `github_failed`. Unbounded strings meant the failure appeared at the very
+ * end of a proposal, after the branch and the commit had already been made.
+ */
+describe("payload bounds", () => {
+  const over = (n: number) => "x".repeat(n + 1);
+
+  it("bounds the statement, title and domain", () => {
+    expect(
+      ClaimPayload.safeParse({ ...validPayload, statement: over(LIMITS.prose) }).success,
+    ).toBe(false);
+    expect(ClaimPayload.safeParse({ ...validPayload, title: over(LIMITS.line) }).success).toBe(
+      false,
+    );
+    expect(ClaimPayload.safeParse({ ...validPayload, domain: over(LIMITS.id) }).success).toBe(
+      false,
+    );
+  });
+
+  it("accepts a value exactly at the bound", () => {
+    const at = ClaimPayload.safeParse({
+      ...validPayload,
+      statement: "x".repeat(LIMITS.prose),
+    });
+    expect(at.success).toBe(true);
+  });
+
+  it("bounds the number of sources", () => {
+    const source = { label: "V-Dem", url: "https://v-dem.net/" };
+    const many = Array.from({ length: LIMITS.list + 1 }, () => source);
+    expect(ClaimPayload.safeParse({ ...validPayload, sources: many }).success).toBe(false);
+  });
+
+  it("bounds fields inside a source", () => {
+    const result = ClaimPayload.safeParse({
+      ...validPayload,
+      sources: [{ label: over(LIMITS.line), url: "https://v-dem.net/" }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("bounds the envelope rationale", () => {
+    const envelope = {
+      kind: "claim",
+      payload: validPayload,
+      rationale: over(LIMITS.prose),
+    };
+    expect(ProposalEnvelope.safeParse(envelope).success).toBe(false);
+  });
+
+  /**
+   * The bound that actually matters: the worst legal proposal must still render
+   * a PR body GitHub will accept. If a limit is ever raised, this is the test
+   * that should stop it.
+   */
+  it("keeps the largest legal claim proposal inside GitHub's PR body limit", () => {
+    const source = {
+      label: "x".repeat(LIMITS.line),
+      url: `https://example.org/${"y".repeat(LIMITS.url - 21)}`,
+    };
+    const body = claimPrBody(
+      {
+        id: "S1",
+        kind: "symptom",
+        title: "x".repeat(LIMITS.line),
+        statement: "x".repeat(LIMITS.prose),
+        domain: "x".repeat(LIMITS.id),
+        confidence: 0.5,
+        sources: Array.from({ length: LIMITS.list }, () => source),
+        dataPoints: [],
+        analyses: [],
+        authoredBy: { agent: "a", generatedAt: "2026-08-08T00:00:00Z" },
+        createdAt: "2026-08-08T00:00:00Z",
+      },
+      "x".repeat(LIMITS.prose),
+      identity,
+    );
+    expect(body.length).toBeLessThan(65_536);
   });
 });
 

@@ -5,6 +5,7 @@ import {
   Dossier,
   Edge,
   EdgeKind,
+  HttpUrl,
   Prediction,
   Source,
   type AgentAttribution,
@@ -23,12 +24,58 @@ import {
  * with.
  */
 
+/**
+ * Upper bounds on everything a caller supplies.
+ *
+ * Not a security boundary on their own — the path is authenticated and rate
+ * limited, and Cloudflare caps a body long before any of these bite. What they
+ * buy is a *predictable* proposal: every one of these values is interpolated
+ * into a PR body, and GitHub rejects a PR body over 65,536 characters with a
+ * 422 that surfaces to the agent as an opaque `github_failed`. Sized so the
+ * worst legal proposal renders well inside that: roughly 5k of rationale, 5k of
+ * statement, and twelve sources at about 2.5k each.
+ *
+ * They are deliberately generous against real content — the largest claim in
+ * `data/` today uses five sources and a 900-character statement — so a bound
+ * firing means something odd, not something ordinary.
+ */
+export const LIMITS = {
+  /** Ids and domain names. */
+  id: 64,
+  /** One-line fields: titles, theses, crux statements, source labels. */
+  line: 500,
+  /** Multi-paragraph fields: statements, summaries, rationales. */
+  prose: 5_000,
+  /** A quoted passage from a source. */
+  excerpt: 2_000,
+  url: 2_048,
+  /** Any caller-supplied array: sources, keySources, dataAnchors, cruxes. */
+  list: 12,
+} as const;
+
+/**
+ * `Source`, bounded for the write path.
+ *
+ * The bounds live here rather than on `Source` in `types.ts` on purpose. That
+ * schema also validates what is already committed under `data/`, and tightening
+ * it would retroactively invalidate content that is fine. What a stranger may
+ * *send* and what the repo already *holds* are different questions.
+ */
+const BoundedSource = Source.extend({
+  label: z.string().min(1).max(LIMITS.line),
+  url: HttpUrl.max(LIMITS.url),
+  authors: z.string().max(LIMITS.line).optional(),
+  finding: z.string().max(LIMITS.line).optional(),
+  excerpt: z.string().max(LIMITS.excerpt).optional(),
+});
+
 /** What an agent sends for `propose_claim`. Note what is absent: no `id`, no
  *  `authoredBy`, no `createdAt`. Those are the server's to mint. */
 export const ClaimPayload = z.object({
   domain: z
     .string()
     .min(1)
+    .max(LIMITS.id)
     .describe(
       "Domain the claim belongs to, e.g. 'inequality' or 'democratic_backsliding'. " +
         "Call list_claims to see the domains in use.",
@@ -37,10 +84,11 @@ export const ClaimPayload = z.object({
     "Where the claim sits in the problem tree: 'symptom' (an observed harm), " +
       "'mechanism' (what produces it), or 'leverage_point' (where intervention acts).",
   ),
-  title: z.string().min(1).describe("Short noun phrase naming the claim, used as its label."),
+  title: z.string().min(1).max(LIMITS.line).describe("Short noun phrase naming the claim, used as its label."),
   statement: z
     .string()
     .min(1)
+    .max(LIMITS.prose)
     .describe("The falsifiable claim itself, stated so a distrustful reader could check it."),
   confidence: z
     .number()
@@ -51,8 +99,9 @@ export const ClaimPayload = z.object({
   // project exists not to publish, so it is rejected at the door rather than
   // left for a reviewer to catch.
   sources: z
-    .array(Source)
+    .array(BoundedSource)
     .min(1)
+    .max(LIMITS.list)
     .describe(
       "At least one real source with a resolvable URL. A claim with no citation is rejected.",
     ),
@@ -64,8 +113,8 @@ export type ClaimPayload = z.infer<typeof ClaimPayload>;
  *  The rationale is not here — it rides the envelope (like a claim's), and for an
  *  edge it is also stored as the edge's own `rationale`. */
 export const EdgePayload = z.object({
-  from: z.string().min(1).describe("Source claim id, the cause end of the relation."),
-  to: z.string().min(1).describe("Target claim id, the effect end of the relation."),
+  from: z.string().min(1).max(LIMITS.id).describe("Source claim id, the cause end of the relation."),
+  to: z.string().min(1).max(LIMITS.id).describe("Target claim id, the effect end of the relation."),
   kind: EdgeKind.describe(
     "How the source acts on the target: 'causes', 'moderates' (changes the strength of " +
       "another relation), 'reduces', or 'evidences' (supports rather than produces).",
@@ -76,7 +125,8 @@ export const EdgePayload = z.object({
     .max(1)
     .describe("How strongly the source acts on the target, 0 to 1."),
   sources: z
-    .array(Source)
+    .array(BoundedSource)
+    .max(LIMITS.list)
     .default([])
     .describe("Optional sources evidencing that the relation holds."),
 });
@@ -86,7 +136,7 @@ export type EdgePayload = z.infer<typeof EdgePayload>;
  *  `reasoning` rides the envelope (like an edge's rationale); the `agent` and
  *  `createdAt` are stamped server-side. */
 export const PredictionPayload = z.object({
-  forecastId: z.string().min(1).describe("Id of an existing forecast to append to."),
+  forecastId: z.string().min(1).max(LIMITS.id).describe("Id of an existing forecast to append to."),
   probability: z
     .number()
     .min(0)
@@ -95,7 +145,8 @@ export const PredictionPayload = z.object({
       "Your probability that the forecast's resolution criteria will be met, 0 to 1.",
     ),
   dataAnchors: z
-    .array(Source)
+    .array(BoundedSource)
+    .max(LIMITS.list)
     .default([])
     .describe("Optional sources anchoring the estimate."),
 });
@@ -103,21 +154,23 @@ export type PredictionPayload = z.infer<typeof PredictionPayload>;
 
 /** One steel-manned side of a dossier. The `authoredBy` is stamped server-side. */
 const ArgumentPayload = z.object({
-  thesis: z.string().min(1).describe("One sentence stating what this side holds."),
+  thesis: z.string().min(1).max(LIMITS.line).describe("One sentence stating what this side holds."),
   steelmannedSummary: z
     .string()
     .min(1)
+    .max(LIMITS.prose)
     .describe(
       "The strongest honest version of this side's case, argued as its ablest proponent " +
         "would argue it rather than as its opponents characterise it.",
     ),
-  keySources: z.array(Source).min(1).describe("At least one real source this side rests on."),
+  keySources: z.array(BoundedSource).min(1).max(LIMITS.list).describe("At least one real source this side rests on."),
 });
 
 const CruxPayload = z.object({
   statement: z
     .string()
     .min(1)
+    .max(LIMITS.line)
     .describe("A question whose answer would move a reasonable holder of one side toward the other."),
   impactScore: z
     .number()
@@ -139,11 +192,13 @@ export const DossierPayload = z.object({
   claimId: z
     .string()
     .min(1)
+    .max(LIMITS.id)
     .describe("Id of the contested claim this dossier is for. Refused if it already has one."),
   pro: ArgumentPayload.describe("The steel-manned case that the claim holds."),
   con: ArgumentPayload.describe("The steel-manned case against it. Required; a dossier is two-sided."),
   cruxes: z
     .array(CruxPayload)
+    .max(LIMITS.list)
     .default([])
     .describe("Optional ranked questions that would move the disagreement if settled."),
 });
@@ -159,7 +214,10 @@ export const PROPOSAL_KINDS = [
 export const ProposalEnvelope = z.object({
   kind: z.enum(PROPOSAL_KINDS),
   payload: z.unknown(),
-  rationale: z.string().min(1, "A rationale is required: it becomes the PR body."),
+  rationale: z
+    .string()
+    .min(1, "A rationale is required: it becomes the PR body.")
+    .max(LIMITS.prose),
 });
 export type ProposalEnvelope = z.infer<typeof ProposalEnvelope>;
 

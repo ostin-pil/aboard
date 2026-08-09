@@ -24,9 +24,31 @@ function text(body: string, isError = false): TextResult {
 
 // --- shared schema fragments (mirror src/lib/types.ts) ---
 
+/**
+ * http(s) only, mirroring `HttpUrl` in `src/lib/types.ts`. Spelled with
+ * `.refine` rather than Zod 4's `z.url({ protocol })` because this package is
+ * on Zod 3 (`package.json` pins `^3.23.8`), where that option does not exist.
+ * The duplication is the same one this whole file carries: mirroring the app's
+ * schemas across a major-version boundary. The server rejects at the door so a
+ * caller learns of a bad scheme here rather than from the Worker.
+ */
+const httpUrl = z
+  .string()
+  .url()
+  .refine(
+    (value) => {
+      try {
+        return /^https?:$/.test(new URL(value).protocol);
+      } catch {
+        return false;
+      }
+    },
+    { message: "Source URL must be http(s)." },
+  );
+
 const sourceSchema = z.object({
   label: z.string(),
-  url: z.string().url(),
+  url: httpUrl,
   kind: z
     .enum([
       "dataset",
