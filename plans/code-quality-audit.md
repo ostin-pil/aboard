@@ -48,9 +48,11 @@ Vitest 4.1.10 (95 tests green).
 
 ## v3 sweep — what closed, what moved, what stands
 
-Nine findings and two whole batches are closed. Five are partly closed, and the
-partial half of each is stated so nobody reads a struck-through row as done.
-Everything else was re-verified as still live at the anchors given.
+Nine findings and two whole batches were already closed when the sweep ran.
+Session 47 then fixed six more (the write-path cluster, below). Four remain
+partly closed, and the partial half of each is stated so nobody reads a
+struck-through row as done. Everything else was re-verified as still live at
+the anchors given.
 
 **Closed, with the evidence that closes them:**
 
@@ -70,11 +72,27 @@ Sequencing batches 1 (hotfix) and 2 (graph-state integrity) are complete as
 units. `knowledge/issues.md` already records batch 2 landing as
 `fix/graph-state-integrity`.
 
+**Fixed by session 47, after the sweep.** The sweep confirmed these were live;
+the same session then closed them. Each is one commit with its own tests.
+
+| # | What landed |
+|---|---|
+| A6 | PR-body builders moved to `src/lib/pr-body.ts` (pure, testable — the Worker exported nothing, which is why this survived two audits). Caller text is contained: multi-line free text in a fence whose length is computed from the content so it cannot be closed from inside, single-line values escaped and flattened, identity in code spans. `pr-body.test.ts` runs an attacker payload carrying a forged provenance block and a pre-ticked checklist through all four builders |
+| A5 | `HttpUrl` in `types.ts` and a Zod-3 equivalent in `mcp-server`; `v0.json` and `research/schema.md` narrowed to match. Verified by execution that the old `.url()` accepted `javascript:`, `data:` and `vbscript:` |
+| A7 | A `LIMITS` block bounding every caller-supplied string and array, plus a `content-length` guard. Sized against the real constraint: a test renders the largest legal proposal and asserts it fits GitHub's 65,536-character PR body (it comes to 41,470) |
+| A8 | Handler wrapped so an uncaught throw is a structured 500; `gh()`'s fetch wrapped so a network throw becomes a synthetic 502 that `isTransientStatus` already retries |
+| A9 | `resolveStaticIdentity` validates each entry with Zod instead of casting. Per entry rather than whole-table, so one mis-typed credential does not take the others down |
+| E11 | `locationErrors` in `integrity.ts` asserts filename-equals-id and directory-equals-domain, and that a forecast or dossier sits with the claim it attaches to — the path the Worker derives. Fault-tested against real `data/`: a planted mismatch fails the build naming the file |
+
+Two notes for whoever picks this up next. The A6 fix also fixed a live
+rendering bug it was not looking for: source links used bare `(url)`, which
+breaks on any URL with unbalanced parentheses, so every Wikipedia article with
+a disambiguator rendered wrong. And the E11 checks deliberately stay quiet when
+another check already owns the mistake (a duplicated id, or a domain that is
+not a directory at all), so one error means one problem.
+
 **Partly closed — the open half is what matters now:**
 
-- **A8.** `readGraph` failure is now a structured 503 (`worker/index.ts:586`,
-  `graph_unavailable`). Still open: no try/catch around the fetch handler, and
-  `gh()`'s fetch still propagates network throws.
 - **A2/B/D, `vocab.ts` half only.** `src/lib/vocab.ts` landed and killed the
   origin drift. `src/lib/tokens.ts` was never written, so B's 59 re-typed hex
   values across the three OG images stand untouched.
@@ -95,25 +113,24 @@ units. `knowledge/issues.md` already records batch 2 landing as
   dropped.
 
 **Anchor drift worth knowing before you act on section A.** `worker/index.ts`
-went from 780 to 1043 lines when OAuth landed, so every worker line number in
-A6–A9 and E10–E15 is stale. Re-locate before quoting them. The findings
-themselves were re-verified by content: A6 (no escaping anywhere in the file),
-A7 (all six `.max()` in `proposals.ts` are the numeric `.max(1)` on confidence;
-no content-length guard), A9 (`env.ABOARD_AGENT_TOKENS` still unvalidated),
-E10 (still `env.ASSETS.fetch`, and `.github/workflows/` still holds only
-`ci.yml`, so there is still no deploy automation).
+went from 780 to 1043 lines when OAuth landed, and session 47's extraction took
+it back to about 940, so every worker line number in section A and in E10–E15
+is stale twice over. Re-locate before quoting them. E10 was re-verified by
+content and still stands: `readGraph` still reads `env.ASSETS.fetch`, and
+`.github/workflows/` still holds only `ci.yml`, so there is still no deploy
+automation.
 
 **Re-verified as still live**, at current anchors: A3 (`types.ts:7,72,95` and
 the rest still bare `z.string()`), A4 (`engine-adapter.ts:15`,
 `global.d.ts:49`, `EdgeEditorModal.tsx:43`, `ClaimEdge.tsx:17-26`, and
-`EdgeKind.options` appears nowhere in the repo), A5 (`types.ts:38`,
-`mcp-server/src/tools/write.ts:29`), A6, A7, A9, all of B except the origin
+`EdgeKind.options` appears nowhere in the repo), all of B except the origin
 bullet, E5 (the `GraphFullbleed.tsx` keydown handler still ignores both
 `editable` and modal state), E7, E8 (`ClaimGraphRF.tsx:538-546` still mints
 bare `S`/`M`/`L`), E9 (`useGraphInstance` still exported at
 `ClaimGraphCanvas.tsx:70`; the confidence input carries `min`/`max` attributes
-but `onChange` stores the value unclamped), E10 through E20, and the C-section
-gates. `scripts/forecast-sanity.ts` is still unported and still run by nothing.
+but `onChange` stores the value unclamped), E10, E12 through E21, and the
+C-section gates. `scripts/forecast-sanity.ts` is still unported and still run
+by nothing.
 
 **Moved the wrong way:** `ClaimGraphRF.tsx` is 1128 lines, up from the 1101 v2
 measured, and `claims/[id]/page.tsx` is 419. Both D splits are further away
@@ -151,11 +168,11 @@ strikethrough marks a v1 downgrade.
 | A2 | ~~HIGH~~ **CLOSED v3** | `claims/[id]/opengraph-image.tsx:176`, `dossiers/[claimId]/opengraph-image.tsx:117`, `src/components/graph/jsonld-export.ts:9` | Dead domain `aboard.dev` at exactly these 3 sites (repo-wide grep). Worse than v1 said: the client "Copy JSON-LD" export is wrong **three ways** — dead domain, a `/schema/v0` path that doesn't exist on the live origin either (real: `/schema/v0.json`), and a document shape (`filedBy`/`filedAt`/`relations`) that doesn't conform to `v0.json` at all. Two published JSON-LD dialects, not just two origins. | Derive from `siteBaseUrl()` / a shared `vocab.ts`; make the client export emit the canonical shape (or reuse `jsonld.ts`). |
 | A3 | ~~HIGH~~ MED | `src/lib/types.ts:7,72,95,126,134` | Five timestamp fields are bare `z.string()`; `v0.json` requires the ISO-8601 pattern on all of them (v1's "lines 132/136" were stale anchors for the single `resolutionDate`). Downgrade rationale: CI's `clients/validate.ts` step **does** catch non-conforming output — but only post-build, at the last CI step, with an Ajv error far from the offending file. Also `engine-adapter.ts:54` does `createdAt.slice(0,10)` — silent junk for non-ISO strings. | Tighten to `z.iso.datetime()` (exists in Zod 4.4.3) so bad data fails the loader with a named file, not the CI tail. |
 | A4 | HIGH | `engine-adapter.ts:15`, `src/types/global.d.ts:45`, `EdgeEditorModal.tsx:43-45`, `ClaimEdge.tsx:16-26` | The 4th edge kind **`evidences`** (canonical in `types.ts:99` + `v0.json:142`) is missing from all four render/edit sites; `engine-adapter.ts:68` silently drops such edges (and the `:76` cast is only sound because of that filter). Latent today — `grep evidences data/` is empty (25 edges: causes ×14, reduces ×8, moderates ×3) — but `mcp-server/src/tools/write.ts:50` accepts it, so an agent can mint one via the live write path and the graph would silently omit it. | Derive all four sites from `EdgeKind.options`; enum-sync test (C). |
-| A5 | ~~MED~~ LOW | `types.ts:38`, `mcp-server/src/tools/write.ts:29` | `z.string().url()` accepts `javascript:`/`data:`/`vbscript:` — **verified by execution under both installed Zod majors** (4.4.3 and 3.25.76). Downgrade rationale: the only sinks are React 19 `<a href>`s (`claims/[id]/page.tsx:382`, `dossiers/[claimId]/page.tsx:144`), and React 19 blocks `javascript:` hrefs at render; no `innerHTML`-class sinks exist; the write path never auto-merges. Residual: unsafe schemes stored in `data/`, abusable in PR-body markdown links (A6) and any future non-React renderer. | Defense-in-depth: constrain `Source.url` to `http(s)` at both sites. |
-| A6 | MED | `worker/index.ts:329,338,347,375,410,437,441-443` | Caller-controlled `rationale`/`statement`/`thesis`/`sources[].label` interpolated **unescaped** into the reviewer-facing PR body (no escaping anywhere in the file). The statement blockquote at `:347` contains newlines but not inline markdown. A malicious agent can forge a second `## Provenance` block above the genuine one (built at `:315-325`) or a pre-ticked checklist — on the exact surface the human trusts to gate the merge. Reviewer deception, not script execution (GitHub sanitizes). | Escape/fence caller text; keep the machine-stamped provenance visually unforgeable (e.g. fence all caller content in code blocks). |
-| A7 | ~~MED~~ LOW | `src/lib/proposals.ts` schemas, `worker/index.ts:744` | Zero `.max()` on any payload string/array (every existing `.max()` is a numeric range); `request.json()` buffers with no content-length guard. Downgrade rationale: the path is post-auth **and now post-rate-limit** (10/min/credential), Cloudflare caps bodies ~100 MB, and GitHub rejects PR bodies >65,536 chars (a giant rationale 502s as `github_failed` rather than exhausting anything). | `.max()` bounds on every user string/array; reject oversized `content-length` before parsing. |
-| A8 | MED | `worker/index.ts:771-780,124,209` | No try/catch around the fetch handler (`:771-780`) — any uncaught throw is a bare Workers 500, not the structured envelope. `readGraph`'s `res.json()` (`:124`) guarded for `!res.ok` but not parse failure. `gh()`'s `fetch` (`:209`) propagates network TypeErrors; `withRetry` doesn't catch throws either. Narrowed from v1: `gh()`'s *json parse* IS guarded (`:219`), and `handleEdge`/`handlePrediction` already wrap `getFile` into structured 502s — the gap is the fetch-throw case, `submitProposalPR`, and `readGraph`. | Wrap handler → structured 500; guard `readGraph` (→503); wrap the GitHub fetch (→502). |
-| A9 | ~~MED~~ LOW | `worker/index.ts:88-95` | `JSON.parse(env.ABOARD_AGENT_TOKENS) as Record<…>` — try/catch covers JSON syntax only; `TokenIdentity` is a plain type, never validated. Downgrade rationale: a missing `agent` already fails the content build with a 422 (`AgentAttribution.agent` is required); the silent loss is confined to optional `operator`/`agentId` — branch names become `agent/undefined/…` and provenance prints `**operator** undefined`. Config footgun, not an exploit (the secret is operator-set). | `z.record(TokenIdentity-schema).safeParse` at startup; refuse to serve on failure. |
+| A5 | ~~MED~~ **CLOSED v3** | `types.ts:38`, `mcp-server/src/tools/write.ts:29` | `z.string().url()` accepts `javascript:`/`data:`/`vbscript:` — **verified by execution under both installed Zod majors** (4.4.3 and 3.25.76). Downgrade rationale: the only sinks are React 19 `<a href>`s (`claims/[id]/page.tsx:382`, `dossiers/[claimId]/page.tsx:144`), and React 19 blocks `javascript:` hrefs at render; no `innerHTML`-class sinks exist; the write path never auto-merges. Residual: unsafe schemes stored in `data/`, abusable in PR-body markdown links (A6) and any future non-React renderer. | Defense-in-depth: constrain `Source.url` to `http(s)` at both sites. |
+| A6 | ~~MED~~ **CLOSED v3** | `worker/index.ts:329,338,347,375,410,437,441-443` | Caller-controlled `rationale`/`statement`/`thesis`/`sources[].label` interpolated **unescaped** into the reviewer-facing PR body (no escaping anywhere in the file). The statement blockquote at `:347` contains newlines but not inline markdown. A malicious agent can forge a second `## Provenance` block above the genuine one (built at `:315-325`) or a pre-ticked checklist — on the exact surface the human trusts to gate the merge. Reviewer deception, not script execution (GitHub sanitizes). | Escape/fence caller text; keep the machine-stamped provenance visually unforgeable (e.g. fence all caller content in code blocks). |
+| A7 | ~~MED~~ **CLOSED v3** | `src/lib/proposals.ts` schemas, `worker/index.ts:744` | Zero `.max()` on any payload string/array (every existing `.max()` is a numeric range); `request.json()` buffers with no content-length guard. Downgrade rationale: the path is post-auth **and now post-rate-limit** (10/min/credential), Cloudflare caps bodies ~100 MB, and GitHub rejects PR bodies >65,536 chars (a giant rationale 502s as `github_failed` rather than exhausting anything). | `.max()` bounds on every user string/array; reject oversized `content-length` before parsing. |
+| A8 | ~~MED~~ **CLOSED v3** | `worker/index.ts:771-780,124,209` | No try/catch around the fetch handler (`:771-780`) — any uncaught throw is a bare Workers 500, not the structured envelope. `readGraph`'s `res.json()` (`:124`) guarded for `!res.ok` but not parse failure. `gh()`'s `fetch` (`:209`) propagates network TypeErrors; `withRetry` doesn't catch throws either. Narrowed from v1: `gh()`'s *json parse* IS guarded (`:219`), and `handleEdge`/`handlePrediction` already wrap `getFile` into structured 502s — the gap is the fetch-throw case, `submitProposalPR`, and `readGraph`. | Wrap handler → structured 500; guard `readGraph` (→503); wrap the GitHub fetch (→502). |
+| A9 | ~~MED~~ **CLOSED v3** | `worker/index.ts:88-95` | `JSON.parse(env.ABOARD_AGENT_TOKENS) as Record<…>` — try/catch covers JSON syntax only; `TokenIdentity` is a plain type, never validated. Downgrade rationale: a missing `agent` already fails the content build with a 422 (`AgentAttribution.agent` is required); the silent loss is confined to optional `operator`/`agentId` — branch names become `agent/undefined/…` and provenance prints `**operator** undefined`. Config footgun, not an exploit (the secret is operator-set). | `z.record(TokenIdentity-schema).safeParse` at startup; refuse to serve on failure. |
 
 ## B. Hardcode & duplication (quantified, re-measured)
 
@@ -338,7 +355,7 @@ over ground the seven v1 agents didn't cover.
 | # | Sev | Where | Defect |
 |---|-----|-------|--------|
 | E10 | MED | `worker/index.ts:119-121` | **The Worker validates proposals against a deploy-frozen graph.** `readGraph` reads `/api/graph` via `env.ASSETS` — the snapshot from the last manual `wrangler deploy` (no deploy automation exists; `.github/workflows/` has only `ci.yml`). Consequences: a merged-but-undeployed claim lets the next proposal mint a duplicate id → `PUT /contents` without `sha` → 422 → opaque `github_failed`; concurrent agents can mint the same id into conflicting PRs; a merged-but-undeployed dossier can slip past the overwrite refusal. (Prediction file content *is* read live from GitHub — only graph-derived checks are stale.) Fix options: read `data/` from GitHub raw at `ctx.base`; or add deploy-on-merge; at minimum map the 422 to a "stale graph" error. |
-| E11 | MED | `src/lib/data/integrity.ts:131-136`, `loader.ts:81-88` | **Frontmatter is never reconciled with file location.** A claim's `domain:` is checked for membership in known domains, not equality with the directory it was loaded from; filenames are never compared with frontmatter `id`. A claim in `data/inequality/` declaring `domain: democratic_backsliding` (or `S2.md` containing `id: S3`) passes CI; JSON-LD mis-groups it, and the Worker's `claimPath()`/`dossierPath()`/forecast path (`worker/index.ts:614-615` derives the path from the *attached claim's* domain) point at files that don't exist → every later proposal against it 502s. Fix: assert dir==domain and basename==id for all four file types in `integrityErrors`. |
+| E11 | ~~MED~~ **CLOSED v3** | `src/lib/data/integrity.ts:131-136`, `loader.ts:81-88` | **Frontmatter is never reconciled with file location.** A claim's `domain:` is checked for membership in known domains, not equality with the directory it was loaded from; filenames are never compared with frontmatter `id`. A claim in `data/inequality/` declaring `domain: democratic_backsliding` (or `S2.md` containing `id: S3`) passes CI; JSON-LD mis-groups it, and the Worker's `claimPath()`/`dossierPath()`/forecast path (`worker/index.ts:614-615` derives the path from the *attached claim's* domain) point at files that don't exist → every later proposal against it 502s. Fix: assert dir==domain and basename==id for all four file types in `integrityErrors`. |
 | E12 | MED | `src/lib/data/exporter.ts:77-90` | The PR-pack **re-mints edge ids from `E1` and emits whole-file `data/<domain>/edges.yaml` replacements**; its README says "drop the files into `data/`". For an existing domain that deletes every live edge (and integrity passes afterward — the evidence is gone), and the fresh `E1/E2` collide if hand-merged. Fix: mint from the existing-id list (reuse `nextSequentialId`) and emit append-fragments. |
 | E13 | LOW | `worker/index.ts:284-313` | Orphaned `agent/…` branches: the branch ref is created first; if the commit PUT or PR POST fails, nothing deletes it. Fix: best-effort ref delete on the two failure paths. |
 | E14 | LOW | `worker/index.ts:716,724` | Limiter ordering: auth precedes the rate limit, so the 401 path is entirely unthrottled (bearer-token guessing is bounded only by platform protections — fine while tokens are high-entropy; worth a comment). Conversely the limiter runs before payload validation, so agents burn their 10/min on 422s while debugging. Both are defensible; make them deliberate. |
@@ -382,14 +399,14 @@ acceptance gate. A1 stays the only *live production* defect.
    enum-sync test over all 9+ B-sites, early Ajv drift test, forecast-sanity
    ported to vitest. *Accept:* a deliberately bad `createdAt` fails `npm test`
    with a named file; an `evidences` edge renders.
-4. **Write-path robustness PR(s):** A6 (escape/fence PR bodies), A7 (bounds),
-   A8 (structured envelopes), A9 (token-table Zod), A5 (scheme allowlist),
-   E11 (dir↔frontmatter integrity), E13 (branch cleanup), E15 one-liners +
-   duplicate-relation refusal — plus the **E10 decision** (GitHub-raw reads
-   vs deploy-on-merge; everything id-minting-shaped depends on it) and the
-   Worker unit tests (export the pure helpers to make them testable).
-   *Accept:* Worker tests green under `npm test`; forged-provenance fixture
-   renders inert.
+4. **Write-path robustness — mostly SHIPPED (session 47).** A6, A7, A8, A9,
+   A5 and E11 all landed, with the pure helpers extracted to `src/lib/pr-body.ts`
+   so the Worker's decisions are unit-tested. The acceptance gate is met: the
+   forged-provenance fixture renders inert. Still open in this batch: E13
+   (orphaned branch cleanup), E15 (the one-liners and duplicate-relation
+   refusal), and the **E10 decision** (GitHub-raw reads vs deploy-on-merge;
+   everything id-minting-shaped depends on it). E10 is now the largest single
+   piece of unfixed write-path risk.
 5. **Gate-ratchet PR:** `--max-warnings 0` (after the `Claude Design Screens/`
    decision: ignore vs delete), `noUncheckedIndexedAccess` (48-error budget,
    probed), coverage thresholds, dependency gate, `clients/` typecheck,
