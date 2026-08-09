@@ -13,16 +13,32 @@ import type { ClaimEdge as ClaimEdgeT } from "./types";
 
 const connectingSelector = (c: { inProgress: boolean }) => c.inProgress;
 
+// Keyed by `EngineEdge["kind"]`, which is the canonical `EdgeKind`. These are
+// Records rather than lookups with a fallback on purpose: a new kind in
+// `types.ts` fails the build here until it has been given ink, instead of
+// rendering as an untyped default nobody notices.
 const STROKE: Record<EngineEdge["kind"], string> = {
   causes: "var(--edge-causes)",
   moderates: "var(--edge-moderates)",
   reduces: "var(--edge-reduces)",
+  evidences: "var(--edge-evidences)",
 };
 
 const DASH: Record<EngineEdge["kind"], string | undefined> = {
   causes: undefined,
   moderates: "3 3",
   reduces: "4 3",
+  evidences: "1 3",
+};
+
+// Which kinds carry an arrowhead, and therefore need a marker def in
+// `ClaimGraphRF.tsx`. `moderates` conditions a relationship rather than
+// asserting a direction through it, so it stays headless.
+const ARROWHEAD: Record<EngineEdge["kind"], boolean> = {
+  causes: true,
+  moderates: false,
+  reduces: true,
+  evidences: true,
 };
 
 function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
@@ -115,9 +131,7 @@ function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
           strokeDasharray: dasharray,
           opacity,
         }}
-        markerEnd={
-          kind === "causes" || kind === "reduces" ? `url(#ag-rf-ah-${kind})` : undefined
-        }
+        markerEnd={ARROWHEAD[kind] ? `url(#ag-rf-ah-${kind})` : undefined}
       />
       {hasPopover && (
         <path

@@ -12,7 +12,13 @@ const ENGINE_KIND = {
   leverage_point: "leverage",
 } as const;
 
-const SUPPORTED_EDGE_KINDS = new Set(["causes", "moderates", "reduces"]);
+// There is deliberately no edge-kind filter here. There used to be a
+// SUPPORTED_EDGE_KINDS set listing three of the four canonical kinds, which
+// silently dropped every `evidences` edge on the way to the graph. Nothing
+// reported it: the set was a hand-copy of the enum, and the cast below was only
+// sound because the filter had already removed what it could not describe.
+// `EngineEdge["kind"]` is now `EdgeKind` itself, so the two cannot drift and
+// there is nothing left to filter.
 
 export function toEngineData(graph: ClaimGraph, opts?: { domain?: string }): EngineGraphData {
   const includeClaim = opts?.domain
@@ -65,7 +71,6 @@ export function toEngineData(graph: ClaimGraph, opts?: { domain?: string }): Eng
 
   const includedIds = new Set(nodes.map((n) => n.id));
   const edges: EngineEdge[] = graph.edges
-    .filter((e) => SUPPORTED_EDGE_KINDS.has(e.kind))
     .filter((e) => includedIds.has(e.fromId) && includedIds.has(e.toId))
     .map((e) => {
       const fromDomain = domainOf.get(e.fromId);
@@ -73,7 +78,7 @@ export function toEngineData(graph: ClaimGraph, opts?: { domain?: string }): Eng
       const edge: EngineEdge = {
         from: e.fromId,
         to: e.toId,
-        kind: e.kind as EngineEdge["kind"],
+        kind: e.kind,
       };
       if (e.rationale) edge.rationale = e.rationale;
       if (e.sources && e.sources.length > 0) {

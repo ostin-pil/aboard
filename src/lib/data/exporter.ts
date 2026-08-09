@@ -16,7 +16,14 @@
  * /graph editor can produce downloadable packs without a round-trip.
  */
 
-const KIND_MAP: Record<EngineNode["kind"], "symptom" | "mechanism" | "leverage_point"> = {
+// The engine renames `leverage_point` to `leverage`, so this is the one place
+// the two vocabularies meet. Typing the values as `ClaimKind` rather than as a
+// re-typed union means a change to the canonical enum fails here, at the
+// translation boundary, instead of silently emitting a kind the loader rejects.
+// Type-only import: this module runs in the browser and pulls in no Zod.
+import type { ClaimKind } from "../types";
+
+const KIND_MAP: Record<EngineNode["kind"], ClaimKind> = {
   symptom: "symptom",
   mechanism: "mechanism",
   leverage: "leverage_point",

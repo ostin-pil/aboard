@@ -1,4 +1,11 @@
-export {};
+// The import is what makes this a module, which `declare global` requires.
+// It also stops `EngineEdge["kind"]` being a hand-copy of the canonical enum:
+// every render and edit site downstream keys its lookup tables off this type,
+// so adding a kind to `EdgeKind` fails the build at each site that has not
+// handled it. Before session 49 this union was one kind short of canonical and
+// `engine-adapter.ts` filtered the difference away, so an `evidences` edge in
+// `data/` was dropped from the graph without a word.
+import type { EdgeKind } from "@/lib/types";
 
 declare global {
   interface AboardGraphInstance {
@@ -46,7 +53,7 @@ declare global {
   interface EngineEdge {
     from: string;
     to: string;
-    kind: "causes" | "moderates" | "reduces";
+    kind: EdgeKind;
     author?: string;
     rationale?: string;
     crossDomain?: boolean;
