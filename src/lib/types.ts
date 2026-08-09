@@ -1,10 +1,33 @@
 import { z } from "zod";
 
+/**
+ * An ISO-8601 date or date-time.
+ *
+ * This pattern is a deliberate copy of `$defs/Iso8601` in
+ * `public/schema/v0.json`, character for character, and the two must stay
+ * identical. Before it existed these fields were bare `z.string()`, so the
+ * loader accepted `createdAt: "last Tuesday"` and the mismatch only surfaced
+ * as an Ajv error at the last step of CI, far from the file that caused it.
+ * `src/lib/jsonld.test.ts` is what now holds the two definitions in agreement.
+ *
+ * Note what this does *not* do: tighten to a full date-time. The schema permits
+ * a bare `YYYY-MM-DD`, and every `resolutionDate` in `data/` is exactly that,
+ * so `z.iso.datetime()` (which the audit proposed) would reject all twelve of
+ * them. Accepting less than we publish would be a different bug from the one
+ * being fixed.
+ */
+export const Iso8601 = z
+  .string()
+  .regex(
+    /^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})?)?$/,
+    "must be an ISO-8601 date (YYYY-MM-DD) or date-time",
+  );
+
 export const AgentAttribution = z.object({
   agent: z.string(),
   promptTitle: z.string().optional(),
   promptHash: z.string().optional(),
-  generatedAt: z.string(),
+  generatedAt: Iso8601,
   /**
    * The accountable human or organisation behind the credential that filed
    * this. Stamped server-side from the agent token; never read from a caller's
@@ -82,7 +105,7 @@ export const Claim = z.object({
   dataPoints: z.array(DataPoint).default([]),
   analyses: z.array(z.string()).default([]),
   authoredBy: AgentAttribution,
-  createdAt: z.string(),
+  createdAt: Iso8601,
 });
 export type Claim = z.infer<typeof Claim>;
 
@@ -105,7 +128,7 @@ export const Analysis = z.object({
   dataSources: z.array(Source),
   producedFinding: z.string(),
   authoredBy: AgentAttribution,
-  createdAt: z.string(),
+  createdAt: Iso8601,
 });
 export type Analysis = z.infer<typeof Analysis>;
 
@@ -140,7 +163,7 @@ export const Prediction = z.object({
   reasoning: z.string(),
   baseRates: z.array(BaseRate).default([]),
   dataAnchors: z.array(Source).default([]),
-  createdAt: z.string(),
+  createdAt: Iso8601,
 });
 export type Prediction = z.infer<typeof Prediction>;
 
@@ -159,7 +182,7 @@ export const Forecast = z
     id: z.string(),
     attachedToClaimId: z.string(),
     question: z.string(),
-    resolutionDate: z.string(),
+    resolutionDate: Iso8601,
     resolutionCriteria: z.string(),
     /**
      * The external, real-world thing that resolves this forecast: the
@@ -177,7 +200,7 @@ export const Forecast = z
      * excluded from scoring rather than left pending forever.
      */
     resolvedOutcome: ResolvedOutcome.nullable().optional(),
-    resolvedAt: z.string().optional(),
+    resolvedAt: Iso8601.optional(),
     /**
      * IDs of the forecasts that replace this one. A forecast whose criteria
      * turn out to be under-specified is never edited in place — editing
