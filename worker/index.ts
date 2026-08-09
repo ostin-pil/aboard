@@ -123,6 +123,14 @@ const RATE_LIMIT_PERIOD_S = 60;
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
 
+/**
+ * Largest proposal body we will buffer. Comfortably above the sum of the
+ * per-field bounds in `proposals.ts` plus JSON overhead, so a legal proposal
+ * never trips it and this stays what it is: a guard against reading a large
+ * body, not a second content limit to keep in sync.
+ */
+const MAX_PROPOSAL_BYTES = 256 * 1024;
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body, null, 2), { status, headers: JSON_HEADERS });
 }
@@ -319,16 +327,30 @@ function fromBase64(b64: string): string {
 type GhResult = { ok: boolean; status: number; body: Record<string, unknown> };
 
 async function gh(ctx: GitHubContext, path: string, init: RequestInit = {}): Promise<GhResult> {
-  const res = await fetch(`https://api.github.com/repos/${ctx.repo}${path}`, {
-    ...init,
-    headers: {
-      accept: "application/vnd.github+json",
-      authorization: `Bearer ${ctx.token}`,
-      "user-agent": "aboard-proposals",
-      "content-type": "application/json",
-      ...(init.headers ?? {}),
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`https://api.github.com/repos/${ctx.repo}${path}`, {
+      ...init,
+      headers: {
+        accept: "application/vnd.github+json",
+        authorization: `Bearer ${ctx.token}`,
+        "user-agent": "aboard-proposals",
+        "content-type": "application/json",
+        ...(init.headers ?? {}),
+      },
+    });
+  } catch (error) {
+    // A network-level failure rejects rather than resolving, so without this it
+    // propagates out of every caller as an unhandled throw and the agent sees a
+    // bare 500. Reported as a synthetic 502 instead, which is both true (the
+    // upstream is unreachable) and what `isTransientStatus` already knows how
+    // to retry.
+    return {
+      ok: false,
+      status: 502,
+      body: { message: error instanceof Error ? error.message : "GitHub is unreachable." },
+    };
+  }
   const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   return { ok: res.ok, status: res.status, body };
 }
@@ -746,6 +768,20 @@ async function runProposal(
     return fail(503, "not_configured", "The proposals endpoint has no GitHub credential configured.");
   }
 
+  // Refuse an oversized body before buffering it. The per-field bounds in
+  // `proposals.ts` are the real limit on a proposal's size; this only stops us
+  // reading a large body into memory to discover that. A chunked request has no
+  // `content-length`, in which case the schema bounds are the whole defence —
+  // which is why they are the ones that matter.
+  const declaredLength = Number(request.headers.get("content-length") ?? "");
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_PROPOSAL_BYTES) {
+    return fail(
+      413,
+      "payload_too_large",
+      `Proposal body is ${declaredLength} bytes; the limit is ${MAX_PROPOSAL_BYTES}.`,
+    );
+  }
+
   let raw: unknown;
   try {
     raw = await readEnvelope();
@@ -836,55 +872,73 @@ async function serveMarkdownTwin(request: Request, env: Env): Promise<Response |
  */
 const siteHandler = {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const { pathname } = new URL(request.url);
-
-    // Resolved at most once per request, and only if something asks.
-    const credential = credentialOnce(env, request);
-
-    if (pathname === "/api/proposals") {
-      return handleProposal(request, env, credential);
+    try {
+      return await route(request, env);
+    } catch (error) {
+      // Anything that reaches here is a bug rather than a rejected request, but
+      // an agent should still get the structured envelope every other failure
+      // on this endpoint returns, not the platform's bare 500 with an HTML
+      // body it cannot parse. The message is included because every caller is
+      // authenticated and the repo is public; there is nothing here a caller
+      // could not already see.
+      return fail(
+        500,
+        "internal_error",
+        error instanceof Error ? error.message : "Unhandled error.",
+      );
     }
-
-    // What a credential resolves to. Served here rather than as an OAuth
-    // `apiRoute` because the provider validates a token's audience against the
-    // request path, and our tokens are bound to `/mcp` (see UNUSED_API_ROUTE).
-    if (pathname === "/api/whoami") {
-      const resolved = await credential();
-      const identity =
-        resolved.kind === "static" || resolved.kind === "oauth" ? resolved.identity : null;
-      return whoamiResponse(identity);
-    }
-
-    // The remote MCP endpoint. Read tools project the same published JSON-LD the
-    // assets binding serves; write tools go through runProposal, so an MCP write
-    // and an HTTP write are the same write.
-    if (pathname === "/mcp") {
-      // `?auth=required` challenges at the handshake rather than at the first
-      // write (see `authRequired` in McpDeps). A query parameter rather than a
-      // second path, deliberately: RFC 9728 derives the metadata document from
-      // the path, so `/.well-known/oauth-protected-resource/mcp` still
-      // describes this endpoint and a token keeps one audience. A second path
-      // would fork both.
-      const authRequired = new URL(request.url).searchParams.get("auth") === "required";
-      return handleMcp(request, {
-        assets: env.ASSETS,
-        credential,
-        challengeOptions: challengeOptions(env),
-        authRequired,
-        proposal: (envelope) =>
-          runProposal(request, env, credential, async () => envelope, envelope.via),
-      });
-    }
-
-    // An agent asking a page URL for Markdown gets the page's twin, so it does
-    // not have to know the twin convention to get Markdown out of a plain link.
-    const markdown = await serveMarkdownTwin(request, env);
-    if (markdown) return markdown;
-
-    // Everything else is the static site.
-    return env.ASSETS.fetch(request);
   },
 };
+
+async function route(request: Request, env: Env): Promise<Response> {
+  const { pathname } = new URL(request.url);
+
+  // Resolved at most once per request, and only if something asks.
+  const credential = credentialOnce(env, request);
+
+  if (pathname === "/api/proposals") {
+    return handleProposal(request, env, credential);
+  }
+
+  // What a credential resolves to. Served here rather than as an OAuth
+  // `apiRoute` because the provider validates a token's audience against the
+  // request path, and our tokens are bound to `/mcp` (see UNUSED_API_ROUTE).
+  if (pathname === "/api/whoami") {
+    const resolved = await credential();
+    const identity =
+      resolved.kind === "static" || resolved.kind === "oauth" ? resolved.identity : null;
+    return whoamiResponse(identity);
+  }
+
+  // The remote MCP endpoint. Read tools project the same published JSON-LD the
+  // assets binding serves; write tools go through runProposal, so an MCP write
+  // and an HTTP write are the same write.
+  if (pathname === "/mcp") {
+    // `?auth=required` challenges at the handshake rather than at the first
+    // write (see `authRequired` in McpDeps). A query parameter rather than a
+    // second path, deliberately: RFC 9728 derives the metadata document from
+    // the path, so `/.well-known/oauth-protected-resource/mcp` still
+    // describes this endpoint and a token keeps one audience. A second path
+    // would fork both.
+    const authRequired = new URL(request.url).searchParams.get("auth") === "required";
+    return handleMcp(request, {
+      assets: env.ASSETS,
+      credential,
+      challengeOptions: challengeOptions(env),
+      authRequired,
+      proposal: (envelope) =>
+        runProposal(request, env, credential, async () => envelope, envelope.via),
+    });
+  }
+
+  // An agent asking a page URL for Markdown gets the page's twin, so it does
+  // not have to know the twin convention to get Markdown out of a plain link.
+  const markdown = await serveMarkdownTwin(request, env);
+  if (markdown) return markdown;
+
+  // Everything else is the static site.
+  return env.ASSETS.fetch(request);
+}
 
 /**
  * The deployed Worker.
