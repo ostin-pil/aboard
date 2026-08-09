@@ -8,7 +8,14 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "lib": ["ES2022", "DOM"]
+    "lib": ["ES2022", "DOM"],
+
+    // The adapters run under tsx and import each other with an explicit .ts
+    // extension, which tsc rejects by default (TS5097). Legal here because
+    // noEmit is set: nothing rewrites these paths, so what tsc reads is what
+    // tsx runs. Until session 48 nothing ever ran this config, so the two
+    // errors it had sat unnoticed.
+    "allowImportingTsExtensions": true
   },
   "include": ["*.ts"]
 }

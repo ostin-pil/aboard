@@ -51,6 +51,15 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # The reverse of the gaps session 48 closed in the session gate: this one
+      # ran only at session end, so a forecast a distrustful reader could not
+      # settle could land through a PR from anyone who never runs /session-end.
+      # Measured: an utterance-resolved criterion with no resolutionSource
+      # passes tsc, test, lint, build and check:built-urls, and is caught here
+      # and nowhere else.
+      - name: Resolution-criteria lint
+        run: npm run lint:resolution -- --strict
+
       # The build is the data gate: it runs the Zod loader plus the referential
       # integrity checks over data/, so malformed or dangling data fails here by
       # construction. This is what the MCP write path depends on.
@@ -73,6 +82,14 @@ jobs:
       # schemas out of src/lib, and the MCP server is a client of the endpoint's
       # contract, so a change to src/lib/types.ts can break either one without the
       # app's own type-check noticing.
+      # Narrower than it looks, measured in session 48. It does not validate
+      # wrangler.jsonc (an unknown compatibility_flag exits 0) and does not fail
+      # on a node: import with no nodejs_compat (warning only, exit 0). What it
+      # does catch is the wiring between config and code: a stale `main` path
+      # exits 1 while tsc exits 0. Worker *types* are already covered, since the
+      # root tsconfig includes worker/ — which is why this stays CI-only rather
+      # than joining build_commands, where it would cost a wrangler download per
+      # session for that one seam.
       - name: Bundle the Worker (write path)
         run: npx --yes wrangler@4 deploy --dry-run --outdir=/tmp/worker-build
 
@@ -80,12 +97,25 @@ jobs:
         working-directory: mcp-server
         run: npm ci && npm run typecheck
 
-      - name: Install client adapter
+      # The install was here to let the validate steps below run; the type-check
+      # is new. clients/tsconfig.json existed from the start and nothing had
+      # ever executed it, so it had been failing on two TS5097 errors unnoticed
+      # (the root tsconfig excludes this directory, and tsx strips types without
+      # checking them). Session 48 fixed the config and wired it to a command.
+      - name: Install and type-check the client adapter
         working-directory: clients
-        run: npm ci
+        run: npm ci && npm run typecheck
 
       # Static export, so there is no server to start — serve out/ and check the
       # published JSON-LD against public/schema/v0.json, the authoritative spec.
+      #
+      # This is the only place that check exists. No vitest test validates
+      # serializer output against v0.json, and session 48 confirmed it: dropping
+      # a schema-required field from edgeLD (which has no declared return type,
+      # so tsc infers a narrower one and says nothing) passed all six gate
+      # commands and failed here, naming the field. It stays CI-only because it
+      # needs a served export and ajv is not a root dependency; closing that
+      # properly means an in-process test, which is a session of its own.
       - name: Serve the static export
         run: |
           python3 -m http.server 3000 --directory out &
