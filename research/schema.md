@@ -235,7 +235,9 @@ A cited source.
 }
 ```
 
-**Required:** `@type`, `schema:name`, `schema:url`. **Optional:**
+**Required:** `@type`, `schema:name`, `schema:url` (http(s) only — unsafe
+schemes such as `javascript:` and `data:` are rejected by the loader and by the
+write path). **Optional:**
 `aboard:sourceKind` (one of `dataset`, `paper`, `news`, `policy`, `book`,
 `report`, `court`, `blog`, `statute`), `schema:datePublished` (publication
 year as a `YYYY` string), `schema:author` (free-form authors string),

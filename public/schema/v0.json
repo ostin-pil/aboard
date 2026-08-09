@@ -48,7 +48,7 @@
       "properties": {
         "@type": { "const": "schema:CreativeWork" },
         "schema:name": { "type": "string" },
-        "schema:url": { "type": "string", "format": "uri" },
+        "schema:url": { "type": "string", "format": "uri", "pattern": "^https?://", "description": "http(s) only. Unsafe schemes (javascript:, data:, vbscript:) are rejected at the loader and at the write path." },
         "aboard:sourceKind": { "$ref": "#/$defs/SourceKind" },
         "schema:datePublished": { "type": "string", "description": "Publication year as string (YYYY)." },
         "schema:author": { "type": "string", "description": "Free-form authors string (not the agent — that's schema:author on Claim/Argument)." },

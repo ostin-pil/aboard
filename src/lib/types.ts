@@ -33,9 +33,22 @@ export const SourceKind = z.enum([
 ]);
 export type SourceKind = z.infer<typeof SourceKind>;
 
+/**
+ * A source URL, constrained to http(s).
+ *
+ * Zod's bare `.url()` accepts `javascript:`, `data:` and `vbscript:` — verified
+ * by execution, not assumed. Nothing renders a source through a script-capable
+ * sink today (React blocks `javascript:` hrefs, and there is no `innerHTML`
+ * path), so this is defence in depth rather than a live hole. What it actually
+ * prevents is an unsafe scheme reaching `data/` at all, where it would outlive
+ * whichever renderer happens to be safe this year and would appear as a link
+ * target in the proposal PR body a reviewer reads.
+ */
+export const HttpUrl = z.url({ protocol: /^https?$/ });
+
 export const Source = z.object({
   label: z.string(),
-  url: z.string().url(),
+  url: HttpUrl,
   kind: SourceKind.optional(),
   year: z.number().int().min(1900).max(2100).optional(),
   authors: z.string().optional(),
