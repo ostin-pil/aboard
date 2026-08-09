@@ -368,3 +368,84 @@ describe("assertIntegrity", () => {
     expect(() => assertIntegrity(emptyGraph(), [], DOMAINS)).not.toThrow();
   });
 });
+
+/**
+ * Frontmatter against file location. Every case here passed every check the
+ * project had before these existed, and each one breaks the write path, which
+ * derives file paths from content rather than looking them up.
+ */
+describe("file location versus content", () => {
+  it("catches a claim whose filename disagrees with its id", () => {
+    const { graph, refs } = cleanGraph();
+    refs[0] = { kind: "claim", id: "S1", file: "data/democratic_backsliding/claims/S2.md" };
+
+    const errors = integrityErrors(graph, refs, DOMAINS);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("data/democratic_backsliding/claims/S2.md");
+    expect(errors[0]).toContain('declares id "S1"');
+  });
+
+  it("catches a claim sitting in a directory other than the domain it declares", () => {
+    const { graph, refs } = cleanGraph();
+    // A real domain, so this is not the unknown-domain case — the claim simply
+    // sits in the wrong one.
+    graph.claims[0].domain = "inequality";
+
+    const errors = integrityErrors(graph, refs, DOMAINS);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('claim "S1" declares domain "inequality"');
+    expect(errors[0]).toContain("data/democratic_backsliding/");
+  });
+
+  it("reports an unknown domain once, not twice", () => {
+    const { graph, refs } = cleanGraph();
+    graph.claims[0].domain = "made_up";
+
+    const errors = integrityErrors(graph, refs, DOMAINS);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("which is not a directory under data/");
+  });
+
+  it("catches a forecast filed under a different domain than its claim", () => {
+    const { graph, refs } = cleanGraph();
+    graph.forecasts.push(forecast({ id: "F1", attachedToClaimId: "S1" }));
+    refs.push({ kind: "forecast", id: "F1", file: "data/inequality/forecasts/F1.yaml" });
+
+    const errors = integrityErrors(graph, refs, DOMAINS);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("data/inequality/forecasts/F1.yaml");
+    expect(errors[0]).toContain('attaches to claim "S1" in data/democratic_backsliding/');
+  });
+
+  it("catches a dossier filed under a different domain than its claim", () => {
+    const { graph, refs } = cleanGraph();
+    graph.dossiers.push(dossier("S1"));
+    refs.push({ kind: "dossier", id: "S1", file: "data/inequality/dossiers/S1.yaml" });
+
+    const errors = integrityErrors(graph, refs, DOMAINS);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("the write path derives its path from the claim");
+  });
+
+  it("catches a dossier whose filename is not the claim it attaches to", () => {
+    const { graph, refs } = cleanGraph();
+    graph.dossiers.push(dossier("S1"));
+    refs.push({
+      kind: "dossier",
+      id: "S1",
+      file: "data/democratic_backsliding/dossiers/M1.yaml",
+    });
+
+    const errors = integrityErrors(graph, refs, DOMAINS);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain('attaches to claim "S1" but its filename says "M1"');
+  });
+
+  it("says nothing about edges, which are many to a file", () => {
+    const { graph, refs } = cleanGraph();
+    graph.edges.push(edge({ id: "CE1", fromId: "S1", toId: "M1" }));
+    refs.push({ kind: "edge", id: "CE1", file: "data/cross_domain_edges.yaml" });
+
+    expect(integrityErrors(graph, refs, DOMAINS)).toEqual([]);
+  });
+});
