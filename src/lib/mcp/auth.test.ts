@@ -69,6 +69,33 @@ describe("the static token table", () => {
     expect(resolveStaticIdentity("secret-1", "")).toBeNull();
     expect(resolveStaticIdentity("secret-1", "{not json")).toBeNull();
   });
+
+  /**
+   * A table that parses as JSON but whose entries are not identities. Each of
+   * these used to sail through the cast and become a "valid" credential whose
+   * missing fields printed as `undefined` in the PR provenance block.
+   */
+  it("fails closed on an entry of the wrong shape", () => {
+    const cases = [
+      { "secret-1": { ...identity, agent: undefined } },
+      { "secret-1": { ...identity, operator: 42 } },
+      { "secret-1": { ...identity, agentId: "" } },
+      { "secret-1": "just a string" },
+      { "secret-1": null },
+      { "secret-1": {} },
+    ];
+    for (const table of cases) {
+      expect(resolveStaticIdentity("secret-1", JSON.stringify(table))).toBeNull();
+    }
+  });
+
+  it("isolates a bad entry instead of taking the whole table down with it", () => {
+    // Both orders are equally safe; this one does not turn a typo in one
+    // credential into an outage for every other credential in the table.
+    const table = JSON.stringify({ "secret-1": identity, "secret-2": { agent: "x" } });
+    expect(resolveStaticIdentity("secret-1", table)).toEqual(identity);
+    expect(resolveStaticIdentity("secret-2", table)).toBeNull();
+  });
 });
 
 describe("audience validation", () => {

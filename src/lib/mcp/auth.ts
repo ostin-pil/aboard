@@ -27,6 +27,7 @@
  * carrying `WWW-Authenticate`. Validation failures stay tool errors;
  * credential failures become status codes.
  */
+import { z } from "zod";
 import { CANONICAL_ORIGIN } from "@/lib/site";
 import type { TokenIdentity } from "@/lib/proposals";
 
@@ -109,23 +110,57 @@ export function parseScopes(scope: string | null | undefined): string[] {
 }
 
 /**
+ * The shape every entry in `ABOARD_AGENT_TOKENS` must have.
+ *
+ * `TokenIdentity` is a plain TypeScript type, so before this schema existed the
+ * table was cast rather than checked and any shape at all became an "identity".
+ * The damage was quiet: a missing `agent` only surfaced as a 422 from the
+ * content build much later, and a missing `operator` or `agentId` never
+ * surfaced at all — it printed as the literal `undefined` in the provenance
+ * block of the PR a human was reading to decide whether to trust the proposal.
+ *
+ * Every field is required and non-empty, because every one of them is either
+ * stamped into committed content or shown to that reviewer.
+ */
+const TokenIdentitySchema = z.object({
+  tokenId: z.string().min(1),
+  operator: z.string().min(1),
+  agent: z.string().min(1),
+  agentId: z.string().min(1),
+});
+
+const TokenTable = z.record(z.string(), z.unknown());
+
+/**
  * Look a static agent token up in the `ABOARD_AGENT_TOKENS` table.
  *
  * Takes the raw JSON so the parse is testable and so a malformed table fails
- * closed rather than throwing into the request path.
+ * closed rather than throwing into the request path. Fails closed on a bad
+ * *shape* too, not just bad JSON: an operator who mis-types one entry gets a
+ * 401 they will notice, rather than a PR whose provenance block is half
+ * `undefined`.
+ *
+ * Validation is per entry rather than over the whole table on purpose. Both
+ * orders are equally safe — no unvalidated entry can become an identity either
+ * way — but rejecting the whole table would turn one typo in one entry into an
+ * outage for every other credential in it. The mis-typed one gets its 401; the
+ * rest keep working.
  */
 export function resolveStaticIdentity(
   token: string,
   tableJson: string | undefined,
 ): TokenIdentity | null {
   if (!tableJson) return null;
-  let table: Record<string, TokenIdentity>;
+  let raw: unknown;
   try {
-    table = JSON.parse(tableJson) as Record<string, TokenIdentity>;
+    raw = JSON.parse(tableJson);
   } catch {
     return null;
   }
-  return table[token] ?? null;
+  const table = TokenTable.safeParse(raw);
+  if (!table.success) return null;
+  const entry = TokenIdentitySchema.safeParse(table.data[token]);
+  return entry.success ? entry.data : null;
 }
 
 /**
