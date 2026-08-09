@@ -2,6 +2,16 @@
 
 import { useState } from "react";
 
+// One label per canonical kind, so the picker cannot silently offer fewer
+// relations than the schema accepts. A new kind in `types.ts` fails the build
+// here until it has been described to the human choosing it.
+const RELATION_LABEL: Record<EngineEdge["kind"], string> = {
+  causes: "causes — directional, evidenced",
+  moderates: "moderates — conditions strength",
+  reduces: "reduces — leverage edge",
+  evidences: "evidences — source supports the target",
+};
+
 type Draft = {
   id?: string;
   source: string;
@@ -40,9 +50,11 @@ export function EdgeEditorModal({ draft, onSave, onDelete, onClose }: Props) {
               value={kind}
               onChange={(e) => setKind(e.target.value as EngineEdge["kind"])}
             >
-              <option value="causes">causes — directional, evidenced</option>
-              <option value="moderates">moderates — conditions strength</option>
-              <option value="reduces">reduces — leverage edge</option>
+              {Object.entries(RELATION_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
             </select>
           </label>
         </div>

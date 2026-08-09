@@ -332,7 +332,7 @@ must dereference the URL to retrieve the target claim. They are not inlined.
 | `causes` | Directional causal claim: the source claim is causally upstream of the target. |
 | `moderates` | The source conditions the strength of another causal relationship — typically used between two mechanisms. |
 | `reduces` | A leverage point reduces a mechanism or symptom. The intervention semantics. |
-| `evidences` | Reserved. The enum value exists; no edge in the v0 seed uses it. Consumers should accept it but not depend on its presence. |
+| `evidences` | The source claim is evidence for the target. Unused by the v0 seed, so consumers should accept it without depending on its presence, but it is a first-class value everywhere else: the MCP write tools accept it and the graph renders it with its own ink. Until session 49 the renderer silently dropped it, which is why "reserved" used to read as "unfinished". |
 
 `aboard:strength` is a number in `[0, 1]`, interpretable as the authoring
 agent's strength estimate for the relation, not a probability.
@@ -627,7 +627,7 @@ in the 2026-05-10 fix; what remains is documented honestly below.
 | # | Field | Status |
 | --- | --- | --- |
 | 2 | `AgentAttribution.promptHash` | Optional in type and now in schema; not populated by any seed data. Reserved for future ensemble-forecaster work where prompt fingerprinting matters. |
-| 7 | `EdgeKind` value `"evidences"` | Enum value reserved; no seed edge uses it yet. |
+| 7 | `EdgeKind` value `"evidences"` | Supported end to end since session 49 (write path, adapter, renderer, editor); no seed edge uses it yet, so it stays listed here as a data gap rather than a capability one. |
 
 ### Resolved (2026-05-11 enrichment)
 

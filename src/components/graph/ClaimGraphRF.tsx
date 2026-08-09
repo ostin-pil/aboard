@@ -1007,6 +1007,17 @@ function ClaimGraphRFInner({
           >
             <path d="M0,0 L8,4 L0,8 z" fill="var(--edge-reduces)" />
           </marker>
+          <marker
+            id="ag-rf-ah-evidences"
+            viewBox="0 0 8 8"
+            refX="7"
+            refY="4"
+            markerWidth={6.5}
+            markerHeight={6.5}
+            orient="auto-start-reverse"
+          >
+            <path d="M0,0 L8,4 L0,8 z" fill="var(--edge-evidences)" />
+          </marker>
         </defs>
       </svg>
 
