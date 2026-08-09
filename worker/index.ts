@@ -45,6 +45,12 @@ import {
   dossierToYaml,
   dossierPath,
 } from "../src/lib/data/serialize";
+import {
+  claimPrBody,
+  edgePrBody,
+  predictionPrBody,
+  dossierPrBody,
+} from "../src/lib/pr-body";
 import { isTransientStatus, withRetry } from "../src/lib/http-retry";
 import {
   audienceMatches,
@@ -58,7 +64,6 @@ import { handleMcp } from "./mcp";
 import { whoamiResponse, withOAuth } from "./oauth";
 import { markdownTwinPath, prefersMarkdown } from "../src/lib/markdown-negotiation";
 import { withinRateLimit, type RateLimiter } from "../src/lib/rate-limit";
-import type { Claim, Dossier, Edge, Prediction } from "../src/lib/types";
 
 interface Env {
   /** Static assets binding — the built `out/` directory. */
@@ -418,150 +423,6 @@ async function submitProposalPR(
 
   const url = typeof pr.body.html_url === "string" ? pr.body.html_url : "";
   return { ok: true, url, branch };
-}
-
-function provenanceBlock(identity: TokenIdentity): string[] {
-  return [
-    `## Provenance`,
-    ``,
-    `Stamped server-side from the agent token; none of it is caller-asserted.`,
-    ``,
-    `- **operator** ${identity.operator}`,
-    `- **agent** ${identity.agent}`,
-    `- **agentId** \`${identity.agentId}\``,
-  ];
-}
-
-function sourcesList(sources: Claim["sources"]): string {
-  if (sources.length === 0) return "_None._";
-  return sources.map((s) => `- [${s.label}](${s.url})${s.kind ? ` — ${s.kind}` : ""}`).join("\n");
-}
-
-function claimPrBody(claim: Claim, rationale: string, identity: TokenIdentity): string {
-  return [
-    `Filed by an agent through \`POST /api/proposals\`. **Not auto-merged** — a human is the admission gate.`,
-    ``,
-    `## Rationale`,
-    ``,
-    rationale,
-    ``,
-    `## Claim`,
-    ``,
-    `- **id** \`${claim.id}\` (minted server-side)`,
-    `- **kind** ${claim.kind}`,
-    `- **domain** ${claim.domain}`,
-    `- **confidence** ${claim.confidence}`,
-    ``,
-    `> ${claim.statement.replace(/\n/g, "\n> ")}`,
-    ``,
-    `## Sources`,
-    ``,
-    sourcesList(claim.sources),
-    ``,
-    ...provenanceBlock(identity),
-    ``,
-    `## Reviewer checklist`,
-    ``,
-    `- [ ] The sources are real, and they say what the claim says they say.`,
-    `- [ ] Confidence is calibrated, not decorative.`,
-    `- [ ] The claim is falsifiable and belongs in this domain.`,
-    `- [ ] CI is green (build, referential integrity, tests).`,
-  ].join("\n");
-}
-
-function edgePrBody(
-  edge: Edge,
-  rationale: string,
-  identity: TokenIdentity,
-  crossDomain: boolean,
-): string {
-  return [
-    `Filed by an agent through \`POST /api/proposals\`. **Not auto-merged** — a human is the admission gate.`,
-    ``,
-    `## Rationale`,
-    ``,
-    rationale,
-    ``,
-    `## Edge`,
-    ``,
-    `- **id** \`${edge.id}\` (minted server-side)`,
-    `- **relation** \`${edge.fromId}\` **${edge.kind}** \`${edge.toId}\``,
-    `- **strength** ${edge.strength}`,
-    `- **scope** ${crossDomain ? "cross-domain" : "intra-domain"}`,
-    ``,
-    `## Sources`,
-    ``,
-    sourcesList(edge.sources),
-    ``,
-    ...provenanceBlock(identity),
-    ``,
-    `## Reviewer checklist`,
-    ``,
-    `- [ ] Both endpoints exist and the direction is right.`,
-    `- [ ] The relation kind and strength are defensible, not decorative.`,
-    `- [ ] The rationale (and any sources) actually support the relation.`,
-    `- [ ] CI is green (build, referential integrity, tests).`,
-  ].join("\n");
-}
-
-function predictionPrBody(
-  forecastId: string,
-  prediction: Prediction,
-  rationale: string,
-  identity: TokenIdentity,
-): string {
-  return [
-    `Filed by an agent through \`POST /api/proposals\`. **Not auto-merged** — a human is the admission gate.`,
-    ``,
-    `## Reasoning`,
-    ``,
-    rationale,
-    ``,
-    `## Prediction`,
-    ``,
-    `- **forecast** \`${forecastId}\``,
-    `- **probability** ${prediction.probability}`,
-    ...(prediction.dataAnchors.length > 0
-      ? [``, `## Data anchors`, ``, sourcesList(prediction.dataAnchors)]
-      : []),
-    ``,
-    ...provenanceBlock(identity),
-    ``,
-    `## Reviewer checklist`,
-    ``,
-    `- [ ] The probability is defensible and the reasoning supports it.`,
-    `- [ ] Any data anchors are real and load.`,
-    `- [ ] The prediction sharpens the ensemble spread rather than padding it.`,
-    `- [ ] CI is green (build, referential integrity, tests).`,
-  ].join("\n");
-}
-
-function dossierPrBody(dossier: Dossier, rationale: string, identity: TokenIdentity): string {
-  return [
-    `Filed by an agent through \`POST /api/proposals\`. **Not auto-merged** — a human is the admission gate.`,
-    ``,
-    `## Rationale`,
-    ``,
-    rationale,
-    ``,
-    `## Dossier on \`${dossier.attachedToClaimId}\``,
-    ``,
-    `**Pro —** ${dossier.pro.thesis}`,
-    ``,
-    `**Con —** ${dossier.con.thesis}`,
-    ``,
-    `${dossier.cruxes.length} ranked crux${dossier.cruxes.length === 1 ? "" : "es"}; ` +
-      `${dossier.pro.keySources.length + dossier.con.keySources.length} cited sources across both sides.`,
-    ``,
-    ...provenanceBlock(identity),
-    ``,
-    `## Reviewer checklist`,
-    ``,
-    `- [ ] Both sides are genuinely steel-manned, not a strawman paired with a favourite.`,
-    `- [ ] Every keySource is real and supports its side.`,
-    `- [ ] The cruxes are the questions that would actually move the disagreement.`,
-    `- [ ] CI is green (build, referential integrity, tests).`,
-  ].join("\n");
 }
 
 // --- the endpoint ----------------------------------------------------------
