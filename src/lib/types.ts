@@ -23,7 +23,7 @@ export const Iso8601 = z
     "must be an ISO-8601 date (YYYY-MM-DD) or date-time",
   );
 
-export const AgentAttribution = z.object({
+export const AgentAttribution = z.strictObject({
   agent: z.string(),
   promptTitle: z.string().optional(),
   promptHash: z.string().optional(),
@@ -69,7 +69,7 @@ export type SourceKind = z.infer<typeof SourceKind>;
  */
 export const HttpUrl = z.url({ protocol: /^https?$/ });
 
-export const Source = z.object({
+export const Source = z.strictObject({
   label: z.string(),
   url: HttpUrl,
   kind: SourceKind.optional(),
@@ -83,7 +83,7 @@ export type Source = z.infer<typeof Source>;
 export const ClaimKind = z.enum(["symptom", "mechanism", "leverage_point"]);
 export type ClaimKind = z.infer<typeof ClaimKind>;
 
-export const DataPoint = z.object({
+export const DataPoint = z.strictObject({
   metric: z.string(),
   value: z.number(),
   unit: z.string().optional(),
@@ -94,7 +94,7 @@ export const DataPoint = z.object({
 });
 export type DataPoint = z.infer<typeof DataPoint>;
 
-export const Claim = z.object({
+export const Claim = z.strictObject({
   id: z.string(),
   kind: ClaimKind,
   title: z.string(),
@@ -118,7 +118,7 @@ export const AnalysisKind = z.enum([
 ]);
 export type AnalysisKind = z.infer<typeof AnalysisKind>;
 
-export const Analysis = z.object({
+export const Analysis = z.strictObject({
   id: z.string(),
   domain: z.string(),
   kind: AnalysisKind,
@@ -135,7 +135,7 @@ export type Analysis = z.infer<typeof Analysis>;
 export const EdgeKind = z.enum(["causes", "moderates", "reduces", "evidences"]);
 export type EdgeKind = z.infer<typeof EdgeKind>;
 
-export const Edge = z.object({
+export const Edge = z.strictObject({
   id: z.string(),
   fromId: z.string(),
   toId: z.string(),
@@ -150,14 +150,14 @@ export const Edge = z.object({
 });
 export type Edge = z.infer<typeof Edge>;
 
-export const BaseRate = z.object({
+export const BaseRate = z.strictObject({
   question: z.string(),
   rate: z.number().min(0).max(1),
   source: Source,
 });
 export type BaseRate = z.infer<typeof BaseRate>;
 
-export const Prediction = z.object({
+export const Prediction = z.strictObject({
   agent: AgentAttribution,
   probability: z.number().min(0).max(1),
   reasoning: z.string(),
@@ -178,7 +178,7 @@ export const ResolvedOutcome = z.union([z.enum(["yes", "no"]), z.number()]);
 export type ResolvedOutcome = z.infer<typeof ResolvedOutcome>;
 
 export const Forecast = z
-  .object({
+  .strictObject({
     id: z.string(),
     attachedToClaimId: z.string(),
     question: z.string(),
@@ -219,7 +219,7 @@ export const Forecast = z
   });
 export type Forecast = z.infer<typeof Forecast>;
 
-export const Argument = z.object({
+export const Argument = z.strictObject({
   thesis: z.string(),
   steelmannedSummary: z.string(),
   keySources: z.array(Source),
@@ -227,14 +227,14 @@ export const Argument = z.object({
 });
 export type Argument = z.infer<typeof Argument>;
 
-export const Crux = z.object({
+export const Crux = z.strictObject({
   statement: z.string(),
   impactScore: z.number().min(0).max(1),
   uncertainty: z.number().min(0).max(1),
 });
 export type Crux = z.infer<typeof Crux>;
 
-export const Dossier = z.object({
+export const Dossier = z.strictObject({
   attachedToClaimId: z.string(),
   pro: Argument,
   con: Argument,
