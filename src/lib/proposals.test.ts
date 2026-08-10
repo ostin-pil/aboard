@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import matter from "gray-matter";
 import YAML from "yaml";
@@ -98,6 +100,57 @@ describe("ClaimPayload", () => {
       sources: [{ label: "Not a source", url: "javascript:alert(1)" }],
     });
     expect(result.success).toBe(false);
+  });
+});
+
+/**
+ * Where the write path strips a caller's extra keys and where it refuses them.
+ *
+ * The split is deliberate and the two halves answer different questions.
+ * Identity fields at the top level are *expected* to arrive sometimes: an agent
+ * that helpfully includes `createdAt` is not making an error worth a 422, and
+ * the posture is that the server stamps those regardless. Inside a source, an
+ * unrecognised key is a typo or an unsupported field, and silently dropping it
+ * loses cited metadata the agent believed it had filed.
+ *
+ * Both halves became true incidentally when `Source` went strict in session 50,
+ * and no test noticed. These are that test.
+ */
+describe("unknown keys in a proposal", () => {
+  it("strips caller-supplied identity at the top level rather than refusing", () => {
+    const parsed = ClaimPayload.parse({
+      ...validPayload,
+      id: "S99",
+      createdAt: "1999-01-01T00:00:00Z",
+    });
+    expect(parsed).not.toHaveProperty("id");
+    expect(parsed).not.toHaveProperty("createdAt");
+  });
+
+  it("refuses an unrecognised key inside a source, naming it", () => {
+    const result = ClaimPayload.safeParse({
+      ...validPayload,
+      sources: [{ label: "V-Dem", url: "https://v-dem.net/", publisher: "typo" }],
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toContain("publisher");
+    }
+  });
+
+  /**
+   * The MCP server mirrors these schemas in Zod 3 and no compiler in this gate
+   * reads it, so the mirror is checked as text — the same approach
+   * `enum-sync.test.ts` takes for the enums. Without this the two doors can
+   * drift back apart: `worker/index.ts` promises an MCP write and an HTTP write
+   * are the same write with the same validation.
+   */
+  it("keeps the mcp-server source mirror strict too", () => {
+    const text = readFileSync(
+      join(process.cwd(), "mcp-server/src/tools/write.ts"),
+      "utf8",
+    );
+    expect(text).toMatch(/excerpt: z\.string\(\)\.optional\(\),\s*\}\)[\s\S]{0,800}?\.strict\(\)/);
   });
 });
 

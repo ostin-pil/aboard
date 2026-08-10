@@ -66,7 +66,18 @@ const sourceSchema = z.object({
   authors: z.string().optional(),
   finding: z.string().optional(),
   excerpt: z.string().optional(),
-});
+})
+  /**
+   * Strict, mirroring `Source` in `src/lib/types.ts`.
+   *
+   * Without this the two doors disagree about the same payload: a source
+   * carrying an unrecognised key is silently stripped here and rejected by the
+   * Worker, even though `worker/index.ts` says an MCP write and an HTTP write
+   * are the same write with the same validation. Stripping is the worse half of
+   * that disagreement anyway — a mistyped `publisher` would vanish without the
+   * agent ever learning its citation metadata had been dropped.
+   */
+  .strict();
 
 const claimKind = z.enum(["symptom", "mechanism", "leverage_point"]);
 const edgeKind = z.enum(["causes", "moderates", "reduces", "evidences"]);
