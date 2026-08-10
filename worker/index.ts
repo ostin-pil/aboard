@@ -51,6 +51,11 @@ import {
   predictionPrBody,
   dossierPrBody,
 } from "../src/lib/pr-body";
+import {
+  classifySubmitFailure,
+  type CollidableKind,
+  type SubmitFailure,
+} from "../src/lib/proposal-errors";
 import { isTransientStatus, withRetry } from "../src/lib/http-retry";
 import {
   audienceMatches,
@@ -406,22 +411,41 @@ type ProposalSubmission = {
 async function submitProposalPR(
   ctx: GitHubContext,
   s: ProposalSubmission,
-): Promise<{ ok: true; url: string; branch: string } | { ok: false; detail: string }> {
+): Promise<{ ok: true; url: string; branch: string } | { ok: false; failure: SubmitFailure }> {
   const branch = `agent/${s.identity.tokenId}/${s.slug}-${s.stamp}`;
 
   const baseRef = await ghGet(ctx, `/git/ref/heads/${ctx.base}`);
   if (!baseRef.ok) {
-    return { ok: false, detail: `could not read base branch ${ctx.base} (HTTP ${baseRef.status})` };
+    return {
+      ok: false,
+      failure: {
+        step: "base-ref",
+        status: baseRef.status,
+        detail: `could not read base branch ${ctx.base} (HTTP ${baseRef.status})`,
+      },
+    };
   }
   const baseSha = (baseRef.body.object as { sha?: string } | undefined)?.sha;
-  if (!baseSha) return { ok: false, detail: "base branch has no sha" };
+  if (!baseSha) {
+    return {
+      ok: false,
+      failure: { step: "base-ref", status: baseRef.status, detail: "base branch has no sha" },
+    };
+  }
 
   const created = await gh(ctx, "/git/refs", {
     method: "POST",
     body: JSON.stringify({ ref: `refs/heads/${branch}`, sha: baseSha }),
   });
   if (!created.ok) {
-    return { ok: false, detail: `could not create branch ${branch} (HTTP ${created.status})` };
+    return {
+      ok: false,
+      failure: {
+        step: "branch",
+        status: created.status,
+        detail: `could not create branch ${branch} (HTTP ${created.status})`,
+      },
+    };
   }
 
   const committed = await gh(ctx, `/contents/${s.path}`, {
@@ -434,17 +458,47 @@ async function submitProposalPR(
     }),
   });
   if (!committed.ok) {
-    return { ok: false, detail: `could not commit ${s.path} (HTTP ${committed.status})` };
+    return {
+      ok: false,
+      failure: {
+        step: "commit",
+        status: committed.status,
+        // The absent `sha` is what makes this a create, and it is the field the
+        // classifier needs to read 422 as "the id is taken" rather than "a
+        // concurrent write moved the file underneath this update".
+        intent: s.sha ? "update" : "create",
+        path: s.path,
+        detail: `could not commit ${s.path} (HTTP ${committed.status})`,
+      },
+    };
   }
 
   const pr = await gh(ctx, "/pulls", {
     method: "POST",
     body: JSON.stringify({ title: s.prTitle, head: branch, base: ctx.base, body: s.prBody }),
   });
-  if (!pr.ok) return { ok: false, detail: `could not open PR (HTTP ${pr.status})` };
+  if (!pr.ok) {
+    return {
+      ok: false,
+      failure: {
+        step: "pull-request",
+        status: pr.status,
+        detail: `could not open PR (HTTP ${pr.status})`,
+      },
+    };
+  }
 
   const url = typeof pr.body.html_url === "string" ? pr.body.html_url : "";
   return { ok: true, url, branch };
+}
+
+/** `classifySubmitFailure` applied to the response shape the handlers return. */
+function failSubmit(
+  failure: SubmitFailure,
+  context: { kind: CollidableKind; id: string },
+): Response {
+  const e = classifySubmitFailure(failure, context);
+  return fail(e.status, e.code, e.message, e.extra);
 }
 
 // --- the endpoint ----------------------------------------------------------
@@ -494,7 +548,7 @@ async function handleClaim(
     prTitle: `feat(claims): propose ${built.claim.id} — ${built.claim.title}`,
     prBody: claimPrBody(built.claim, rationale, identity),
   });
-  if (!result.ok) return fail(502, "github_failed", `Could not open the proposal PR: ${result.detail}`);
+  if (!result.ok) return failSubmit(result.failure, { kind: "claim", id: built.claim.id });
 
   return json(
     {
@@ -557,7 +611,12 @@ async function handleEdge(
     prTitle: `feat(data): propose edge ${built.edge.id} — ${built.edge.fromId} ${built.edge.kind} ${built.edge.toId}`,
     prBody: edgePrBody(built.edge, rationale, identity, built.crossDomain),
   });
-  if (!result.ok) return fail(502, "github_failed", `Could not open the proposal PR: ${result.detail}`);
+  if (!result.ok)
+    return fail(
+      502,
+      "github_failed",
+      `Could not open the proposal PR: ${result.failure.detail}`,
+    );
 
   return json(
     {
@@ -631,7 +690,12 @@ async function handlePrediction(
     prTitle: `feat(forecast): propose a prediction on ${built.forecastId} (p=${built.prediction.probability})`,
     prBody: predictionPrBody(built.forecastId, built.prediction, rationale, identity),
   });
-  if (!result.ok) return fail(502, "github_failed", `Could not open the proposal PR: ${result.detail}`);
+  if (!result.ok)
+    return fail(
+      502,
+      "github_failed",
+      `Could not open the proposal PR: ${result.failure.detail}`,
+    );
 
   return json(
     {
@@ -689,7 +753,8 @@ async function handleDossier(
     prTitle: `feat(dossier): propose a dual-dossier on ${payload.data.claimId}`,
     prBody: dossierPrBody(built.dossier, rationale, identity),
   });
-  if (!result.ok) return fail(502, "github_failed", `Could not open the proposal PR: ${result.detail}`);
+  if (!result.ok)
+    return failSubmit(result.failure, { kind: "dossier", id: payload.data.claimId });
 
   return json(
     {
