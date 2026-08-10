@@ -155,7 +155,6 @@ clients/                                independent npm package
   package.json, tsconfig.json
 scripts/
   forecasters/ensemble-predict.ts       multi-provider ensemble forecast generator
-  forecast-sanity.ts                    assertion suite over the forecast math
   lint-resolution.ts                    resolution-criteria rigor lint
   check-built-urls.mjs                  post-build check: no localhost in out/
   publish-registry.sh                   signs and publishes the MCP server card
