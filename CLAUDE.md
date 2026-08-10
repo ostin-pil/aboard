@@ -55,9 +55,18 @@ The session gate and `.github/workflows/ci.yml` are two lists that drift apart
 without anything reporting it. Read them against each other whenever either
 changes. Two checks stay CI-only on purpose, both argued at their step in
 `ci.yml`: the Worker dry-run bundle, which only meaningfully covers the config's
-wiring to the entry point, and the schema validation of the served export, which
-needs a running server. The second is a real hole in the session gate — nothing
-in `npm test` validates serializer output against `public/schema/v0.json`.
+wiring to the entry point, and the schema validation of the *served* export,
+which needs a running server.
+
+The second used to be a real hole, because nothing in `npm test` validated
+serializer output at all. `src/lib/jsonld.test.ts` closes the part that matters:
+it runs `graphLD` and `fullClaimLD` over a fixture exercising every claim kind,
+every edge kind and every optional branch, and validates the result against
+`public/schema/v0.json` with the same Ajv construction `clients/validate.ts`
+uses. Serializer drift now fails `npm test` naming the field. What stays CI-only
+is narrower and still worth having: that the *built static export* serves those
+documents over HTTP, which is a claim about routing and `output: "export"`
+rather than about the serializers.
 
 ## Architecture
 
@@ -146,7 +155,6 @@ clients/                                independent npm package
   package.json, tsconfig.json
 scripts/
   forecasters/ensemble-predict.ts       multi-provider ensemble forecast generator
-  forecast-sanity.ts                    assertion suite over the forecast math
   lint-resolution.ts                    resolution-criteria rigor lint
   check-built-urls.mjs                  post-build check: no localhost in out/
   publish-registry.sh                   signs and publishes the MCP server card
@@ -224,7 +232,11 @@ After any change under `clients/` or `mcp-server/`, run `npm run typecheck:clien
 or `npm run typecheck:mcp`. The root `tsc` excludes both directories, and `tsx`
 runs them without type-checking, so nothing else reads them.
 
-After any change to `src/lib/jsonld.ts` or `src/lib/types.ts`, check the output
-against the schema by hand — build, serve `out/`, and run
-`clients/validate.ts`, the way `ci.yml` does. The serializers have no declared
-return types, so `tsc` will not notice a dropped field.
+After any change to `src/lib/jsonld.ts` or `src/lib/types.ts`, run `npm test`.
+`src/lib/jsonld.test.ts` validates serializer output against
+`public/schema/v0.json`, which is the only automated check that will: the
+serializers declare no return types, so dropping a schema-required field just
+narrows the inferred type and `tsc` exits 0. Verified by planting exactly that
+fault. Remember the schema is the spec, so a deliberate shape change means
+editing `public/schema/v0.json` and `research/schema.md` in the same commit,
+and that test is what holds the three in agreement.

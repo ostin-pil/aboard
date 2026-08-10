@@ -1,10 +1,33 @@
 import { z } from "zod";
 
-export const AgentAttribution = z.object({
+/**
+ * An ISO-8601 date or date-time.
+ *
+ * This pattern is a deliberate copy of `$defs/Iso8601` in
+ * `public/schema/v0.json`, character for character, and the two must stay
+ * identical. Before it existed these fields were bare `z.string()`, so the
+ * loader accepted `createdAt: "last Tuesday"` and the mismatch only surfaced
+ * as an Ajv error at the last step of CI, far from the file that caused it.
+ * `src/lib/jsonld.test.ts` is what now holds the two definitions in agreement.
+ *
+ * Note what this does *not* do: tighten to a full date-time. The schema permits
+ * a bare `YYYY-MM-DD`, and every `resolutionDate` in `data/` is exactly that,
+ * so `z.iso.datetime()` (which the audit proposed) would reject all twelve of
+ * them. Accepting less than we publish would be a different bug from the one
+ * being fixed.
+ */
+export const Iso8601 = z
+  .string()
+  .regex(
+    /^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})?)?$/,
+    "must be an ISO-8601 date (YYYY-MM-DD) or date-time",
+  );
+
+export const AgentAttribution = z.strictObject({
   agent: z.string(),
   promptTitle: z.string().optional(),
   promptHash: z.string().optional(),
-  generatedAt: z.string(),
+  generatedAt: Iso8601,
   /**
    * The accountable human or organisation behind the credential that filed
    * this. Stamped server-side from the agent token; never read from a caller's
@@ -46,7 +69,7 @@ export type SourceKind = z.infer<typeof SourceKind>;
  */
 export const HttpUrl = z.url({ protocol: /^https?$/ });
 
-export const Source = z.object({
+export const Source = z.strictObject({
   label: z.string(),
   url: HttpUrl,
   kind: SourceKind.optional(),
@@ -60,7 +83,7 @@ export type Source = z.infer<typeof Source>;
 export const ClaimKind = z.enum(["symptom", "mechanism", "leverage_point"]);
 export type ClaimKind = z.infer<typeof ClaimKind>;
 
-export const DataPoint = z.object({
+export const DataPoint = z.strictObject({
   metric: z.string(),
   value: z.number(),
   unit: z.string().optional(),
@@ -71,7 +94,7 @@ export const DataPoint = z.object({
 });
 export type DataPoint = z.infer<typeof DataPoint>;
 
-export const Claim = z.object({
+export const Claim = z.strictObject({
   id: z.string(),
   kind: ClaimKind,
   title: z.string(),
@@ -82,7 +105,7 @@ export const Claim = z.object({
   dataPoints: z.array(DataPoint).default([]),
   analyses: z.array(z.string()).default([]),
   authoredBy: AgentAttribution,
-  createdAt: z.string(),
+  createdAt: Iso8601,
 });
 export type Claim = z.infer<typeof Claim>;
 
@@ -95,7 +118,7 @@ export const AnalysisKind = z.enum([
 ]);
 export type AnalysisKind = z.infer<typeof AnalysisKind>;
 
-export const Analysis = z.object({
+export const Analysis = z.strictObject({
   id: z.string(),
   domain: z.string(),
   kind: AnalysisKind,
@@ -105,14 +128,14 @@ export const Analysis = z.object({
   dataSources: z.array(Source),
   producedFinding: z.string(),
   authoredBy: AgentAttribution,
-  createdAt: z.string(),
+  createdAt: Iso8601,
 });
 export type Analysis = z.infer<typeof Analysis>;
 
 export const EdgeKind = z.enum(["causes", "moderates", "reduces", "evidences"]);
 export type EdgeKind = z.infer<typeof EdgeKind>;
 
-export const Edge = z.object({
+export const Edge = z.strictObject({
   id: z.string(),
   fromId: z.string(),
   toId: z.string(),
@@ -127,20 +150,20 @@ export const Edge = z.object({
 });
 export type Edge = z.infer<typeof Edge>;
 
-export const BaseRate = z.object({
+export const BaseRate = z.strictObject({
   question: z.string(),
   rate: z.number().min(0).max(1),
   source: Source,
 });
 export type BaseRate = z.infer<typeof BaseRate>;
 
-export const Prediction = z.object({
+export const Prediction = z.strictObject({
   agent: AgentAttribution,
   probability: z.number().min(0).max(1),
   reasoning: z.string(),
   baseRates: z.array(BaseRate).default([]),
   dataAnchors: z.array(Source).default([]),
-  createdAt: z.string(),
+  createdAt: Iso8601,
 });
 export type Prediction = z.infer<typeof Prediction>;
 
@@ -155,11 +178,11 @@ export const ResolvedOutcome = z.union([z.enum(["yes", "no"]), z.number()]);
 export type ResolvedOutcome = z.infer<typeof ResolvedOutcome>;
 
 export const Forecast = z
-  .object({
+  .strictObject({
     id: z.string(),
     attachedToClaimId: z.string(),
     question: z.string(),
-    resolutionDate: z.string(),
+    resolutionDate: Iso8601,
     resolutionCriteria: z.string(),
     /**
      * The external, real-world thing that resolves this forecast: the
@@ -177,7 +200,7 @@ export const Forecast = z
      * excluded from scoring rather than left pending forever.
      */
     resolvedOutcome: ResolvedOutcome.nullable().optional(),
-    resolvedAt: z.string().optional(),
+    resolvedAt: Iso8601.optional(),
     /**
      * IDs of the forecasts that replace this one. A forecast whose criteria
      * turn out to be under-specified is never edited in place — editing
@@ -196,7 +219,7 @@ export const Forecast = z
   });
 export type Forecast = z.infer<typeof Forecast>;
 
-export const Argument = z.object({
+export const Argument = z.strictObject({
   thesis: z.string(),
   steelmannedSummary: z.string(),
   keySources: z.array(Source),
@@ -204,14 +227,14 @@ export const Argument = z.object({
 });
 export type Argument = z.infer<typeof Argument>;
 
-export const Crux = z.object({
+export const Crux = z.strictObject({
   statement: z.string(),
   impactScore: z.number().min(0).max(1),
   uncertainty: z.number().min(0).max(1),
 });
 export type Crux = z.infer<typeof Crux>;
 
-export const Dossier = z.object({
+export const Dossier = z.strictObject({
   attachedToClaimId: z.string(),
   pro: Argument,
   con: Argument,

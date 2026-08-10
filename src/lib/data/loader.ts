@@ -12,6 +12,7 @@ import {
   type ClaimGraph,
 } from "@/lib/types";
 import { assertIntegrity, type SourceRef } from "@/lib/data/integrity";
+import type { ZodError } from "zod";
 
 const DATA_ROOT = join(process.cwd(), "data");
 
@@ -29,6 +30,34 @@ function readFileOptional(p: string): string | null {
   return readFileSync(p, "utf8");
 }
 
+/**
+ * Parse one file's contents, and say which file if it fails.
+ *
+ * A bare `schema.parse` throws a `ZodError` naming the field and nothing else.
+ * Under `next build` that surfaces as "Failed to collect page data for
+ * /about/index.md" — a file that has nothing to do with the problem, because it
+ * is merely the page that happened to touch the loader first. A contributor
+ * then greps the whole corpus for the field.
+ *
+ * `rel()` above already exists for exactly this, and its comment already
+ * promised it; it was only wired to the not-a-list error. This wires it to the
+ * schema failures too, which are the ones that actually happen.
+ */
+function parseFile<T>(
+  schema: { safeParse: (x: unknown) => { success: boolean; data?: T; error?: ZodError } },
+  value: unknown,
+  filePath: string,
+  /** Position within a multi-entity file, e.g. `[3]` in an edges list. */
+  at = "",
+): T {
+  const result = schema.safeParse(value);
+  if (result.success) return result.data as T;
+  const issues = (result.error?.issues ?? [])
+    .map((i) => `${i.path.map(String).join(".") || "(root)"}: ${i.message}`)
+    .join("; ");
+  throw new Error(`${rel(filePath)}${at}: ${issues}`);
+}
+
 function loadClaim(filePath: string): Claim {
   const raw = readFileSync(filePath, "utf8");
   const { data, content } = matter(raw);
@@ -36,12 +65,15 @@ function loadClaim(filePath: string): Claim {
     ...data,
     statement: content.trim(),
   };
-  return Claim.parse(parsed);
+  return parseFile(Claim, parsed, filePath);
 }
 
-function loadYaml<T>(filePath: string, schema: { parse: (x: unknown) => T }): T {
+function loadYaml<T>(
+  filePath: string,
+  schema: { safeParse: (x: unknown) => { success: boolean; data?: T; error?: ZodError } },
+): T {
   const raw = readFileSync(filePath, "utf8");
-  return schema.parse(YAML.parse(raw));
+  return parseFile(schema, YAML.parse(raw), filePath);
 }
 
 function loadEdges(filePath: string): Edge[] {
@@ -56,7 +88,7 @@ function loadEdges(filePath: string): Edge[] {
       `${rel(filePath)}: expected a YAML list of edges, got ${typeof list}`,
     );
   }
-  return list.map((e) => Edge.parse(e));
+  return list.map((e, i) => parseFile(Edge, e, filePath, `[${i}]`));
 }
 
 type DomainData = {
