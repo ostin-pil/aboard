@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ClaimGraphCanvas } from "./ClaimGraphCanvas";
+import { ModalDialog } from "./graph/dialog";
 import { engineToPRPack } from "@/lib/data/exporter";
 
 type Props = { data: EngineGraphData };
@@ -14,16 +15,35 @@ export function GraphFullbleed({ data }: Props) {
   const [savedFlash, setSavedFlash] = useState(false);
   const [jsonldOpen, setJsonldOpen] = useState(false);
   const [jsonldText, setJsonldText] = useState("");
-  const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [activeDomain, setActiveDomain] = useState<string | "all">("all");
   const [seedDrift, setSeedDrift] = useState(false);
+  const jsonldTitleId = useId();
   const domains = data.domains ?? (data.domain ? [data.domain] : []);
   const showDomainFilter = domains.length > 1;
+
+  // Both flashes are fire-and-forget timers over state this component owns.
+  // Re-arming without clearing let the older timer end the newer flash early
+  // (save twice inside 1.8s and "saved locally" vanished mid-second-save), and
+  // an unmount with one pending set state on a dead component.
+  const flashTimer = useRef<number | null>(null);
+  const copyTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
+      if (copyTimer.current !== null) window.clearTimeout(copyTimer.current);
+    },
+    []
+  );
 
   const onPersist = (instance: AboardGraphInstance) => {
     setCounts({ n: instance.state.nodes.length, e: instance.state.edges.length });
     setSavedFlash(true);
-    window.setTimeout(() => setSavedFlash(false), 1800);
+    if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => {
+      setSavedFlash(false);
+      flashTimer.current = null;
+    }, 1800);
   };
   const onZoom = (s: number) => setZoom(Math.round(s * 100));
   const onReady = (instance: AboardGraphInstance) => {
@@ -47,8 +67,17 @@ export function GraphFullbleed({ data }: Props) {
         target.tagName === "SELECT"
       )
         return;
+      if (e.key === "Escape") {
+        setJsonldOpen(false);
+        return;
+      }
       const g = instanceRef.current;
       if (!g) return;
+      // Everything below mutates the graph, and with edit mode off the canvas
+      // is a reader. The instance refuses these too (the toolbar takes the same
+      // path, and it knows about open editors, which this handler does not), so
+      // this check is the local, legible half of the same rule.
+      if (!editable) return;
       if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         g.undo();
@@ -58,13 +87,11 @@ export function GraphFullbleed({ data }: Props) {
       } else if (e.key === "n" && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
         g.addNode();
-      } else if (e.key === "Escape") {
-        setJsonldOpen(false);
       }
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  }, [editable]);
 
   const openExport = () => {
     const g = instanceRef.current;
@@ -79,11 +106,28 @@ export function GraphFullbleed({ data }: Props) {
     setSeedDrift(false);
   };
 
+  const flashCopy = (state: "copied" | "failed") => {
+    setCopyState(state);
+    if (copyTimer.current !== null) window.clearTimeout(copyTimer.current);
+    copyTimer.current = window.setTimeout(() => {
+      setCopyState("idle");
+      copyTimer.current = null;
+    }, 1400);
+  };
+
   const copy = () => {
-    navigator.clipboard.writeText(jsonldText).then(() => {
-      setCopyState("copied");
-      window.setTimeout(() => setCopyState("idle"), 1400);
-    });
+    // `navigator.clipboard` is absent entirely on an insecure origin, and
+    // `writeText` rejects when the document is not focused or permission is
+    // refused. Both left the button reading "copy to clipboard" forever with
+    // the failure reported nowhere; the download button below is the fallback.
+    if (!navigator.clipboard) {
+      flashCopy("failed");
+      return;
+    }
+    navigator.clipboard.writeText(jsonldText).then(
+      () => flashCopy("copied"),
+      () => flashCopy("failed")
+    );
   };
 
   const download = () => {
@@ -178,9 +222,13 @@ export function GraphFullbleed({ data }: Props) {
       <main className="canvas-host" style={{ paddingTop: 90, height: "calc(100vh - 52px)" }}>
         <div className="ag-toolbar">
           <div className="ag-tool-group">
+            {/* Disabled rather than merely inert: the instance refuses these
+                with edit mode off, and a button that silently does nothing
+                reads as a bug. */}
             <button
               className="ag-tool-btn primary"
               onClick={() => instanceRef.current?.addNode()}
+              disabled={!editable}
               title="Sandbox claim — drafts a new node locally. To file it for real, export a PR pack and open a pull request."
             >
               + new claim
@@ -190,10 +238,18 @@ export function GraphFullbleed({ data }: Props) {
             </button>
           </div>
           <div className="ag-tool-group">
-            <button className="ag-tool-btn" onClick={() => instanceRef.current?.undo()}>
+            <button
+              className="ag-tool-btn"
+              onClick={() => instanceRef.current?.undo()}
+              disabled={!editable}
+            >
               undo
             </button>
-            <button className="ag-tool-btn" onClick={() => instanceRef.current?.redo()}>
+            <button
+              className="ag-tool-btn"
+              onClick={() => instanceRef.current?.redo()}
+              disabled={!editable}
+            >
               redo
             </button>
           </div>
@@ -238,36 +294,41 @@ export function GraphFullbleed({ data }: Props) {
       </main>
 
       {jsonldOpen && (
-        <div id="jsonldModal" className="open" onClick={(e) => {
-          if (e.target === e.currentTarget) setJsonldOpen(false);
-        }}>
-          <div className="box">
-            <div className="head">
-              <div>
-                <span className="t">JSON-LD export</span> · client-side serialization
-              </div>
-              <button className="btn-mono" onClick={() => setJsonldOpen(false)}>
-                close
-              </button>
+        <ModalDialog
+          labelledBy={jsonldTitleId}
+          onClose={() => setJsonldOpen(false)}
+          backdropClassName="jsonld-modal open"
+          className="box"
+        >
+          <div className="head">
+            <div id={jsonldTitleId}>
+              <span className="t">JSON-LD export</span> · client-side serialization
             </div>
-            <pre>{jsonldText}</pre>
-            <div className="foot">
-              <button className="btn-mono" onClick={copy}>
-                {copyState === "copied" ? "copied ✓" : "copy to clipboard"}
-              </button>
-              <button className="btn-mono" onClick={download}>
-                download .jsonld
-              </button>
-              <button
-                className="btn-mono primary"
-                onClick={downloadPRPack}
-                title="Emits a zip of skeletal Markdown + YAML files matching the data/ structure, ready to drop into a PR."
-              >
-                download PR pack
-              </button>
-            </div>
+            <button className="btn-mono" onClick={() => setJsonldOpen(false)}>
+              close
+            </button>
           </div>
-        </div>
+          <pre tabIndex={0}>{jsonldText}</pre>
+          <div className="foot">
+            <button className="btn-mono" onClick={copy}>
+              {copyState === "copied"
+                ? "copied ✓"
+                : copyState === "failed"
+                  ? "copy failed · use download"
+                  : "copy to clipboard"}
+            </button>
+            <button className="btn-mono" onClick={download}>
+              download .jsonld
+            </button>
+            <button
+              className="btn-mono primary"
+              onClick={downloadPRPack}
+              title="Emits a zip of skeletal Markdown + YAML files matching the data/ structure, ready to drop into a PR."
+            >
+              download PR pack
+            </button>
+          </div>
+        </ModalDialog>
       )}
     </>
   );

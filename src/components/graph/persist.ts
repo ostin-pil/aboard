@@ -89,51 +89,71 @@ export function computeSeedHash(nodes: GraphNode[]): string {
 }
 
 /**
- * Load the persisted sandbox, validated. Returns null (and clears the key) on
- * anything unusable: unreadable storage, non-JSON, a shape the schema rejects,
- * or a schemaVersion mismatch. On success reports `seedDrift` — whether the
- * stored seed differs from the current canonical one — so the caller can offer
- * a refresh without discarding the user's edits.
+ * What `loadPersisted` found. `empty` means there is nothing to act on (no
+ * storage, or no stored sandbox); `unusable` means something is stored that the
+ * caller cannot use and should drop with `clearPersisted`.
  */
-export function loadPersisted(
-  expectedSeedHash: string
-): { persisted: Persisted; seedDrift: boolean } | null {
-  if (typeof window === "undefined") return null;
+export type LoadOutcome =
+  | { status: "ok"; persisted: Persisted; seedDrift: boolean }
+  | { status: "empty" }
+  | { status: "unusable" };
+
+/**
+ * Read the persisted sandbox, validated. Pure: it reports what it found and
+ * writes nothing, so a caller may run it during render. Dropping an unusable
+ * snapshot and pruning the legacy keys are the caller's to do after commit
+ * (`clearPersisted`, `pruneLegacyStoreKeys`).
+ *
+ * On success reports `seedDrift` — whether the stored seed differs from the
+ * current canonical one — so the caller can offer a refresh without discarding
+ * the user's edits.
+ */
+export function loadPersisted(expectedSeedHash: string): LoadOutcome {
+  if (typeof window === "undefined") return { status: "empty" };
 
   let raw: string | null = null;
   try {
-    for (const k of LEGACY_STORE_KEYS) {
-      try { window.localStorage.removeItem(k); } catch { /* non-fatal */ }
-    }
     raw = window.localStorage.getItem(STORE_KEY);
   } catch {
-    return null; // storage unavailable; nothing to clear
+    return { status: "empty" }; // storage unavailable; nothing to clear
   }
-  if (!raw) return null;
+  if (!raw) return { status: "empty" };
 
   let json: unknown;
   try {
     json = JSON.parse(raw);
   } catch {
-    clearPersisted();
-    return null;
+    return { status: "unusable" };
   }
 
   const result = persistedSchema.safeParse(json);
-  if (!result.success) {
-    // Corrupt, or a pre-versioning payload — unusable shape. Drop and rebuild.
-    clearPersisted();
-    return null;
-  }
+  // Corrupt, a pre-versioning payload, or a shape predating the current
+  // schemaVersion — unusable either way. Drop and rebuild.
+  if (!result.success) return { status: "unusable" };
   if (result.data.schemaVersion !== STORE_SCHEMA_VERSION) {
-    // Schema drift: the stored shape predates the current one. Silent drop.
-    clearPersisted();
-    return null;
+    return { status: "unusable" };
   }
   return {
+    status: "ok",
     persisted: result.data,
     seedDrift: result.data.seedHash !== expectedSeedHash,
   };
+}
+
+/**
+ * Delete the pre-v3 store keys. Separate from `loadPersisted` because it
+ * writes: the load runs during render to seed React Flow, and a render must
+ * not mutate storage.
+ */
+export function pruneLegacyStoreKeys() {
+  if (typeof window === "undefined") return;
+  for (const k of LEGACY_STORE_KEYS) {
+    try {
+      window.localStorage.removeItem(k);
+    } catch {
+      /* non-fatal */
+    }
+  }
 }
 
 export function savePersisted(

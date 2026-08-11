@@ -5,6 +5,7 @@ import {
   computeSeedHash,
   hydrateFromPersisted,
   loadPersisted,
+  pruneLegacyStoreKeys,
   savePersisted,
 } from "./persist";
 import type { ClaimEdge, GraphNode } from "./types";
@@ -17,9 +18,11 @@ const STORE_KEY = "aboard.graph.v3";
 
 class MemStore {
   private m = new Map<string, string>();
+  /** Counts mutations, so a test can assert a code path wrote nothing at all. */
+  writes = 0;
   getItem(k: string) { return this.m.has(k) ? this.m.get(k)! : null; }
-  setItem(k: string, v: string) { this.m.set(k, v); }
-  removeItem(k: string) { this.m.delete(k); }
+  setItem(k: string, v: string) { this.writes++; this.m.set(k, v); }
+  removeItem(k: string) { this.writes++; this.m.delete(k); }
   clear() { this.m.clear(); }
 }
 
@@ -111,38 +114,76 @@ describe("loadPersisted validation (E2)", () => {
     ], edges: [] })],
     ["valid JSON of the wrong shape (no version)", JSON.stringify({ nodes: [], edges: [] })],
     ["non-JSON", "{not json"],
-  ])("returns null and clears the key on %s", (_label, raw) => {
+  ])("reports unusable on %s, leaving the key for the caller to drop", (_label, raw) => {
     store().setItem(STORE_KEY, raw);
-    expect(loadPersisted("seed-a")).toBeNull();
-    expect(store().getItem(STORE_KEY)).toBeNull();
+    expect(loadPersisted("seed-a")).toEqual({ status: "unusable" });
+    // The load no longer clears: it runs during render to seed React Flow, and
+    // render must not mutate storage. `ClaimGraphRFInner` clears in an effect.
+    expect(store().getItem(STORE_KEY)).toBe(raw);
   });
 
-  it("drops a schemaVersion mismatch silently", () => {
+  it("reports a schemaVersion mismatch as unusable", () => {
     store().setItem(
       STORE_KEY,
       JSON.stringify({ schemaVersion: STORE_SCHEMA_VERSION + 99, seedHash: "s", nodes: [], edges: [] })
     );
-    expect(loadPersisted("s")).toBeNull();
-    expect(store().getItem(STORE_KEY)).toBeNull();
+    expect(loadPersisted("s")).toEqual({ status: "unusable" });
   });
 
   it("loads a valid payload and reports no drift on a matching seed", () => {
     store().setItem(STORE_KEY, good());
     const out = loadPersisted("seed-a");
-    expect(out).not.toBeNull();
-    expect(out!.seedDrift).toBe(false);
-    expect(out!.persisted.nodes).toHaveLength(2);
+    expect(out.status).toBe("ok");
+    if (out.status !== "ok") return;
+    expect(out.seedDrift).toBe(false);
+    expect(out.persisted.nodes).toHaveLength(2);
   });
 
   it("loads a valid payload but reports drift on a changed seed", () => {
     store().setItem(STORE_KEY, good());
     const out = loadPersisted("seed-b");
-    expect(out).not.toBeNull();
-    expect(out!.seedDrift).toBe(true);
+    expect(out.status).toBe("ok");
+    if (out.status !== "ok") return;
+    expect(out.seedDrift).toBe(true);
   });
 
-  it("returns null without a payload", () => {
-    expect(loadPersisted("seed-a")).toBeNull();
+  it("reports empty without a payload", () => {
+    expect(loadPersisted("seed-a")).toEqual({ status: "empty" });
+  });
+
+  // The property the split exists for. Before it, the load pruned legacy keys
+  // and cleared the store key mid-render, so a render React discarded had
+  // already deleted the user's sandbox.
+  it.each([
+    ["nothing stored", null],
+    ["a good payload", good()],
+    ["non-JSON", "{not json"],
+    ["a version mismatch", JSON.stringify({ schemaVersion: STORE_SCHEMA_VERSION + 99, seedHash: "s", nodes: [], edges: [] })],
+  ])("writes nothing to storage with %s", (_label, raw) => {
+    if (raw !== null) store().setItem(STORE_KEY, raw);
+    store().setItem("aboard.graph.v2", "legacy");
+    const before = store().writes;
+    loadPersisted("seed-a");
+    expect(store().writes).toBe(before);
+    // Including the legacy key, which the load used to prune on every call.
+    expect(store().getItem("aboard.graph.v2")).toBe("legacy");
+  });
+});
+
+describe("pruneLegacyStoreKeys", () => {
+  it("removes the pre-v3 key and leaves the current one", () => {
+    store().setItem("aboard.graph.v2", "legacy");
+    store().setItem(STORE_KEY, "current");
+    pruneLegacyStoreKeys();
+    expect(store().getItem("aboard.graph.v2")).toBeNull();
+    expect(store().getItem(STORE_KEY)).toBe("current");
+  });
+
+  it("is idempotent, so StrictMode's double-invoked effect is harmless", () => {
+    store().setItem("aboard.graph.v2", "legacy");
+    pruneLegacyStoreKeys();
+    expect(() => pruneLegacyStoreKeys()).not.toThrow();
+    expect(store().getItem("aboard.graph.v2")).toBeNull();
   });
 });
 
@@ -157,10 +198,11 @@ describe("savePersisted round-trip (E3 stamping)", () => {
     ];
     savePersisted(nodes, edges, "seed-z");
     const out = loadPersisted("seed-z");
-    expect(out).not.toBeNull();
-    expect(out!.seedDrift).toBe(false);
-    expect(out!.persisted.nodes).toHaveLength(2);
-    expect(out!.persisted.edges).toHaveLength(1);
+    expect(out.status).toBe("ok");
+    if (out.status !== "ok") return;
+    expect(out.seedDrift).toBe(false);
+    expect(out.persisted.nodes).toHaveLength(2);
+    expect(out.persisted.edges).toHaveLength(1);
   });
 
   it("clearPersisted removes the key", () => {

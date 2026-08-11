@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ClaimGraphRF } from "./graph/ClaimGraphRF";
 
 type Mode = "inline" | "fullbleed";
@@ -65,8 +65,4 @@ export function ClaimGraphCanvas({
       )}
     </div>
   );
-}
-
-export function useGraphInstance(): React.RefObject<AboardGraphInstance | null> {
-  return useRef<AboardGraphInstance | null>(null);
 }
