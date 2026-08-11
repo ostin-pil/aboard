@@ -48,6 +48,7 @@ import {
   computeSeedHash,
   hydrateFromPersisted,
   loadPersisted,
+  pruneLegacyStoreKeys,
   savePersisted,
 } from "./persist";
 import {
@@ -106,9 +107,11 @@ function ClaimGraphRFInner({
     // to fullbleed (/graph); reading it here put a visitor's editor state —
     // other domains, deleted seeds, collapsed groups — on the landing page,
     // and let its group chevrons write back to the shared key. Build fresh.
-    if (mode === "inline") return { ...canonical, seedHash, seedDrift: false };
+    if (mode === "inline") {
+      return { ...canonical, seedHash, seedDrift: false, dropStored: false };
+    }
     const loaded = loadPersisted(seedHash);
-    if (loaded) {
+    if (loaded.status === "ok") {
       try {
         const hydrated = hydrateFromPersisted(loaded.persisted);
         // Self-heal on schema drift: a fullbleed snapshot must contain at least
@@ -116,17 +119,39 @@ function ClaimGraphRFInner({
         // (e.g. before multi-domain landed) would rehydrate into an inert graph
         // — drop it and rebuild. Load-bearing; see knowledge/issues.md.
         if (hydrated.nodes.some(isGroupNode)) {
-          return { ...hydrated, seedHash, seedDrift: loaded.seedDrift };
+          return {
+            ...hydrated,
+            seedHash,
+            seedDrift: loaded.seedDrift,
+            dropStored: false,
+          };
         }
       } catch {
         // Validated by Zod but still unhydratable: belt-and-braces, since the
         // hydrate runs in render and a throw here would white-screen the route.
-        // Fall through to clear and rebuild.
+        // Fall through to rebuild from canonical.
       }
-      clearPersisted();
     }
-    return { ...canonical, seedHash, seedDrift: false };
+    // Nothing usable was stored. `dropStored` asks the effect below to delete
+    // what is there; the deletion cannot happen here, in render.
+    return {
+      ...canonical,
+      seedHash,
+      seedDrift: false,
+      dropStored: loaded.status !== "empty",
+    };
   }, [data, mode]);
+
+  // The storage writes the memo above used to make mid-render: dropping a
+  // snapshot this render just rejected, and pruning the pre-v3 keys. Render must
+  // stay side-effect-free — React may run it twice or discard it entirely, and a
+  // discarded render had already deleted the user's sandbox. Effects run after
+  // commit, and both writes are idempotent under StrictMode's double-invoke.
+  useEffect(() => {
+    if (mode === "inline") return; // inline never touches the sandbox key
+    pruneLegacyStoreKeys();
+    if (initial.dropStored) clearPersisted();
+  }, [mode, initial]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<GraphNode>(initial.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ClaimEdge>(initial.edges);
