@@ -51,7 +51,7 @@ Vitest 4.1.10 (95 tests green).
   `.github/`, which is why looking in `.github/workflows` suggested otherwise.
   See E10's row.*
 
-## Current status — rewritten 2026-08-11 (session 52)
+## Current status — rewritten 2026-08-11 (session 52), amended by session 54
 
 **This section is replaced wholesale, never appended to.** v1, v2 and v3 each
 added a layer, and by session 51 the v3 layer was itself wrong in four places:
@@ -64,6 +64,11 @@ current, is the fix.
 
 Every line here was verified against the code on `main` at `0d60660`, not
 carried forward from a previous sweep.
+
+Session 54 amended this block rather than rewriting it: it moved E5 through E9
+from Still-live to Closed, re-measured the two line counts below, and left every
+other row as session 52 verified it. Those rows are therefore as old as their
+anchor says, which is the point of naming the anchor.
 
 Older annotations further down are marked "v3". That was the 2026-08-08 sweep
 this block replaced; the label is kept where another session wrote it, so the
@@ -83,6 +88,11 @@ attribution stays honest.
 | A8 | session 47 | Handler returns a structured 500; `gh()`'s fetch turns a network throw into a synthetic 502 |
 | A9 | session 47 | `resolveStaticIdentity` validates per entry with Zod instead of casting |
 | E1-E4 | batch 2 | Inline isolation, Zod-validated persistence, seed hash, undo/redo re-measure. Shipped as `fix/graph-state-integrity` |
+| E5 | session 54 | `addNode`/`undo`/`redo` refuse with edit mode off or an editor open, guarded on the instance so the shortcut and the toolbar take one path; the toolbar buttons carry `disabled` rather than silently no-opping |
+| E6 | session 54 | One `ModalDialog` shell behind all three modals: `role`, `aria-modal`, `aria-labelledby`, initial focus, a Tab trap and Escape, with focus restored on close. `focus-trap.test.ts` runs the ordering under jsdom |
+| E7 | session 54 | The expand transform is now `expandGroupNodes`/`expandGroupEdges` in `engine-to-rf.ts`, and filing into a collapsed group runs it, so the claim lands inside a group the user can see |
+| E8 | session 54 | `mintClaimId` derives the prefix from the domain's own claims, falling back to the domain's initials. Filing a symptom into `inequality` mints `IS4`, verified in the browser |
+| E9 | session 54 | All four: confidence clamped at the input, the persisted-sandbox read made write-free, both flash timers cleared and `clipboard.writeText` given a rejection path, `useGraphInstance` deleted |
 | E11 | session 47 | `locationErrors` asserts filename-equals-id, directory-equals-domain, and that a forecast or dossier sits with its claim |
 
 Also closed from the C and D lists: the route error boundary, the
@@ -97,11 +107,6 @@ deleted.
 | # | State on `0d60660` |
 |---|---|
 | B (hex) | `src/lib/tokens.ts` still does not exist; 59 re-typed hex values across the three OG images |
-| E5 | The `GraphFullbleed.tsx` keydown handler still checks neither `editable` nor modal state |
-| E6 | Editors carry `role="dialog"` and nothing else; the JSON-LD modal has no role at all |
-| E7 | Filing into a collapsed group still leaves the claim visible and detached |
-| E8 | `newId` still mints bare `S`/`M`/`L`, ignoring the domain prefix |
-| E9 | `useGraphInstance` still exported and dead; confidence input still unclamped in `onChange` |
 | E10 | Partly closed, and **downgraded on evidence** — read its row, which session 51 rewrote and which supersedes anything said about E10 elsewhere in this file. Two v2 premises were wrong (deploy-on-merge exists via Workers Builds; concurrent minting surfaces as an add/add conflict, not silently), the collision is now a structured `409 id_collision`, and what remains is the stale *edge* id and the option of reading ids live at `ctx.base` |
 | E12 | Exporter still re-mints edge ids from `E1` and emits whole-file `edges.yaml` replacements |
 | E13 | Orphaned `agent/…` branches. Sharper since session 51: its 409 path creates the branch before the commit |
@@ -121,9 +126,18 @@ fails at CI rather than at submit (session 51, deliberately out of its scope).
 
 ### Moving the wrong way
 
-`ClaimGraphRF.tsx` is **1139** lines, against 1128 at the last measurement and
-1101 when v2 wrote the finding. `claims/[id]/page.tsx` holds at 419 against 411.
-Both splits get more expensive every session that does not do them.
+`ClaimGraphRF.tsx` is **1207** lines, against 1139 at the last measurement, 1128
+before that and 1101 when v2 wrote the finding. `claims/[id]/page.tsx` holds at
+419 against 411. Both splits get more expensive every session that does not do
+them.
+
+Session 54 is why the first number jumped 68: closing E5 through E9 added
+guards, an expand path and their reasoning to the very file that most needs
+splitting. It did move the collapse and expand transform out to
+`engine-to-rf.ts`, where it is now pure and tested, so the direction is right
+even though the count went the wrong way. A session that takes the split should
+expect the file to fight back, and should probably do it before the next round
+of graph findings rather than after.
 
 ### Anchor warning
 
@@ -282,8 +296,11 @@ dry-run, mcp-server typecheck, **served-output Ajv validation against
 - typescript-eslint `recommendedTypeChecked` (surfaces every `res.json() as T`)
   — scope to `src`/`worker`/`clients`/`mcp-server`.
 - `eslint-plugin-jsx-a11y` + an axe-core component test for the modals (E6);
-  Prettier/Biome `--check`; unused-export gate (knip or ts-prune — would catch
-  E-class dead code like `useGraphInstance`); split CI into parallel jobs with
+  both got cheaper in session 54, which added `jsdom` and a per-file
+  `@vitest-environment jsdom` docblock, so a DOM-backed component test now needs
+  a renderer and nothing else. `useGraphInstance` is gone, but the unused-export
+  gate (knip or ts-prune) is what would have found it without an audit.
+  Prettier/Biome `--check`; split CI into parallel jobs with
   a concurrency group.
 
 ## D. Manual refactors (need judgment; not gates)
@@ -339,11 +356,11 @@ over ground the seven v1 agents didn't cover.
 | E2 | ~~MED~~ **CLOSED** | `persist.ts:49-53` | Corrupt-but-parseable state passes the shape check (only `nodes[0]` is inspected; `edges` never) and **crashes render before any `clearPersisted()` — a persistent white-screen** on both `/graph` and (via E1) the landing page, until manual localStorage surgery. Fix: Zod-validate the payload (per the repo's own rule), try/catch → clear + rebuild; plus the D error boundary. |
 | E3 | ~~MED~~ **CLOSED** | `persist.ts:10` | No seed/content versioning: `aboard.graph.v3` invalidates only on a hand-bumped key, so **returning visitors never see content merged into `data/` after their first edit** — for a board whose content is the product. Fix: stamp a seed hash; on mismatch offer refresh/merge. |
 | E4 | ~~MED~~ **CLOSED** | `ClaimGraphRF.tsx:347-366` | Undo/redo restores group `style.width/height` without `updateNodeInternals` — reintroducing exactly the stale-measure/undraggable-pill bug the code's own comment at `:322-327` documents (and `knowledge/issues.md` records). Fix: rAF-call `updateNodeInternals` for style-changed groups after undo/redo. |
-| E5 | MED | `GraphFullbleed.tsx:39-65` | Global shortcuts ignore edit-mode and modal state: with editing off, `n`/Cmd+Z still mutate the graph; with the node editor open and focus on a non-input surface, `n` fires `addNode()` → replaces `editingNode`, silently discarding the user's typed draft. Fix: gate on `editable` + no-modal-open. |
-| E6 | MED | `NodeEditorModal.tsx:108`, `EdgeEditorModal.tsx:29`, `GraphFullbleed.tsx:230-259` | Modals: no `aria-modal`, no accessible name, no focus trap/initial focus, no Escape (editors); the JSON-LD modal lacks even `role="dialog"`. Fix: native `<dialog>` or full ARIA + focus management; axe-core test (C). |
-| E7 | LOW | `ClaimGraphRF.tsx:575-595,707-772` | Filing/moving a claim into a collapsed group leaves it visible, detached below the 220×56 pill, edges showing while siblings hide. Fix: auto-expand the target, or apply the collapse path's `hidden`+remap. |
-| E8 | MED | `ClaimGraphRF.tsx:511-519` | `newId` mints bare `S`/`M`/`L` regardless of target domain — violating the repo's domain-prefix convention (`IS1`/`IM1`…) in exported PR packs, colliding across namespaces in the "Copy JSON-LD" `@id`s. (The persistence-scoped severity correction is in B4.) Fix: derive prefix from the resolved domain; validate exported packs with the loader (C). |
-| E9 | LOW | `NodeEditorModal.tsx:145-152`; `ClaimGraphRF.tsx:102-116`; `GraphFullbleed.tsx:24-25,80-84`; `ClaimGraphCanvas.tsx:48-50` | Grab-bag, one line each: confidence input unclamped (typed "5" saves, later fails the loader's `.min(0).max(1)`); `loadPersisted`/`clearPersisted` mutate localStorage inside a render-phase `useMemo`; flash/copy timers never cleared on unmount + `clipboard.writeText` has no `.catch` (button silently sticks on insecure contexts); `useGraphInstance` is a dead graph-engine-era export. |
+| E5 | ~~MED~~ **CLOSED** | `GraphFullbleed.tsx:39-65` | Global shortcuts ignore edit-mode and modal state: with editing off, `n`/Cmd+Z still mutate the graph; with the node editor open and focus on a non-input surface, `n` fires `addNode()` → replaces `editingNode`, silently discarding the user's typed draft. Fix: gate on `editable` + no-modal-open. |
+| E6 | ~~MED~~ **CLOSED** | `NodeEditorModal.tsx:108`, `EdgeEditorModal.tsx:29`, `GraphFullbleed.tsx:230-259` | Modals: no `aria-modal`, no accessible name, no focus trap/initial focus, no Escape (editors); the JSON-LD modal lacks even `role="dialog"`. Fix: native `<dialog>` or full ARIA + focus management; axe-core test (C). |
+| E7 | ~~LOW~~ **CLOSED** | `ClaimGraphRF.tsx:575-595,707-772` | Filing/moving a claim into a collapsed group leaves it visible, detached below the 220×56 pill, edges showing while siblings hide. Fix: auto-expand the target, or apply the collapse path's `hidden`+remap. |
+| E8 | ~~MED~~ **CLOSED** | `ClaimGraphRF.tsx:511-519` | `newId` mints bare `S`/`M`/`L` regardless of target domain — violating the repo's domain-prefix convention (`IS1`/`IM1`…) in exported PR packs, colliding across namespaces in the "Copy JSON-LD" `@id`s. (The persistence-scoped severity correction is in B4.) Fix: derive prefix from the resolved domain; validate exported packs with the loader (C). |
+| E9 | ~~LOW~~ **CLOSED** | `NodeEditorModal.tsx:145-152`; `ClaimGraphRF.tsx:102-116`; `GraphFullbleed.tsx:24-25,80-84`; `ClaimGraphCanvas.tsx:48-50` | Grab-bag, one line each: confidence input unclamped (typed "5" saves, later fails the loader's `.min(0).max(1)`); `loadPersisted`/`clearPersisted` mutate localStorage inside a render-phase `useMemo`; flash/copy timers never cleared on unmount + `clipboard.writeText` has no `.catch` (button silently sticks on insecure contexts); `useGraphInstance` is a dead graph-engine-era export. |
 
 ### E-II. Write path & data integrity
 
