@@ -303,6 +303,72 @@ export function expandGroupEdges(
 }
 
 /**
+ * Collapsing a domain group, the inverse of the pair above. Lives here for the
+ * same reason the expand half does: this is where the collapse geometry is, and
+ * a transform the component keeps to itself is a transform no test can reach.
+ *
+ * The group takes the fixed pill size rather than being re-measured, which is
+ * why `recomputeGroupBounds` skips collapsed groups instead of this calling it.
+ */
+export function collapseGroupNodes(
+  nodes: GraphNode[],
+  groupId: string,
+  childIds: Set<string>
+): GraphNode[] {
+  return nodes.map((n): GraphNode => {
+    if (n.id === groupId && isGroupNode(n)) {
+      return {
+        ...n,
+        data: { ...n.data, collapsed: true },
+        style: {
+          ...n.style,
+          width: COLLAPSED_GROUP_W,
+          height: COLLAPSED_GROUP_H,
+        },
+      };
+    }
+    if (childIds.has(n.id)) return { ...n, hidden: true };
+    return n;
+  });
+}
+
+/**
+ * The edge half. An edge with both ends inside the group is hidden: it would
+ * be drawn entirely inside the pill. An edge with exactly one end inside is
+ * re-pointed at the pill so the connection stays visible, and its real
+ * endpoint is stashed in `collapsedRemap` for `expandGroupEdges` to restore.
+ * Source and target are stashed independently, so an edge crossing two
+ * collapsed groups carries a remap for each.
+ */
+export function collapseGroupEdges(
+  edges: ClaimEdge[],
+  groupId: string,
+  childIds: Set<string>
+): ClaimEdge[] {
+  return edges.map((e) => {
+    const sourceInside = childIds.has(e.source);
+    const targetInside = childIds.has(e.target);
+    if (sourceInside && targetInside) return { ...e, hidden: true };
+    if (!sourceInside && !targetInside) return e;
+
+    const remap: CollapsedRemap = { ...(e.data?.collapsedRemap ?? {}) };
+    if (sourceInside) {
+      remap.source = { node: e.source, handle: e.sourceHandle ?? null };
+    }
+    if (targetInside) {
+      remap.target = { node: e.target, handle: e.targetHandle ?? null };
+    }
+    return {
+      ...e,
+      hidden: false,
+      ...(sourceInside ? { source: groupId, sourceHandle: null } : {}),
+      ...(targetInside ? { target: groupId, targetHandle: null } : {}),
+      data: { ...e.data!, collapsedRemap: remap },
+    };
+  });
+}
+
+/**
  * Build a fresh domain-group node positioned to the right of the existing
  * groups. Shared by `bulkGroupInto` and create-time domain slotting so a
  * synthesized group matches what `engineToRF` produces — notably

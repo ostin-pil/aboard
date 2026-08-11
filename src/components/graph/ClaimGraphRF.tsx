@@ -33,9 +33,9 @@ import { EdgeMarkerDefs } from "./EdgeMarkers";
 import { EdgePopover } from "./EdgePopover";
 import { alignColumn, distributeX, type XBox } from "./align";
 import {
-  COLLAPSED_GROUP_H,
-  COLLAPSED_GROUP_W,
   LAYOUT,
+  collapseGroupEdges,
+  collapseGroupNodes,
   engineToRF,
   expandGroupEdges,
   expandGroupNodes,
@@ -286,51 +286,8 @@ function ClaimGraphRFInner({
         setNodes((ns) => expandGroupNodes(ns, groupId, childIds, mode));
         setEdges((es) => expandGroupEdges(es, childIds));
       } else {
-        setNodes((ns) =>
-          ns.map((n): GraphNode => {
-            if (n.id === groupId && isGroupNode(n)) {
-              return {
-                ...n,
-                data: { ...n.data, collapsed: true },
-                style: { ...n.style, width: COLLAPSED_GROUP_W, height: COLLAPSED_GROUP_H },
-              };
-            }
-            if (childIds.has(n.id)) return { ...n, hidden: true };
-            return n;
-          })
-        );
-        setEdges((es) =>
-          es.map((e) => {
-            const sIn = childIds.has(e.source);
-            const tIn = childIds.has(e.target);
-            // Internal edge (both ends inside this group) → hide; it would
-            // live entirely inside the pill.
-            if (sIn && tIn) return { ...e, hidden: true };
-            // Boundary edge (exactly one end inside) → re-point that end to
-            // the collapsed pill so the connection stays visible; stash the
-            // original child endpoint + handle to restore on expand.
-            if (sIn || tIn) {
-              const remap: CollapsedRemap = { ...(e.data?.collapsedRemap ?? {}) };
-              const next: ClaimEdge = {
-                ...e,
-                hidden: false,
-                data: { ...e.data!, collapsedRemap: remap },
-              };
-              if (sIn) {
-                remap.source = { node: e.source, handle: e.sourceHandle ?? null };
-                next.source = groupId;
-                next.sourceHandle = null;
-              }
-              if (tIn) {
-                remap.target = { node: e.target, handle: e.targetHandle ?? null };
-                next.target = groupId;
-                next.targetHandle = null;
-              }
-              return next;
-            }
-            return e;
-          })
-        );
+        setNodes((ns) => collapseGroupNodes(ns, groupId, childIds));
+        setEdges((es) => collapseGroupEdges(es, groupId, childIds));
       }
       requestAnimationFrame(() => {
         // The group's style.width/height just changed; React Flow does
