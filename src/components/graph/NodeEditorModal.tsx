@@ -25,6 +25,18 @@ const ROW_BY_KIND: Record<EngineNode["kind"], 1 | 2 | 3> = {
 // Sentinel select value for "type a new domain".
 const NEW_DOMAIN = "__new__";
 
+/**
+ * The `min`/`max` attributes on a number input are advisory: the browser marks
+ * the field invalid but still reports the typed value, so "5" reached the graph
+ * and only failed later, in the loader's `Confidence.min(0).max(1)`, against a
+ * file the editor had already written. Clamp at the source.
+ */
+function clampConfidence(raw: string): number {
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(1, Math.max(0, n));
+}
+
 export function NodeEditorModal({
   node,
   onSave,
@@ -148,7 +160,7 @@ export function NodeEditorModal({
               max={1}
               step={0.01}
               value={conf}
-              onChange={(e) => setConf(parseFloat(e.target.value) || 0)}
+              onChange={(e) => setConf(clampConfidence(e.target.value))}
             />
           </label>
           <label className="ag-field">
