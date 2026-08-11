@@ -14,16 +14,34 @@ export function GraphFullbleed({ data }: Props) {
   const [savedFlash, setSavedFlash] = useState(false);
   const [jsonldOpen, setJsonldOpen] = useState(false);
   const [jsonldText, setJsonldText] = useState("");
-  const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [activeDomain, setActiveDomain] = useState<string | "all">("all");
   const [seedDrift, setSeedDrift] = useState(false);
   const domains = data.domains ?? (data.domain ? [data.domain] : []);
   const showDomainFilter = domains.length > 1;
 
+  // Both flashes are fire-and-forget timers over state this component owns.
+  // Re-arming without clearing let the older timer end the newer flash early
+  // (save twice inside 1.8s and "saved locally" vanished mid-second-save), and
+  // an unmount with one pending set state on a dead component.
+  const flashTimer = useRef<number | null>(null);
+  const copyTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
+      if (copyTimer.current !== null) window.clearTimeout(copyTimer.current);
+    },
+    []
+  );
+
   const onPersist = (instance: AboardGraphInstance) => {
     setCounts({ n: instance.state.nodes.length, e: instance.state.edges.length });
     setSavedFlash(true);
-    window.setTimeout(() => setSavedFlash(false), 1800);
+    if (flashTimer.current !== null) window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => {
+      setSavedFlash(false);
+      flashTimer.current = null;
+    }, 1800);
   };
   const onZoom = (s: number) => setZoom(Math.round(s * 100));
   const onReady = (instance: AboardGraphInstance) => {
@@ -79,11 +97,28 @@ export function GraphFullbleed({ data }: Props) {
     setSeedDrift(false);
   };
 
+  const flashCopy = (state: "copied" | "failed") => {
+    setCopyState(state);
+    if (copyTimer.current !== null) window.clearTimeout(copyTimer.current);
+    copyTimer.current = window.setTimeout(() => {
+      setCopyState("idle");
+      copyTimer.current = null;
+    }, 1400);
+  };
+
   const copy = () => {
-    navigator.clipboard.writeText(jsonldText).then(() => {
-      setCopyState("copied");
-      window.setTimeout(() => setCopyState("idle"), 1400);
-    });
+    // `navigator.clipboard` is absent entirely on an insecure origin, and
+    // `writeText` rejects when the document is not focused or permission is
+    // refused. Both left the button reading "copy to clipboard" forever with
+    // the failure reported nowhere; the download button below is the fallback.
+    if (!navigator.clipboard) {
+      flashCopy("failed");
+      return;
+    }
+    navigator.clipboard.writeText(jsonldText).then(
+      () => flashCopy("copied"),
+      () => flashCopy("failed")
+    );
   };
 
   const download = () => {
@@ -253,7 +288,11 @@ export function GraphFullbleed({ data }: Props) {
             <pre>{jsonldText}</pre>
             <div className="foot">
               <button className="btn-mono" onClick={copy}>
-                {copyState === "copied" ? "copied ✓" : "copy to clipboard"}
+                {copyState === "copied"
+                  ? "copied ✓"
+                  : copyState === "failed"
+                    ? "copy failed · use download"
+                    : "copy to clipboard"}
               </button>
               <button className="btn-mono" onClick={download}>
                 download .jsonld
