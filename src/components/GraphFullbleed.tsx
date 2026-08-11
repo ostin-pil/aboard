@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ClaimGraphCanvas } from "./ClaimGraphCanvas";
+import { ModalDialog } from "./graph/dialog";
 import { engineToPRPack } from "@/lib/data/exporter";
 
 type Props = { data: EngineGraphData };
@@ -17,6 +18,7 @@ export function GraphFullbleed({ data }: Props) {
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [activeDomain, setActiveDomain] = useState<string | "all">("all");
   const [seedDrift, setSeedDrift] = useState(false);
+  const jsonldTitleId = useId();
   const domains = data.domains ?? (data.domain ? [data.domain] : []);
   const showDomainFilter = domains.length > 1;
 
@@ -292,40 +294,41 @@ export function GraphFullbleed({ data }: Props) {
       </main>
 
       {jsonldOpen && (
-        <div id="jsonldModal" className="open" onClick={(e) => {
-          if (e.target === e.currentTarget) setJsonldOpen(false);
-        }}>
-          <div className="box">
-            <div className="head">
-              <div>
-                <span className="t">JSON-LD export</span> · client-side serialization
-              </div>
-              <button className="btn-mono" onClick={() => setJsonldOpen(false)}>
-                close
-              </button>
+        <ModalDialog
+          labelledBy={jsonldTitleId}
+          onClose={() => setJsonldOpen(false)}
+          backdropClassName="jsonld-modal open"
+          className="box"
+        >
+          <div className="head">
+            <div id={jsonldTitleId}>
+              <span className="t">JSON-LD export</span> · client-side serialization
             </div>
-            <pre>{jsonldText}</pre>
-            <div className="foot">
-              <button className="btn-mono" onClick={copy}>
-                {copyState === "copied"
-                  ? "copied ✓"
-                  : copyState === "failed"
-                    ? "copy failed · use download"
-                    : "copy to clipboard"}
-              </button>
-              <button className="btn-mono" onClick={download}>
-                download .jsonld
-              </button>
-              <button
-                className="btn-mono primary"
-                onClick={downloadPRPack}
-                title="Emits a zip of skeletal Markdown + YAML files matching the data/ structure, ready to drop into a PR."
-              >
-                download PR pack
-              </button>
-            </div>
+            <button className="btn-mono" onClick={() => setJsonldOpen(false)}>
+              close
+            </button>
           </div>
-        </div>
+          <pre tabIndex={0}>{jsonldText}</pre>
+          <div className="foot">
+            <button className="btn-mono" onClick={copy}>
+              {copyState === "copied"
+                ? "copied ✓"
+                : copyState === "failed"
+                  ? "copy failed · use download"
+                  : "copy to clipboard"}
+            </button>
+            <button className="btn-mono" onClick={download}>
+              download .jsonld
+            </button>
+            <button
+              className="btn-mono primary"
+              onClick={downloadPRPack}
+              title="Emits a zip of skeletal Markdown + YAML files matching the data/ structure, ready to drop into a PR."
+            >
+              download PR pack
+            </button>
+          </div>
+        </ModalDialog>
       )}
     </>
   );

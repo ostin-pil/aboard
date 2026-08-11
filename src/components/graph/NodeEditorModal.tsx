@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { ClaimNode } from "./types";
+import { ModalDialog } from "./dialog";
 
 type Props = {
   node: ClaimNode | null;
@@ -61,13 +62,10 @@ export function NodeEditorModal({
     node?.data.domain ?? defaultDomain ?? ""
   );
   const [newDomain, setNewDomain] = useState("");
+  const titleId = useId();
   const resolvedDomain = (
     domainChoice === NEW_DOMAIN ? newDomain : domainChoice
   ).trim();
-
-  function onBack(e: React.MouseEvent) {
-    if (e.target === e.currentTarget) onClose();
-  }
 
   function save() {
     const row = ROW_BY_KIND[kind];
@@ -117,102 +115,105 @@ export function NodeEditorModal({
   }
 
   return (
-    <div className="ag-modal-back" onClick={onBack}>
-      <div className="ag-modal" role="dialog">
-        <div className="ag-modal-head">
-          <div className="ag-modal-eyebrow">
-            {isNew ? "new claim" : "edit · " + node!.id}
-          </div>
-          <div className="ag-modal-sub">
-            authored by <code>agent:reader/v0</code> · unsigned
-          </div>
+    <ModalDialog
+      labelledBy={titleId}
+      onClose={onClose}
+      backdropClassName="ag-modal-back"
+      className="ag-modal"
+    >
+      <div className="ag-modal-head">
+        <div className="ag-modal-eyebrow" id={titleId}>
+          {isNew ? "new claim" : "edit · " + node!.id}
         </div>
-        <div className="ag-modal-body">
-          <label className="ag-field">
-            <span>kind</span>
-            <select value={kind} onChange={(e) => setKind(e.target.value as EngineNode["kind"])}>
-              <option value="symptom">symptom</option>
-              <option value="mechanism">mechanism</option>
-              <option value="leverage">leverage</option>
-            </select>
-          </label>
-          <label className="ag-field">
-            <span>title</span>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
-          </label>
-          <label className="ag-field">
-            <span>meta</span>
-            <input
-              type="text"
-              value={meta}
-              onChange={(e) => setMeta(e.target.value)}
-              placeholder="e.g. evidence · 7 studies"
-            />
-          </label>
-          <label className="ag-field">
-            <span>body</span>
-            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} />
-          </label>
-          <label className="ag-field ag-field-row">
-            <span>confidence</span>
-            <input
-              type="number"
-              min={0}
-              max={1}
-              step={0.01}
-              value={conf}
-              onChange={(e) => setConf(clampConfidence(e.target.value))}
-            />
-          </label>
-          <label className="ag-field">
-            <span>domain</span>
-            <select
-              value={domainChoice}
-              onChange={(e) => setDomainChoice(e.target.value)}
-            >
-              <option value="">(no domain)</option>
-              {availableDomains.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-              <option value={NEW_DOMAIN}>+ new domain…</option>
-            </select>
-          </label>
-          {domainChoice === NEW_DOMAIN && (
-            <label className="ag-field">
-              <span>new domain</span>
-              <input
-                type="text"
-                value={newDomain}
-                onChange={(e) => setNewDomain(e.target.value)}
-                placeholder="e.g. climate"
-                autoFocus
-              />
-            </label>
-          )}
-        </div>
-        <div className="ag-modal-foot">
-          {!isNew && (
-            <button
-              className="btn-mono danger"
-              onClick={() => {
-                if (!confirm("Delete " + node!.id + " and all its edges?")) return;
-                onDelete(node!.id);
-              }}
-            >
-              delete
-            </button>
-          )}
-          <span style={{ flex: 1 }} />
-          <button className="btn-mono" onClick={onClose}>
-            cancel
-          </button>
-          <button className="btn-mono primary" onClick={save}>
-            {isNew ? "file claim" : "save"}
-          </button>
+        <div className="ag-modal-sub">
+          authored by <code>agent:reader/v0</code> · unsigned
         </div>
       </div>
-    </div>
+      <div className="ag-modal-body">
+        <label className="ag-field">
+          <span>kind</span>
+          <select value={kind} onChange={(e) => setKind(e.target.value as EngineNode["kind"])}>
+            <option value="symptom">symptom</option>
+            <option value="mechanism">mechanism</option>
+            <option value="leverage">leverage</option>
+          </select>
+        </label>
+        <label className="ag-field">
+          <span>title</span>
+          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
+        </label>
+        <label className="ag-field">
+          <span>meta</span>
+          <input
+            type="text"
+            value={meta}
+            onChange={(e) => setMeta(e.target.value)}
+            placeholder="e.g. evidence · 7 studies"
+          />
+        </label>
+        <label className="ag-field">
+          <span>body</span>
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} />
+        </label>
+        <label className="ag-field ag-field-row">
+          <span>confidence</span>
+          <input
+            type="number"
+            min={0}
+            max={1}
+            step={0.01}
+            value={conf}
+            onChange={(e) => setConf(clampConfidence(e.target.value))}
+          />
+        </label>
+        <label className="ag-field">
+          <span>domain</span>
+          <select
+            value={domainChoice}
+            onChange={(e) => setDomainChoice(e.target.value)}
+          >
+            <option value="">(no domain)</option>
+            {availableDomains.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+            <option value={NEW_DOMAIN}>+ new domain…</option>
+          </select>
+        </label>
+        {domainChoice === NEW_DOMAIN && (
+          <label className="ag-field">
+            <span>new domain</span>
+            <input
+              type="text"
+              value={newDomain}
+              onChange={(e) => setNewDomain(e.target.value)}
+              placeholder="e.g. climate"
+              autoFocus
+            />
+          </label>
+        )}
+      </div>
+      <div className="ag-modal-foot">
+        {!isNew && (
+          <button
+            className="btn-mono danger"
+            onClick={() => {
+              if (!confirm("Delete " + node!.id + " and all its edges?")) return;
+              onDelete(node!.id);
+            }}
+          >
+            delete
+          </button>
+        )}
+        <span style={{ flex: 1 }} />
+        <button className="btn-mono" onClick={onClose}>
+          cancel
+        </button>
+        <button className="btn-mono primary" onClick={save}>
+          {isNew ? "file claim" : "save"}
+        </button>
+      </div>
+    </ModalDialog>
   );
 }
