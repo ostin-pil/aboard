@@ -29,6 +29,7 @@ import { ClaimEdge as ClaimEdgeComp } from "./ClaimEdge";
 import { ClaimNode as ClaimNodeComp } from "./ClaimNode";
 import { DomainGroupNode as DomainGroupNodeComp } from "./DomainGroupNode";
 import { EdgeEditorModal } from "./EdgeEditorModal";
+import { EdgeMarkerDefs } from "./EdgeMarkers";
 import { EdgePopover } from "./EdgePopover";
 import { alignColumn, distributeX, type XBox } from "./align";
 import {
@@ -1051,43 +1052,7 @@ function ClaimGraphRFInner({
 
   return (
     <div ref={wrapperRef} className={`ag-rf-root ag-rf-${mode}`}>
-      <svg width={0} height={0} style={{ position: "absolute" }} aria-hidden>
-        <defs>
-          <marker
-            id="ag-rf-ah-causes"
-            viewBox="0 0 8 8"
-            refX="7"
-            refY="4"
-            markerWidth={6.5}
-            markerHeight={6.5}
-            orient="auto-start-reverse"
-          >
-            <path d="M0,0 L8,4 L0,8 z" fill="var(--edge-causes)" />
-          </marker>
-          <marker
-            id="ag-rf-ah-reduces"
-            viewBox="0 0 8 8"
-            refX="7"
-            refY="4"
-            markerWidth={6.5}
-            markerHeight={6.5}
-            orient="auto-start-reverse"
-          >
-            <path d="M0,0 L8,4 L0,8 z" fill="var(--edge-reduces)" />
-          </marker>
-          <marker
-            id="ag-rf-ah-evidences"
-            viewBox="0 0 8 8"
-            refX="7"
-            refY="4"
-            markerWidth={6.5}
-            markerHeight={6.5}
-            orient="auto-start-reverse"
-          >
-            <path d="M0,0 L8,4 L0,8 z" fill="var(--edge-evidences)" />
-          </marker>
-        </defs>
-      </svg>
+      <EdgeMarkerDefs />
 
       <GraphContext.Provider value={ctx}>
         <ReactFlow<GraphNode, ClaimEdge>

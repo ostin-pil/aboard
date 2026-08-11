@@ -8,6 +8,7 @@ import {
   useConnection,
   type EdgeProps,
 } from "@xyflow/react";
+import { EDGE_ARROWHEAD } from "./EdgeMarkers";
 import { useGraphContext } from "./GraphContext";
 import type { ClaimEdge as ClaimEdgeT } from "./types";
 
@@ -29,16 +30,6 @@ const DASH: Record<EngineEdge["kind"], string | undefined> = {
   moderates: "3 3",
   reduces: "4 3",
   evidences: "1 3",
-};
-
-// Which kinds carry an arrowhead, and therefore need a marker def in
-// `ClaimGraphRF.tsx`. `moderates` conditions a relationship rather than
-// asserting a direction through it, so it stays headless.
-const ARROWHEAD: Record<EngineEdge["kind"], boolean> = {
-  causes: true,
-  moderates: false,
-  reduces: true,
-  evidences: true,
 };
 
 function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
@@ -131,7 +122,7 @@ function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
           strokeDasharray: dasharray,
           opacity,
         }}
-        markerEnd={ARROWHEAD[kind] ? `url(#ag-rf-ah-${kind})` : undefined}
+        markerEnd={EDGE_ARROWHEAD[kind] ? `url(#ag-rf-ah-${kind})` : undefined}
       />
       {hasPopover && (
         <path
