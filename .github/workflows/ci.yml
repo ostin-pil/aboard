@@ -34,6 +34,17 @@ jobs:
       - name: Install
         run: npm ci
 
+      # This file and wrangler.jsonc are the two hand-written configs no other
+      # command reads. Session 53 planted a syntax error in each and ran the
+      # whole session gate: nine commands, all exit 0. The asymmetry is the
+      # reason this step is here rather than only in the session gate — a
+      # wrangler.jsonc fault at least turns the dry-run step below red, whereas
+      # a ci.yml fault stops this workflow from parsing at all, so it presents
+      # as CI going quiet rather than red. The check also enforces gate/CI
+      # parity, which CLAUDE.md had asked readers to eyeball since session 48.
+      - name: Check config
+        run: npm run check:config
+
       - name: Type-check
         run: npx tsc --noEmit
 

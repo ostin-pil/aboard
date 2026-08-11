@@ -41,6 +41,9 @@ log_presence_regex: '^sessions/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_session.*\.md$'
 #   *.ts        typecheck:mcp, typecheck:clients (the two excluded sub-packages)
 #   *.sh        shellcheck                       (session 45)
 #   *.js/*.mjs  eslint                           (session 46)
+#   *.yaml      next build                       (data/, session 53)
+#   *.yml       check:config                     (ci.yml, session 53)
+#   *.jsonc     check:config                     (wrangler.jsonc, session 53)
 # tsconfig's include covers *.ts/*.tsx/*.mts but not *.js or *.mjs, and vitest
 # only reads src/**/*.test.ts, so eslint is the one command in this gate that
 # reads them. It was already a hard gate in CI and was missing here.
@@ -50,13 +53,30 @@ log_presence_regex: '^sessions/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_session.*\.md$'
 # commands. Session 48 proved that by planting one in each. They now have
 # readers of their own, which is what makes the glob honest.
 #
-# Not listed, deliberately: "*.jsonc". wrangler.jsonc is deployment-critical and
-# no command here reads it. CI's wrangler dry-run is its only reader anywhere,
-# and a weak one — session 48 measured it exiting 0 on an unknown compatibility
-# flag and on a node: import with no nodejs_compat. Adding the glob without a
-# command would be the hollow-glob mistake this comment exists to prevent.
-code_globs: ["*.ts", "*.tsx", "*.js", "*.mjs", "*.sh"]
-build_commands: ["shellcheck $(git ls-files '*.sh')", "npx tsc --noEmit", "npm run lint", "npm run typecheck:mcp", "npm run typecheck:clients", "npm run lint:resolution -- --strict", "npm run build", "npm run check:built-urls"]
+# The three globs session 53 added were each blocked on the same thing: a
+# reader. Session 48 left "*.jsonc" out for exactly that reason and said so
+# here, which was the right call at the time and became the to-do list.
+#
+# Measured before fixing, the way sessions 45, 46 and 48 did it. A YAML syntax
+# error in ci.yml and a JSON syntax error in wrangler.jsonc, planted together:
+# all nine gate commands exit 0. `npm run check:config` is the reader those two
+# now have, and it does more than parse them — it also enforces gate/CI parity
+# and the rate-limit period that wrangler.jsonc and worker/index.ts each
+# document as mirroring the other, with nothing checking it.
+#
+# The two files fail differently, which is why the new check runs in CI as well
+# as here. A broken wrangler.jsonc turns CI's dry-run step red. A broken ci.yml
+# cannot be caught by ci.yml: the workflow does not parse, so it does not run,
+# and the failure looks like CI having nothing to say.
+#
+# "*.yaml" is the one that was never a config gap at all. Everything under data/
+# is *.yaml, so a session that only edits a forecast matched no glob, classified
+# as docs, and skipped the build — and the build is the data gate, running the
+# Zod loader and the referential-integrity checks. Probe: probability 1.7 on
+# F1.yaml, which `npm run build` rejects naming the file and the field, and
+# which the session gate would never have run.
+code_globs: ["*.ts", "*.tsx", "*.js", "*.mjs", "*.sh", "*.yaml", "*.yml", "*.jsonc"]
+build_commands: ["shellcheck $(git ls-files '*.sh')", "npm run check:config", "npx tsc --noEmit", "npm run lint", "npm run typecheck:mcp", "npm run typecheck:clients", "npm run lint:resolution -- --strict", "npm run build", "npm run check:built-urls"]
 test_commands: ["npm test"]          # vitest, unit tests over the pure lib modules
 # none, because the two sub-package commands provision themselves: each is
 # `test -d node_modules || npm ci` before its typecheck, so it fails closed on a

@@ -20,8 +20,7 @@ order they could be picked up; pick any.
 
 | Plan | Deadline | Effort | Prereq |
 | --- | --- | --- | --- |
-| [flf-epistack-entry.md](flf-epistack-entry.md) | **2026-07-19** (submission) | ~2 sessions (writeup-led; T2/T3 optional) | Deploy (blocker); LICENSE done `7b3348e` |
-| [funding-applications.md](funding-applications.md) | Rolling (micro-grants now) | ~1 day writing + evidence package | Evidence items: FLF entry, repo-hardening, one resolved forecast |
+| [funding-applications.md](funding-applications.md) | Rolling (micro-grants now) | ~1 day writing + evidence package | Evidence items: FLF entry (submitted, see Shipped), repo-hardening, one resolved forecast |
 
 ## Open — build
 
@@ -43,10 +42,9 @@ order they could be picked up; pick any.
 | [agent-social-layer.md](agent-social-layer.md) | ~1–2 days | Medium — endorsement subjects, page naming | signals-substrate |
 | [graph-state-integrity.md](graph-state-integrity.md) | ~half-day (mostly QA) | Light — inline persistence, seed-hash scope, notify vs nuke | None (audit batch 1 merged) |
 
-Suggested order (2026-07-11 review): FLF entry first (hard deadline; carries
-the deploy + LICENSE), then integrity-foundations (do-now slice shipped in
-session 34) → repo-hardening →
-agent-surface → corpus-growth, with funding applications
+Suggested order (2026-07-11 review), with the FLF entry since submitted and its
+deadline passed: integrity-foundations (do-now slice shipped in session 34) →
+repo-hardening → agent-surface → corpus-growth, with funding applications
 running in parallel as evidence items land. The pre-review plans
 (domain-on-create, cross-domain-claim-drag, editor-mode-posture,
 open-weights-forecaster) remain independent and can interleave.
@@ -58,6 +56,15 @@ the math.
 
 ## Shipped
 
+- [flf-epistack-entry.md](flf-epistack-entry.md) — submitted by the 2026-07-19
+  deadline. The writeup-led entry (Fork C) went in: the external-anchor thesis
+  and both-readings methodology as the substance, the deployed site as the
+  demonstration. The repo carries no confirmation reference or exact submission
+  date, and the competition outcome is not yet known, so this records only that
+  it was submitted and the deadline was met. The plan file stays for the
+  argument it makes, which `funding-applications.md` draws on as an evidence
+  item. Recorded in session 53, three weeks after the fact, because nothing in
+  the repo had said either way.
 - [mcp-oauth.md](mcp-oauth.md) — done, session 31. OAuth 2.1 + PKCE for
   `/mcp`: per-call authorization decisions in `src/lib/mcp/auth.ts`, the
   authorization server co-hosted in the Worker (`worker/oauth.ts`, GitHub as

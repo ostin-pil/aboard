@@ -1,5 +1,12 @@
 # Plan: FLF Epistemic Case Study Competition entry — writeup-led — deadline 2026-07-19
 
+**Status: submitted by the 2026-07-19 deadline.** Recorded in session 53, three
+weeks late, because the repo had said nothing either way and a passed deadline
+with no status reads identically to a missed one. No confirmation reference or
+exact submission date is on record here, and the outcome is not yet known. The
+plan below is kept as written: it is the argument the entry was built on, and
+`funding-applications.md` cites the entry as an evidence item.
+
 Enter the Future of Life Foundation's Epistemic Case Study Competition
 (~$200k pool; awards $5k–$50k; continuation funding possible) with a
 **writeup-led** entry: aboard's external-anchor thesis + both-readings

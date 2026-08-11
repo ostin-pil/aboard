@@ -17,6 +17,7 @@ npm run lint:resolution   # forecast resolution-criteria rigor; session-end and 
 npm run typecheck:mcp     # mcp-server/, which the root tsconfig excludes
 npm run typecheck:clients # clients/, likewise excluded
 npm run check:built-urls  # asserts over out/; run it after a build
+npm run check:config      # ci.yml + wrangler.jsonc; the only reader either has
 shellcheck $(git ls-files '*.sh')   # shell scripts; session-end and CI both gate on it
 ```
 
@@ -51,12 +52,34 @@ error planted in each passed all six commands. `npm run typecheck:mcp` and
 `node_modules` before running, so a fresh clone gets a real check rather than a
 silent skip.
 
-The session gate and `.github/workflows/ci.yml` are two lists that drift apart
-without anything reporting it. Read them against each other whenever either
-changes. Two checks stay CI-only on purpose, both argued at their step in
-`ci.yml`: the Worker dry-run bundle, which only meaningfully covers the config's
-wiring to the entry point, and the schema validation of the *served* export,
+The session gate and `.github/workflows/ci.yml` used to be two lists that
+drifted apart with nothing reporting it, and the instruction here was to read
+them against each other by eye. `npm run check:config` now does it: every
+`build_commands` entry names the CI step that covers it, and every CI step is
+either one of those or listed in `CI_ONLY` with a reason. Adding a step to
+either list without settling the other fails the check, so the CI-only choices
+below are decisions on the record rather than drift nobody caught.
+
+Four checks stay CI-only on purpose, each argued at its step in `ci.yml`: the
+Worker dry-run bundle, which only meaningfully covers the config's wiring to the
+entry point, and the three steps around schema-validating the *served* export,
 which needs a running server.
+
+`check:config` is also the only reader `ci.yml` and `wrangler.jsonc` have in the
+session gate. Session 53 measured the hole by planting a YAML syntax error in
+one and a JSON syntax error in the other simultaneously: all nine gate commands
+exited 0. The two fail differently, which is why the check runs in CI as well. A
+broken `wrangler.jsonc` turns CI's dry-run step red; a broken `ci.yml` stops the
+workflow parsing, so it never runs and CI simply goes quiet. A file that
+disables the thing meant to catch it cannot be gated from inside itself, and
+that is the whole argument for a local reader.
+
+Past parseability it enforces two rules the repo had written down and left to
+memory: gate/CI parity above, and the rate-limit period that `wrangler.jsonc`
+and `worker/index.ts` each document as mirroring the other. Cloudflare accepts
+only 10 or 60 for that period, so the single legal edit is also the one that
+makes `retry-after` lie to every rate-limited caller, with tsc, the tests and
+the dry-run all staying green.
 
 The second used to be a real hole, because nothing in `npm test` validated
 serializer output at all. `src/lib/jsonld.test.ts` closes the part that matters:
@@ -231,6 +254,16 @@ read either extension, so eslint is the only automated check that will.
 After any change under `clients/` or `mcp-server/`, run `npm run typecheck:clients`
 or `npm run typecheck:mcp`. The root `tsc` excludes both directories, and `tsx`
 runs them without type-checking, so nothing else reads them.
+
+After any change to `.github/workflows/ci.yml` or `wrangler.jsonc`, run
+`npm run check:config`. Nothing else in the gate parses either file. Editing
+`ci.yml` is the case to be careful with, because a mistake there does not turn
+CI red, it stops CI running at all.
+
+After any change under `data/`, run `npm run build`. The build is the data gate
+(the Zod loader plus the referential-integrity checks), and `*.yaml` was outside
+`code_globs` until session 53, so a forecast-only session classified as docs and
+skipped the one command that validates what it changed.
 
 After any change to `src/lib/jsonld.ts` or `src/lib/types.ts`, run `npm test`.
 `src/lib/jsonld.test.ts` validates serializer output against

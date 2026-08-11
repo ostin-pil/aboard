@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "check:built-urls": "node scripts/check-built-urls.mjs",
+    "check:config": "npx tsx scripts/check-config.ts",
     "lint:resolution": "npx tsx scripts/lint-resolution.ts",
     "typecheck:mcp": "cd mcp-server && (test -d node_modules || npm ci) && npm run typecheck",
     "typecheck:clients": "cd clients && (test -d node_modules || npm ci) && npm run typecheck"
