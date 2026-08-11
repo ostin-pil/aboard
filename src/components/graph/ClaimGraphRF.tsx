@@ -32,8 +32,12 @@ import { EdgeEditorModal } from "./EdgeEditorModal";
 import { EdgePopover } from "./EdgePopover";
 import { alignColumn, distributeX, type XBox } from "./align";
 import {
+  COLLAPSED_GROUP_H,
+  COLLAPSED_GROUP_W,
   LAYOUT,
   engineToRF,
+  expandGroupEdges,
+  expandGroupNodes,
   makeDomainGroupNode,
   recomputeGroupBounds,
   rfToEngine,
@@ -68,9 +72,6 @@ const NODE_TYPES: NodeTypes = {
 };
 const EDGE_TYPES: EdgeTypes = { claim: ClaimEdgeComp };
 const HISTORY_LIMIT = 60;
-
-const COLLAPSED_GROUP_W = 220;
-const COLLAPSED_GROUP_H = 56;
 
 type Props = {
   data: EngineGraphData;
@@ -278,32 +279,27 @@ function ClaimGraphRFInner({
           .filter((n): n is ClaimNode => isClaimNode(n) && n.parentId === groupId)
           .map((n) => n.id)
       );
-      setNodes((ns) => {
-        const mapped = ns.map((n) => {
-          if (n.id === groupId && isGroupNode(n)) {
-            const next: typeof n = {
-              ...n,
-              data: { ...n.data, collapsed: nextCollapsed },
-              style: nextCollapsed
-                ? { ...n.style, width: COLLAPSED_GROUP_W, height: COLLAPSED_GROUP_H }
-                : { ...n.style, width: undefined, height: undefined },
-            };
-            return next;
-          }
-          if (childIds.has(n.id)) {
-            return { ...n, hidden: nextCollapsed } as GraphNode;
-          }
-          return n;
-        });
-        // Expand path: width/height were just cleared, so RF would otherwise
-        // fall back to the cached collapsed 220×56 box and crush the
-        // re-shown children into the corner. Recompute bounds from the now-
-        // visible children to restore the real group size.
-        return nextCollapsed ? mapped : recomputeGroupBounds(mapped, mode);
-      });
-      setEdges((es) =>
-        es.map((e) => {
-          if (nextCollapsed) {
+      if (!nextCollapsed) {
+        // The expand half is shared with `onNodeSave`, which has to run it when
+        // a claim is filed into a collapsed group.
+        setNodes((ns) => expandGroupNodes(ns, groupId, childIds, mode));
+        setEdges((es) => expandGroupEdges(es, childIds));
+      } else {
+        setNodes((ns) =>
+          ns.map((n): GraphNode => {
+            if (n.id === groupId && isGroupNode(n)) {
+              return {
+                ...n,
+                data: { ...n.data, collapsed: true },
+                style: { ...n.style, width: COLLAPSED_GROUP_W, height: COLLAPSED_GROUP_H },
+              };
+            }
+            if (childIds.has(n.id)) return { ...n, hidden: true };
+            return n;
+          })
+        );
+        setEdges((es) =>
+          es.map((e) => {
             const sIn = childIds.has(e.source);
             const tIn = childIds.has(e.target);
             // Internal edge (both ends inside this group) → hide; it would
@@ -332,39 +328,9 @@ function ClaimGraphRFInner({
               return next;
             }
             return e;
-          }
-          // Expanding this group.
-          // Internal edges (both literal ends are children) were only hidden,
-          // never re-pointed → just un-hide.
-          if (childIds.has(e.source) && childIds.has(e.target)) {
-            return { ...e, hidden: false };
-          }
-          // Boundary edges: restore any endpoint stashed for THIS group's
-          // children (an edge crossing two collapsed groups keeps the other
-          // group's remap until that group expands).
-          const remap = e.data?.collapsedRemap;
-          const restoreSource = !!remap?.source && childIds.has(remap.source.node);
-          const restoreTarget = !!remap?.target && childIds.has(remap.target.node);
-          if (!restoreSource && !restoreTarget) return e;
-          const next: ClaimEdge = { ...e };
-          const newRemap: CollapsedRemap = { ...remap };
-          if (restoreSource) {
-            next.source = remap!.source!.node;
-            next.sourceHandle = remap!.source!.handle ?? undefined;
-            delete newRemap.source;
-          }
-          if (restoreTarget) {
-            next.target = remap!.target!.node;
-            next.targetHandle = remap!.target!.handle ?? undefined;
-            delete newRemap.target;
-          }
-          const data = { ...e.data! };
-          if (newRemap.source || newRemap.target) data.collapsedRemap = newRemap;
-          else delete data.collapsedRemap;
-          next.data = data;
-          return next;
-        })
-      );
+          })
+        );
+      }
       requestAnimationFrame(() => {
         // The group's style.width/height just changed; React Flow does
         // not re-measure on its own, so its cached `measured` dims (used
@@ -598,6 +564,31 @@ function ClaimGraphRFInner({
 
   const onNodeSave = useCallback(
     (draft: ClaimNode) => {
+      // Whether this save files the claim into a *collapsed* group is settled
+      // here, against the committed graph, rather than inside the updater
+      // below: a state updater has to stay pure, and React may run it twice.
+      // Null unless the group exists, is collapsed, and this save is what moves
+      // the claim into it — editing the title of a claim already inside a
+      // collapsed group must not pop the group open.
+      const expandTarget = ((): { groupId: string; childIds: Set<string> } | null => {
+        if (mode !== "fullbleed" || !draft.data.domain) return null;
+        const before = nodesRef.current.find((n) => n.id === draft.id);
+        const currentDomain =
+          before && isClaimNode(before) ? before.data.domain : undefined;
+        if (before && draft.data.domain === currentDomain) return null;
+        const groupId = `__domain_${draft.data.domain}`;
+        const group = nodesRef.current.find((n) => n.id === groupId);
+        if (!group || !isGroupNode(group) || !group.data.collapsed) return null;
+        return {
+          groupId,
+          childIds: new Set(
+            nodesRef.current
+              .filter((n): n is ClaimNode => isClaimNode(n) && n.parentId === groupId)
+              .map((n) => n.id)
+          ),
+        };
+      })();
+
       setNodes((ns) => {
         const idx = ns.findIndex((n) => n.id === draft.id);
         const isNew = idx < 0;
@@ -649,6 +640,20 @@ function ClaimGraphRFInner({
           if (!working.some((n) => n.id === groupId)) {
             working = [...working, makeDomainGroupNode(domain, working, mode)];
           }
+          // The target group is collapsed: expand it, so the claim lands
+          // somewhere the user can see. The alternative was to hide the new
+          // claim inside the pill, which is consistent but reads as the save
+          // having done nothing. Either way the old behaviour was wrong — it
+          // left the claim visible and detached below the 220x56 pill, drawing
+          // edges to siblings that were hidden.
+          if (expandTarget) {
+            working = expandGroupNodes(
+              working,
+              expandTarget.groupId,
+              expandTarget.childIds,
+              mode
+            );
+          }
           const row = draft.data.row;
           let col = 0;
           for (const n of working) {
@@ -685,14 +690,32 @@ function ClaimGraphRFInner({
 
         return orderParentsFirst(recomputeGroupBounds(working, mode));
       });
+      // The edge half of the same expansion: un-hide the group's internal edges
+      // and un-point its boundary edges from the pill they were aimed at.
+      if (expandTarget) {
+        setEdges((es) => expandGroupEdges(es, expandTarget.childIds));
+      }
       setEditingNode(null);
       requestAnimationFrame(() => {
+        // Same re-measure the chevron path needs: the group's style.width and
+        // height just changed and React Flow does not notice on its own, so its
+        // cached dims stay at the collapsed pill's and the group is undraggable.
+        if (expandTarget) updateNodeInternals(expandTarget.groupId);
         snapshot();
         persist();
         onPersist?.(buildInstance());
       });
     },
-    [mode, setNodes, snapshot, persist, buildInstance, onPersist]
+    [
+      mode,
+      setNodes,
+      setEdges,
+      snapshot,
+      persist,
+      buildInstance,
+      onPersist,
+      updateNodeInternals,
+    ]
   );
 
   const onNodeDelete = useCallback(

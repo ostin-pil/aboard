@@ -1,6 +1,7 @@
 import type {
   ClaimEdge,
   ClaimNode,
+  CollapsedRemap,
   DomainGroupNode,
   GraphNode,
 } from "./types";
@@ -222,6 +223,82 @@ export function recomputeGroupBounds(
       data: { ...n.data, claimCount: childCount },
       style: { ...n.style, width, height },
     };
+  });
+}
+
+/**
+ * Expanding a collapsed domain group, as two pure transforms over the node and
+ * edge lists.
+ *
+ * Extracted because there are two ways into a collapsed group and they used to
+ * disagree. The chevron ran this logic; filing a claim into the group from the
+ * node editor ran none of it, so the claim landed visible and detached below
+ * the 220x56 pill with its edges drawn to siblings that were hidden. One
+ * transform, both callers.
+ *
+ * `childIds` is the group's claims *before* the caller's own change, which is
+ * what the edge remap has to be keyed on: a claim being filed in has no
+ * stashed endpoint to restore.
+ */
+export function expandGroupNodes(
+  nodes: GraphNode[],
+  groupId: string,
+  childIds: Set<string>,
+  mode: LayoutMode
+): GraphNode[] {
+  const mapped = nodes.map((n): GraphNode => {
+    if (n.id === groupId && isGroupNode(n)) {
+      return {
+        ...n,
+        data: { ...n.data, collapsed: false },
+        // Clearing the pill's width/height is what lets recomputeGroupBounds
+        // size the group from its now-visible children. Left set, React Flow
+        // keeps the cached 220x56 box and crushes the children into a corner.
+        style: { ...n.style, width: undefined, height: undefined },
+      };
+    }
+    if (childIds.has(n.id)) return { ...n, hidden: false };
+    return n;
+  });
+  return recomputeGroupBounds(mapped, mode);
+}
+
+/**
+ * The edge half: un-hide the group's internal edges and restore any boundary
+ * edge that was re-pointed at the collapsed pill. An edge crossing two
+ * collapsed groups keeps the other group's remap until that group expands too.
+ */
+export function expandGroupEdges(
+  edges: ClaimEdge[],
+  childIds: Set<string>
+): ClaimEdge[] {
+  return edges.map((e) => {
+    // Internal edges (both literal ends are children) were only hidden, never
+    // re-pointed, so they just come back.
+    if (childIds.has(e.source) && childIds.has(e.target)) {
+      return { ...e, hidden: false };
+    }
+    const remap = e.data?.collapsedRemap;
+    const restoreSource = !!remap?.source && childIds.has(remap.source.node);
+    const restoreTarget = !!remap?.target && childIds.has(remap.target.node);
+    if (!restoreSource && !restoreTarget) return e;
+    const next: ClaimEdge = { ...e };
+    const newRemap: CollapsedRemap = { ...remap };
+    if (restoreSource) {
+      next.source = remap!.source!.node;
+      next.sourceHandle = remap!.source!.handle ?? undefined;
+      delete newRemap.source;
+    }
+    if (restoreTarget) {
+      next.target = remap!.target!.node;
+      next.targetHandle = remap!.target!.handle ?? undefined;
+      delete newRemap.target;
+    }
+    const data = { ...e.data! };
+    if (newRemap.source || newRemap.target) data.collapsedRemap = newRemap;
+    else delete data.collapsedRemap;
+    next.data = data;
+    return next;
   });
 }
 
