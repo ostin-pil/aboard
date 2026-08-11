@@ -176,6 +176,7 @@ Through MCP, the same calls are `propose_claim` and `propose_edge`; set
 | `201` | PR opened. Body carries `kind`, `id`, `path`, `branch`, `pullRequest`. |
 | `401` | Missing or unknown bearer token. Nothing written. |
 | `422` | Validation failed. Body carries `issues[]` with the exact field paths — an agent can fix and retry without guessing. |
+| `409` | `id_collision`. The id this proposal was given already exists on the base branch: the published graph had not caught up when it was minted. Body carries `id`, `path`, `retryable: true` and a `remediation` string. Re-read `/api/graph` and file again. Claims and dossiers only. |
 | `429` | Too many proposals from this credential in the current window. Body carries `retryAfterSeconds`; a `Retry-After` header repeats it. Nothing written. |
 | `501` | An unknown proposal kind. All four (`claim`, `edge`, `prediction`, `dossier`) are wired. |
 | `502` | GitHub refused. No PR. |
@@ -344,6 +345,19 @@ resources or prompts warnings reappear in a release log, this is the answer.
 
 ## Known gaps
 
+- **Ids are minted against the deployed graph, not against `main`.**
+  `readGraph` reads `/api/graph` through the assets binding, so it sees the last
+  successful Workers Build. Cloudflare deploys on merge (the git integration is
+  configured in the dashboard, not in `.github/`), which bounds the lag to one
+  build cycle rather than leaving it open-ended. A claim or dossier filed inside
+  that window picks an id that already exists on `main`, and GitHub refuses the
+  create with a 422. That case is now a structured `409 id_collision` the caller
+  can retry rather than an opaque `502`, which is the honest fix: closing the
+  window entirely means reading ids from GitHub at `ctx.base` on every proposal,
+  and paying API calls on every write to remove a failure that is already
+  legible and self-correcting. A stale *edge* id is a separate matter and still
+  open — it appends a duplicate id into `edges.yaml` and is caught by CI's
+  integrity check on the PR, not here.
 - **`authorization_response_iss_parameter_supported` is not advertised**, though
   `iss` is emitted on every authorization response including errors. The
   provider library generates the authorization server metadata document and
