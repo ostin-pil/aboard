@@ -51,6 +51,7 @@ import {
   pruneLegacyStoreKeys,
   savePersisted,
 } from "./persist";
+import { mintClaimId } from "./mint-id";
 import {
   isClaimNode,
   isGroupNode,
@@ -560,14 +561,11 @@ function ClaimGraphRFInner({
   );
 
   // Editor save/delete handlers.
-  const newId = useCallback((kind: EngineNode["kind"]) => {
-    const prefix = kind === "symptom" ? "S" : kind === "mechanism" ? "M" : "L";
-    let i = 1;
-    while (
-      nodesRef.current.some((n) => isClaimNode(n) && n.id === prefix + i)
-    )
-      i++;
-    return prefix + i;
+  const newId = useCallback((kind: EngineNode["kind"], domain?: string) => {
+    const claims = nodesRef.current
+      .filter(isClaimNode)
+      .map((n) => ({ id: n.id, domain: n.data.domain }));
+    return mintClaimId(kind, domain, claims);
   }, []);
 
   const existingRowsCount = useCallback((row: 1 | 2 | 3) => {

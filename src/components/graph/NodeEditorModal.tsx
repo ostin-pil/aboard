@@ -8,7 +8,8 @@ type Props = {
   onSave: (draft: ClaimNode) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
-  newId: (kind: EngineNode["kind"]) => string;
+  /** Domain-aware: the minted id carries the target domain's prefix. */
+  newId: (kind: EngineNode["kind"], domain?: string) => string;
   existingRowsCount: (row: 1 | 2 | 3) => number;
   availableDomains: string[];
   defaultDomain?: string;
@@ -72,7 +73,7 @@ export function NodeEditorModal({
     const row = ROW_BY_KIND[kind];
     const filed = new Date().toISOString().slice(0, 10);
     if (isNew) {
-      const id = newId(kind);
+      const id = newId(kind, resolvedDomain || undefined);
       const col = existingRowsCount(row);
       const draft: ClaimNode = {
         id,
