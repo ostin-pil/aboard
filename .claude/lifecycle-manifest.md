@@ -41,6 +41,7 @@ log_presence_regex: '^sessions/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_session.*\.md$'
 #   *.ts        typecheck:mcp, typecheck:clients (the two excluded sub-packages)
 #   *.sh        shellcheck                       (session 45)
 #   *.js/*.mjs  eslint                           (session 46)
+#   *.yaml      next build                       (data/, session 53)
 #   *.yml       check:config                     (ci.yml, session 53)
 #   *.jsonc     check:config                     (wrangler.jsonc, session 53)
 # tsconfig's include covers *.ts/*.tsx/*.mts but not *.js or *.mjs, and vitest
@@ -67,7 +68,14 @@ log_presence_regex: '^sessions/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_session.*\.md$'
 # as here. A broken wrangler.jsonc turns CI's dry-run step red. A broken ci.yml
 # cannot be caught by ci.yml: the workflow does not parse, so it does not run,
 # and the failure looks like CI having nothing to say.
-code_globs: ["*.ts", "*.tsx", "*.js", "*.mjs", "*.sh", "*.yml", "*.jsonc"]
+#
+# "*.yaml" is the one that was never a config gap at all. Everything under data/
+# is *.yaml, so a session that only edits a forecast matched no glob, classified
+# as docs, and skipped the build — and the build is the data gate, running the
+# Zod loader and the referential-integrity checks. Probe: probability 1.7 on
+# F1.yaml, which `npm run build` rejects naming the file and the field, and
+# which the session gate would never have run.
+code_globs: ["*.ts", "*.tsx", "*.js", "*.mjs", "*.sh", "*.yaml", "*.yml", "*.jsonc"]
 build_commands: ["shellcheck $(git ls-files '*.sh')", "npm run check:config", "npx tsc --noEmit", "npm run lint", "npm run typecheck:mcp", "npm run typecheck:clients", "npm run lint:resolution -- --strict", "npm run build", "npm run check:built-urls"]
 test_commands: ["npm test"]          # vitest, unit tests over the pure lib modules
 # none, because the two sub-package commands provision themselves: each is
