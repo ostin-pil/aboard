@@ -941,6 +941,10 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 .ag-tool-btn:hover { background: var(--hair); color: var(--fg); }
 .ag-tool-btn.primary { background: var(--fg); color: var(--bg); }
 .ag-tool-btn.primary:hover { background: var(--fg); opacity: .92; }
+/* Edit mode off: the graph mutations refuse, so say so rather than no-op. */
+.ag-tool-btn:disabled { opacity: .38; cursor: not-allowed; }
+.ag-tool-btn:disabled:hover { background: var(--paper); color: var(--fg); }
+.ag-tool-btn.primary:disabled:hover { background: var(--fg); opacity: .38; }
 .ag-tool-group.zoom { flex-direction: column; width: var(--ctl-h); }
 .ag-tool-group.zoom .ag-tool-btn { height: auto; border-right: none; border-bottom: 1px solid var(--line); padding: 5px 0; justify-content: center; min-width: 0; }
 .ag-tool-group.zoom .ag-tool-btn:last-child { border-bottom: none; }

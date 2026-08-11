@@ -65,8 +65,17 @@ export function GraphFullbleed({ data }: Props) {
         target.tagName === "SELECT"
       )
         return;
+      if (e.key === "Escape") {
+        setJsonldOpen(false);
+        return;
+      }
       const g = instanceRef.current;
       if (!g) return;
+      // Everything below mutates the graph, and with edit mode off the canvas
+      // is a reader. The instance refuses these too (the toolbar takes the same
+      // path, and it knows about open editors, which this handler does not), so
+      // this check is the local, legible half of the same rule.
+      if (!editable) return;
       if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         g.undo();
@@ -76,13 +85,11 @@ export function GraphFullbleed({ data }: Props) {
       } else if (e.key === "n" && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
         g.addNode();
-      } else if (e.key === "Escape") {
-        setJsonldOpen(false);
       }
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  }, [editable]);
 
   const openExport = () => {
     const g = instanceRef.current;
@@ -213,9 +220,13 @@ export function GraphFullbleed({ data }: Props) {
       <main className="canvas-host" style={{ paddingTop: 90, height: "calc(100vh - 52px)" }}>
         <div className="ag-toolbar">
           <div className="ag-tool-group">
+            {/* Disabled rather than merely inert: the instance refuses these
+                with edit mode off, and a button that silently does nothing
+                reads as a bug. */}
             <button
               className="ag-tool-btn primary"
               onClick={() => instanceRef.current?.addNode()}
+              disabled={!editable}
               title="Sandbox claim — drafts a new node locally. To file it for real, export a PR pack and open a pull request."
             >
               + new claim
@@ -225,10 +236,18 @@ export function GraphFullbleed({ data }: Props) {
             </button>
           </div>
           <div className="ag-tool-group">
-            <button className="ag-tool-btn" onClick={() => instanceRef.current?.undo()}>
+            <button
+              className="ag-tool-btn"
+              onClick={() => instanceRef.current?.undo()}
+              disabled={!editable}
+            >
               undo
             </button>
-            <button className="ag-tool-btn" onClick={() => instanceRef.current?.redo()}>
+            <button
+              className="ag-tool-btn"
+              onClick={() => instanceRef.current?.redo()}
+              disabled={!editable}
+            >
               redo
             </button>
           </div>

@@ -186,9 +186,18 @@ function ClaimGraphRFInner({
   // change. Written in an effect, not during render: a ref must not be mutated
   // while rendering, and these are only read from event handlers that run after
   // commit, so the one-commit lag is immaterial.
+  // `editable` and "is an editor modal open" are mirrored for the same reason,
+  // with one extra wrinkle: the chrome captures `buildInstance()` once in
+  // `onReady` and holds that object forever, so a guard closing over either
+  // value directly would freeze at its mount-time reading and let the
+  // shortcuts mutate a read-only canvas anyway.
+  const editableRef = useRef(editable);
+  const editorOpenRef = useRef(false);
   useEffect(() => {
     nodesRef.current = nodes;
     edgesRef.current = edges;
+    editableRef.current = editable;
+    editorOpenRef.current = editingNode !== null || editingEdge !== null;
   });
 
   const historyRef = useRef<{ stack: { nodes: GraphNode[]; edges: ClaimEdge[] }[]; idx: number }>({
@@ -401,8 +410,20 @@ function ClaimGraphRFInner({
         );
       },
       render: () => {},
-      addNode: () => setEditingNode({ node: null }),
+      // The three mutating methods are guarded here rather than at each call
+      // site, because the toolbar buttons and the keyboard shortcuts both
+      // arrive through this object and only one of them was ever checked.
+      //
+      // `editable` off means the canvas is a reader. An open editor means a
+      // draft is being typed: `n` used to replace `editingNode` and discard it
+      // without a word, and an undo behind the modal moved the graph out from
+      // under the draft the modal was about to save.
+      addNode: () => {
+        if (!editableRef.current || editorOpenRef.current) return;
+        setEditingNode({ node: null });
+      },
       undo: () => {
+        if (!editableRef.current || editorOpenRef.current) return;
         const h = historyRef.current;
         if (h.idx > 0) {
           h.idx--;
@@ -410,6 +431,7 @@ function ClaimGraphRFInner({
         }
       },
       redo: () => {
+        if (!editableRef.current || editorOpenRef.current) return;
         const h = historyRef.current;
         if (h.idx < h.stack.length - 1) {
           h.idx++;
