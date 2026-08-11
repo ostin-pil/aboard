@@ -1,4 +1,4 @@
-# Code-quality audit — 2026-07-18, revised 2026-07-19 (v2), swept 2026-08-08 (v3)
+# Code-quality audit — 2026-07-18, revised 2026-07-19 (v2), status current 2026-08-11
 
 A read-only audit of aboard's stack against current (2026) best practices.
 v1 was a seven-agent pass; each agent researched its technology and audited the
@@ -10,11 +10,13 @@ was probed against installed versions, and two gap-hunts covered the areas the
 first pass missed (section E). Raw per-agent reports from both passes were
 session-scoped and are gone; **this document is the self-contained record.**
 
-**v3 (2026-08-08, session 47) is a status sweep, not a new audit.** Every v1/v2
-finding was resolved to its current anchor on `main` at `b25df96` and the claim
-re-tested against the code. Nothing new was hunted for. Results in the next
-section; the A–E bodies below keep their original wording, with closed entries
-marked in place so a reader of the tables cannot act on a dead finding.
+**Since v2 this document carries one status section, not a stack of sweeps.**
+It sits directly below and is rewritten in place; the A-E bodies keep their
+original wording as the historical record, with severity cells marked so a
+reader of the tables cannot act on a dead finding. Where a later session
+corrected a finding's *premise* rather than fixing it, the correction lives in
+that finding's own row and takes precedence over anything said about it
+elsewhere in this file, including in the v2 deltas immediately below.
 
 Stack audited: Next.js 16.2.6 (App Router, `output:"export"`), React 19.2.4,
 @xyflow/react 12.10.2, TypeScript strict, Zod 4.4.3 (mcp-server: Zod 3.25.76),
@@ -44,98 +46,91 @@ Vitest 4.1.10 (95 tests green).
 - **~25 new findings (section E).** The sharpest: the landing page's inline
   graph hydrates the `/graph` editor's localStorage sandbox (E1), and the
   Worker validates proposals against a deploy-frozen graph snapshot with no
-  deploy automation (E10).
+  deploy automation (E10). *Corrected in session 51: deploy-on-merge does
+  exist, through Cloudflare Workers Builds wired via the dashboard rather than
+  `.github/`, which is why looking in `.github/workflows` suggested otherwise.
+  See E10's row.*
 
-## v3 sweep — what closed, what moved, what stands
+## Current status — rewritten 2026-08-11 (session 52)
 
-Nine findings and two whole batches were already closed when the sweep ran.
-Session 47 then fixed six more (the write-path cluster, below). Four remain
-partly closed, and the partial half of each is stated so nobody reads a
-struck-through row as done. Everything else was re-verified as still live at
-the anchors given.
+**This section is replaced wholesale, never appended to.** v1, v2 and v3 each
+added a layer, and by session 51 the v3 layer was itself wrong in four places:
+it still listed A3, A4 and E10 at their original severities and said
+`scripts/forecast-sanity.ts` was unported, after sessions 49, 50 and 51 had
+closed the first two, downgraded the third on evidence, and done the port. An
+audit whose status accretes is an audit that misleads the sessions reading it
+to choose work, which is the opposite of what it is for. One block, always
+current, is the fix.
 
-**Closed, with the evidence that closes them:**
+Every line here was verified against the code on `main` at `0d60660`, not
+carried forward from a previous sweep.
 
-| # | Evidence on `main` at `b25df96` |
+Older annotations further down are marked "v3". That was the 2026-08-08 sweep
+this block replaced; the label is kept where another session wrote it, so the
+attribution stays honest.
+
+### Closed
+
+| # | Closed by | Evidence today |
+|---|---|---|
+| A1 | batch 1 | `metadataBase` in `layout.tsx`, asserted by `canonical-urls.test.ts`, with `check-built-urls.mjs` as the built-output net |
+| A2 | batch 1 | Zero `aboard.dev` in shipped source; `src/lib/vocab.ts` is the single vocabulary source |
+| A3 | session 50 | Six timestamp fields on `Iso8601`, zero bare `z.string()` dates. The pattern copies `$defs/Iso8601` character for character |
+| A4 | session 49 | `SUPPORTED_EDGE_KINDS` survives only as a historical comment, the drop-filter is gone, and `EngineEdge["kind"]` *is* `EdgeKind`, so the four render and edit sites cannot drift |
+| A5 | session 47 | `HttpUrl` in `types.ts`, a Zod-3 mirror in `mcp-server`, `v0.json` and `research/schema.md` narrowed to match |
+| A6 | session 47 | PR-body builders moved to `src/lib/pr-body.ts` and caller text contained in a fence whose length is computed from the content. `pr-body.test.ts` runs a forged-provenance payload through all four builders |
+| A7 | session 47 | A `LIMITS` block over every caller string and array, plus a `content-length` guard, sized so the largest legal proposal renders inside GitHub's 65,536-character PR body |
+| A8 | session 47 | Handler returns a structured 500; `gh()`'s fetch turns a network throw into a synthetic 502 |
+| A9 | session 47 | `resolveStaticIdentity` validates per entry with Zod instead of casting |
+| E1-E4 | batch 2 | Inline isolation, Zod-validated persistence, seed hash, undo/redo re-measure. Shipped as `fix/graph-state-integrity` |
+| E11 | session 47 | `locationErrors` asserts filename-equals-id, directory-equals-domain, and that a forecast or dossier sits with its claim |
+
+Also closed from the C and D lists: the route error boundary, the
+`about/page.tsx` split, `vocab.ts`, both forbidden-string gates, the enum-sync
+test, the early schema-drift test (`jsonld.test.ts`), `z.strictObject` across
+all twelve data schemas, the `clients/` and `mcp-server` type-checks in the
+gate, and `scripts/forecast-sanity.ts` ported to `src/lib/forecast.test.ts` and
+deleted.
+
+### Still live, verified today
+
+| # | State on `0d60660` |
 |---|---|
-| A1 | `layout.tsx:24` has `metadataBase: new URL(siteBaseUrl())`; `canonical-urls.test.ts:78` asserts it; `scripts/check-built-urls.mjs` is the post-build localhost gate CI runs |
-| A2 | Zero `aboard.dev` in shipped source (only the test that forbids it, `canonical-urls.test.ts:46`); `src/lib/vocab.ts` is now the single source for the context IRI, `SCHEMA_URL` and `GRAPH_VERSION`, shared by the serializers and the client export |
-| E1 | `ClaimGraphRF.tsx:109` returns the canonical graph for inline mode before `loadPersisted` is reached |
-| E2 | `persist.ts` Zod-validates the payload (`persistedNode` discriminated union, `persistedEdge`) and `persist.test.ts` covers malformed input |
-| E3 | `seedHash` + a non-destructive `seedDrift` signal in `persist.ts`, consumed at `ClaimGraphRF.tsx:109-110` |
-| E4 | `updateNodeInternals` is called on both history paths, `ClaimGraphRF.tsx:338` and `:360` |
-| D | Route error boundary exists: `src/app/graph/error.tsx` |
-| D | `about/page.tsx` split: 168 lines, was 417 |
-| C | Both forbidden-string gates exist (source grep via `canonical-urls.test.ts`, built-output check via `check-built-urls.mjs`) |
+| B (hex) | `src/lib/tokens.ts` still does not exist; 59 re-typed hex values across the three OG images |
+| E5 | The `GraphFullbleed.tsx` keydown handler still checks neither `editable` nor modal state |
+| E6 | Editors carry `role="dialog"` and nothing else; the JSON-LD modal has no role at all |
+| E7 | Filing into a collapsed group still leaves the claim visible and detached |
+| E8 | `newId` still mints bare `S`/`M`/`L`, ignoring the domain prefix |
+| E9 | `useGraphInstance` still exported and dead; confidence input still unclamped in `onChange` |
+| E10 | Partly closed, and **downgraded on evidence** — read its row, which session 51 rewrote and which supersedes anything said about E10 elsewhere in this file. Two v2 premises were wrong (deploy-on-merge exists via Workers Builds; concurrent minting surfaces as an add/add conflict, not silently), the collision is now a structured `409 id_collision`, and what remains is the stale *edge* id and the option of reading ids live at `ctx.base` |
+| E12 | Exporter still re-mints edge ids from `E1` and emits whole-file `edges.yaml` replacements |
+| E13 | Orphaned `agent/…` branches. Sharper since session 51: its 409 path creates the branch before the commit |
+| E14, E15 | Limiter ordering; the one-liners and duplicate-relation refusal |
+| E16 | `loader.ts` sorts only `listDomains()`; claims, forecasts and dossiers load in `readdirSync` order |
+| E17 | `ensemble-predict --update` still writes without `Forecast.parse` and re-stringifies the whole file |
+| E18 | `mcp-server/src/http.ts` still defaults to `http://localhost:3000`, where `/api/proposals` does not exist |
+| E19 | The dark token set is still duplicated between `[data-theme="dark"]` and `prefers-color-scheme` |
+| E20 | Tailwind is imported and **zero** utility classes are used anywhere. Adopt or drop |
+| E21 | `sitemap.ts` exists; no `robots.ts`, no `alternates.canonical` |
+| C | `--max-warnings 0` (13 warnings, blocked on the `Claude Design Screens/` decision), `noUncheckedIndexedAccess` (48 errors, probed), coverage thresholds, dependency gate |
 
-Sequencing batches 1 (hotfix) and 2 (graph-state integrity) are complete as
-units. `knowledge/issues.md` already records batch 2 landing as
-`fix/graph-state-integrity`.
+Two gaps named by later sessions, not in the original audit: `code_globs` has no
+reader for config, so `ci.yml` and `wrangler.jsonc` are unchecked (session 48);
+and a stale `nextSequentialId` for an *edge* still appends a duplicate that
+fails at CI rather than at submit (session 51, deliberately out of its scope).
 
-**Fixed by session 47, after the sweep.** The sweep confirmed these were live;
-the same session then closed them. Each is one commit with its own tests.
+### Moving the wrong way
 
-| # | What landed |
-|---|---|
-| A6 | PR-body builders moved to `src/lib/pr-body.ts` (pure, testable — the Worker exported nothing, which is why this survived two audits). Caller text is contained: multi-line free text in a fence whose length is computed from the content so it cannot be closed from inside, single-line values escaped and flattened, identity in code spans. `pr-body.test.ts` runs an attacker payload carrying a forged provenance block and a pre-ticked checklist through all four builders |
-| A5 | `HttpUrl` in `types.ts` and a Zod-3 equivalent in `mcp-server`; `v0.json` and `research/schema.md` narrowed to match. Verified by execution that the old `.url()` accepted `javascript:`, `data:` and `vbscript:` |
-| A7 | A `LIMITS` block bounding every caller-supplied string and array, plus a `content-length` guard. Sized against the real constraint: a test renders the largest legal proposal and asserts it fits GitHub's 65,536-character PR body (it comes to 41,470) |
-| A8 | Handler wrapped so an uncaught throw is a structured 500; `gh()`'s fetch wrapped so a network throw becomes a synthetic 502 that `isTransientStatus` already retries |
-| A9 | `resolveStaticIdentity` validates each entry with Zod instead of casting. Per entry rather than whole-table, so one mis-typed credential does not take the others down |
-| E11 | `locationErrors` in `integrity.ts` asserts filename-equals-id and directory-equals-domain, and that a forecast or dossier sits with the claim it attaches to — the path the Worker derives. Fault-tested against real `data/`: a planted mismatch fails the build naming the file |
+`ClaimGraphRF.tsx` is **1139** lines, against 1128 at the last measurement and
+1101 when v2 wrote the finding. `claims/[id]/page.tsx` holds at 419 against 411.
+Both splits get more expensive every session that does not do them.
 
-Two notes for whoever picks this up next. The A6 fix also fixed a live
-rendering bug it was not looking for: source links used bare `(url)`, which
-breaks on any URL with unbalanced parentheses, so every Wikipedia article with
-a disambiguator rendered wrong. And the E11 checks deliberately stay quiet when
-another check already owns the mistake (a duplicated id, or a domain that is
-not a directory at all), so one error means one problem.
+### Anchor warning
 
-**Partly closed — the open half is what matters now:**
-
-- **A2/B/D, `vocab.ts` half only.** `src/lib/vocab.ts` landed and killed the
-  origin drift. `src/lib/tokens.ts` was never written, so B's 59 re-typed hex
-  values across the three OG images stand untouched.
-- **E6.** Both editor modals now carry `role="dialog"`
-  (`NodeEditorModal.tsx:108`, `EdgeEditorModal.tsx:29`). Still absent
-  everywhere: `aria-modal`, an accessible name, focus trap, initial focus,
-  Escape. The JSON-LD modal in `GraphFullbleed.tsx` still has no dialog role at
-  all.
-- **E21.** `src/app/sitemap.ts` exists. No `robots.ts`, and no
-  `alternates.canonical` anywhere.
-- **D docs de-stale.** Closed across two sessions: session 46 took the
-  `graph-engine.js` half, session 47 took `generate-prediction.ts`, the
-  "empty in v0" `cross_domain_edges.yaml` line (it carries CE1–CE3), the
-  `next.config.ts` SITE_URL comment, and the mcp-server "write tools are
-  stubbed" header. What remains is not a stale-docs item but the E20 decision:
-  CLAUDE.md calls `globals.css` "Tailwind v4 + design tokens" and Tailwind is
-  genuinely imported, so the line only becomes wrong if the dependency is
-  dropped.
-
-**Anchor drift worth knowing before you act on section A.** `worker/index.ts`
-went from 780 to 1043 lines when OAuth landed, and session 47's extraction took
-it back to about 940, so every worker line number in section A and in E10–E15
-is stale twice over. Re-locate before quoting them. E10 was re-verified by
-content and still stands: `readGraph` still reads `env.ASSETS.fetch`, and
-`.github/workflows/` still holds only `ci.yml`, so there is still no deploy
-automation.
-
-**Re-verified as still live**, at current anchors: A3 (`types.ts:7,72,95` and
-the rest still bare `z.string()`), A4 (`engine-adapter.ts:15`,
-`global.d.ts:49`, `EdgeEditorModal.tsx:43`, `ClaimEdge.tsx:17-26`, and
-`EdgeKind.options` appears nowhere in the repo), all of B except the origin
-bullet, E5 (the `GraphFullbleed.tsx` keydown handler still ignores both
-`editable` and modal state), E7, E8 (`ClaimGraphRF.tsx:538-546` still mints
-bare `S`/`M`/`L`), E9 (`useGraphInstance` still exported at
-`ClaimGraphCanvas.tsx:70`; the confidence input carries `min`/`max` attributes
-but `onChange` stores the value unclamped), E10, E12 through E21, and the
-C-section gates. `scripts/forecast-sanity.ts` is still unported and still run
-by nothing.
-
-**Moved the wrong way:** `ClaimGraphRF.tsx` is 1128 lines, up from the 1101 v2
-measured, and `claims/[id]/page.tsx` is 419. Both D splits are further away
-than when they were written.
-
+`worker/index.ts` has been rewritten repeatedly since v2 (OAuth added ~260
+lines, session 47's extraction removed ~140, session 51 changed the proposal
+path). Every worker line number in sections A and E is stale. Re-locate by
+content, never by line.
 ## Already resolved (state on `main` as of v2, 2026-07-19)
 
 - **Write-path rate limiting — merged (PR #46).** Verified: `PROPOSAL_LIMITER`
@@ -164,15 +159,15 @@ strikethrough marks a v1 downgrade.
 
 | # | Sev | Where | Bug | Fix |
 |---|-----|-------|-----|-----|
-| A1 | ~~HIGH~~ **CLOSED v3** | `src/app/layout.tsx:20-38` | No `metadataBase` (zero hits repo-wide). Under static export every page emits `og:image`/`twitter:image` against `http://localhost:3000` — **verified in `out/`: 126 occurrences across 32 of 33 pages** (62 meta tags + 64 duplicates in the RSC flight payload). Every social unfurl in production is broken; the three `next/og` generators render but are never referenced. `siteBaseUrl()` exists in `site.ts` but only feeds JSON-LD. | `metadataBase: new URL(siteBaseUrl())` in root-layout metadata. Also fix the stale `next.config.ts` comment ("when unset, relative IRIs are used" — `site.ts` now defaults to `CANONICAL_ORIGIN`). |
-| A2 | ~~HIGH~~ **CLOSED v3** | `claims/[id]/opengraph-image.tsx:176`, `dossiers/[claimId]/opengraph-image.tsx:117`, `src/components/graph/jsonld-export.ts:9` | Dead domain `aboard.dev` at exactly these 3 sites (repo-wide grep). Worse than v1 said: the client "Copy JSON-LD" export is wrong **three ways** — dead domain, a `/schema/v0` path that doesn't exist on the live origin either (real: `/schema/v0.json`), and a document shape (`filedBy`/`filedAt`/`relations`) that doesn't conform to `v0.json` at all. Two published JSON-LD dialects, not just two origins. | Derive from `siteBaseUrl()` / a shared `vocab.ts`; make the client export emit the canonical shape (or reuse `jsonld.ts`). |
-| A3 | ~~HIGH~~ MED | `src/lib/types.ts:7,72,95,126,134` | Five timestamp fields are bare `z.string()`; `v0.json` requires the ISO-8601 pattern on all of them (v1's "lines 132/136" were stale anchors for the single `resolutionDate`). Downgrade rationale: CI's `clients/validate.ts` step **does** catch non-conforming output — but only post-build, at the last CI step, with an Ajv error far from the offending file. Also `engine-adapter.ts:54` does `createdAt.slice(0,10)` — silent junk for non-ISO strings. | Tighten to `z.iso.datetime()` (exists in Zod 4.4.3) so bad data fails the loader with a named file, not the CI tail. |
-| A4 | HIGH | `engine-adapter.ts:15`, `src/types/global.d.ts:45`, `EdgeEditorModal.tsx:43-45`, `ClaimEdge.tsx:16-26` | The 4th edge kind **`evidences`** (canonical in `types.ts:99` + `v0.json:142`) is missing from all four render/edit sites; `engine-adapter.ts:68` silently drops such edges (and the `:76` cast is only sound because of that filter). Latent today — `grep evidences data/` is empty (25 edges: causes ×14, reduces ×8, moderates ×3) — but `mcp-server/src/tools/write.ts:50` accepts it, so an agent can mint one via the live write path and the graph would silently omit it. | Derive all four sites from `EdgeKind.options`; enum-sync test (C). |
-| A5 | ~~MED~~ **CLOSED v3** | `types.ts:38`, `mcp-server/src/tools/write.ts:29` | `z.string().url()` accepts `javascript:`/`data:`/`vbscript:` — **verified by execution under both installed Zod majors** (4.4.3 and 3.25.76). Downgrade rationale: the only sinks are React 19 `<a href>`s (`claims/[id]/page.tsx:382`, `dossiers/[claimId]/page.tsx:144`), and React 19 blocks `javascript:` hrefs at render; no `innerHTML`-class sinks exist; the write path never auto-merges. Residual: unsafe schemes stored in `data/`, abusable in PR-body markdown links (A6) and any future non-React renderer. | Defense-in-depth: constrain `Source.url` to `http(s)` at both sites. |
-| A6 | ~~MED~~ **CLOSED v3** | `worker/index.ts:329,338,347,375,410,437,441-443` | Caller-controlled `rationale`/`statement`/`thesis`/`sources[].label` interpolated **unescaped** into the reviewer-facing PR body (no escaping anywhere in the file). The statement blockquote at `:347` contains newlines but not inline markdown. A malicious agent can forge a second `## Provenance` block above the genuine one (built at `:315-325`) or a pre-ticked checklist — on the exact surface the human trusts to gate the merge. Reviewer deception, not script execution (GitHub sanitizes). | Escape/fence caller text; keep the machine-stamped provenance visually unforgeable (e.g. fence all caller content in code blocks). |
-| A7 | ~~MED~~ **CLOSED v3** | `src/lib/proposals.ts` schemas, `worker/index.ts:744` | Zero `.max()` on any payload string/array (every existing `.max()` is a numeric range); `request.json()` buffers with no content-length guard. Downgrade rationale: the path is post-auth **and now post-rate-limit** (10/min/credential), Cloudflare caps bodies ~100 MB, and GitHub rejects PR bodies >65,536 chars (a giant rationale 502s as `github_failed` rather than exhausting anything). | `.max()` bounds on every user string/array; reject oversized `content-length` before parsing. |
-| A8 | ~~MED~~ **CLOSED v3** | `worker/index.ts:771-780,124,209` | No try/catch around the fetch handler (`:771-780`) — any uncaught throw is a bare Workers 500, not the structured envelope. `readGraph`'s `res.json()` (`:124`) guarded for `!res.ok` but not parse failure. `gh()`'s `fetch` (`:209`) propagates network TypeErrors; `withRetry` doesn't catch throws either. Narrowed from v1: `gh()`'s *json parse* IS guarded (`:219`), and `handleEdge`/`handlePrediction` already wrap `getFile` into structured 502s — the gap is the fetch-throw case, `submitProposalPR`, and `readGraph`. | Wrap handler → structured 500; guard `readGraph` (→503); wrap the GitHub fetch (→502). |
-| A9 | ~~MED~~ **CLOSED v3** | `worker/index.ts:88-95` | `JSON.parse(env.ABOARD_AGENT_TOKENS) as Record<…>` — try/catch covers JSON syntax only; `TokenIdentity` is a plain type, never validated. Downgrade rationale: a missing `agent` already fails the content build with a 422 (`AgentAttribution.agent` is required); the silent loss is confined to optional `operator`/`agentId` — branch names become `agent/undefined/…` and provenance prints `**operator** undefined`. Config footgun, not an exploit (the secret is operator-set). | `z.record(TokenIdentity-schema).safeParse` at startup; refuse to serve on failure. |
+| A1 | ~~HIGH~~ **CLOSED** | `src/app/layout.tsx:20-38` | No `metadataBase` (zero hits repo-wide). Under static export every page emits `og:image`/`twitter:image` against `http://localhost:3000` — **verified in `out/`: 126 occurrences across 32 of 33 pages** (62 meta tags + 64 duplicates in the RSC flight payload). Every social unfurl in production is broken; the three `next/og` generators render but are never referenced. `siteBaseUrl()` exists in `site.ts` but only feeds JSON-LD. | `metadataBase: new URL(siteBaseUrl())` in root-layout metadata. Also fix the stale `next.config.ts` comment ("when unset, relative IRIs are used" — `site.ts` now defaults to `CANONICAL_ORIGIN`). |
+| A2 | ~~HIGH~~ **CLOSED** | `claims/[id]/opengraph-image.tsx:176`, `dossiers/[claimId]/opengraph-image.tsx:117`, `src/components/graph/jsonld-export.ts:9` | Dead domain `aboard.dev` at exactly these 3 sites (repo-wide grep). Worse than v1 said: the client "Copy JSON-LD" export is wrong **three ways** — dead domain, a `/schema/v0` path that doesn't exist on the live origin either (real: `/schema/v0.json`), and a document shape (`filedBy`/`filedAt`/`relations`) that doesn't conform to `v0.json` at all. Two published JSON-LD dialects, not just two origins. | Derive from `siteBaseUrl()` / a shared `vocab.ts`; make the client export emit the canonical shape (or reuse `jsonld.ts`). |
+| A3 | ~~HIGH~~ **CLOSED** | `src/lib/types.ts:7,72,95,126,134` | Five timestamp fields are bare `z.string()`; `v0.json` requires the ISO-8601 pattern on all of them (v1's "lines 132/136" were stale anchors for the single `resolutionDate`). Downgrade rationale: CI's `clients/validate.ts` step **does** catch non-conforming output — but only post-build, at the last CI step, with an Ajv error far from the offending file. Also `engine-adapter.ts:54` does `createdAt.slice(0,10)` — silent junk for non-ISO strings. | Tighten to `z.iso.datetime()` (exists in Zod 4.4.3) so bad data fails the loader with a named file, not the CI tail. |
+| A4 | ~~HIGH~~ **CLOSED** | `engine-adapter.ts:15`, `src/types/global.d.ts:45`, `EdgeEditorModal.tsx:43-45`, `ClaimEdge.tsx:16-26` | The 4th edge kind **`evidences`** (canonical in `types.ts:99` + `v0.json:142`) is missing from all four render/edit sites; `engine-adapter.ts:68` silently drops such edges (and the `:76` cast is only sound because of that filter). Latent today — `grep evidences data/` is empty (25 edges: causes ×14, reduces ×8, moderates ×3) — but `mcp-server/src/tools/write.ts:50` accepts it, so an agent can mint one via the live write path and the graph would silently omit it. | Derive all four sites from `EdgeKind.options`; enum-sync test (C). |
+| A5 | ~~MED~~ **CLOSED** | `types.ts:38`, `mcp-server/src/tools/write.ts:29` | `z.string().url()` accepts `javascript:`/`data:`/`vbscript:` — **verified by execution under both installed Zod majors** (4.4.3 and 3.25.76). Downgrade rationale: the only sinks are React 19 `<a href>`s (`claims/[id]/page.tsx:382`, `dossiers/[claimId]/page.tsx:144`), and React 19 blocks `javascript:` hrefs at render; no `innerHTML`-class sinks exist; the write path never auto-merges. Residual: unsafe schemes stored in `data/`, abusable in PR-body markdown links (A6) and any future non-React renderer. | Defense-in-depth: constrain `Source.url` to `http(s)` at both sites. |
+| A6 | ~~MED~~ **CLOSED** | `worker/index.ts:329,338,347,375,410,437,441-443` | Caller-controlled `rationale`/`statement`/`thesis`/`sources[].label` interpolated **unescaped** into the reviewer-facing PR body (no escaping anywhere in the file). The statement blockquote at `:347` contains newlines but not inline markdown. A malicious agent can forge a second `## Provenance` block above the genuine one (built at `:315-325`) or a pre-ticked checklist — on the exact surface the human trusts to gate the merge. Reviewer deception, not script execution (GitHub sanitizes). | Escape/fence caller text; keep the machine-stamped provenance visually unforgeable (e.g. fence all caller content in code blocks). |
+| A7 | ~~MED~~ **CLOSED** | `src/lib/proposals.ts` schemas, `worker/index.ts:744` | Zero `.max()` on any payload string/array (every existing `.max()` is a numeric range); `request.json()` buffers with no content-length guard. Downgrade rationale: the path is post-auth **and now post-rate-limit** (10/min/credential), Cloudflare caps bodies ~100 MB, and GitHub rejects PR bodies >65,536 chars (a giant rationale 502s as `github_failed` rather than exhausting anything). | `.max()` bounds on every user string/array; reject oversized `content-length` before parsing. |
+| A8 | ~~MED~~ **CLOSED** | `worker/index.ts:771-780,124,209` | No try/catch around the fetch handler (`:771-780`) — any uncaught throw is a bare Workers 500, not the structured envelope. `readGraph`'s `res.json()` (`:124`) guarded for `!res.ok` but not parse failure. `gh()`'s `fetch` (`:209`) propagates network TypeErrors; `withRetry` doesn't catch throws either. Narrowed from v1: `gh()`'s *json parse* IS guarded (`:219`), and `handleEdge`/`handlePrediction` already wrap `getFile` into structured 502s — the gap is the fetch-throw case, `submitProposalPR`, and `readGraph`. | Wrap handler → structured 500; guard `readGraph` (→503); wrap the GitHub fetch (→502). |
+| A9 | ~~MED~~ **CLOSED** | `worker/index.ts:88-95` | `JSON.parse(env.ABOARD_AGENT_TOKENS) as Record<…>` — try/catch covers JSON syntax only; `TokenIdentity` is a plain type, never validated. Downgrade rationale: a missing `agent` already fails the content build with a 422 (`AgentAttribution.agent` is required); the silent loss is confined to optional `operator`/`agentId` — branch names become `agent/undefined/…` and provenance prints `**operator** undefined`. Config footgun, not an exploit (the secret is operator-set). | `z.record(TokenIdentity-schema).safeParse` at startup; refuse to serve on failure. |
 
 ## B. Hardcode & duplication (quantified, re-measured)
 
@@ -228,27 +223,27 @@ build-as-data-gate (loader Zod + referential integrity), Worker bundle
 dry-run, mcp-server typecheck, **served-output Ajv validation against
 `v0.json`** via `clients/validate.ts` (both probed endpoints pass today).
 
-**Cheap, high-value (do first):**
-- Forecast unit tests — **don't write from scratch: `scripts/forecast-sanity.ts`
-  is already a full assertion suite over `median`/`spread`/`aggregate`/
-  `leaveOneOut`/`simulatedN` that nothing runs** (its "no test framework
-  exists" header predates vitest). Port it to `src/lib/forecast.test.ts`.
-- Enum-sync vitest test — assert `EdgeKind.options`/`ClaimKind.options` equal
-  every hand-copy (all 9+ B-sites). Catches A4 permanently.
-- Early types↔schema drift test — a unit-level Ajv run of `graphLD` output
-  against `v0.json` + ISO-date asserts, so A3-class drift fails `npm test`
-  with a named field instead of the CI tail. (End-to-end enforcement already
-  exists ✅; this moves the failure earlier and closer.)
-- Forbidden-string gates — `! grep -rn "aboard\.dev" src/`; ban origin
-  literals outside `site.ts`/`vocab.ts`; **plus a post-build check that
-  `out/**/*.html` contains no `http://localhost:3000`** (regression net for A1).
-- `clients/` `tsc --noEmit` in CI (CI runs `npm ci` + executes `validate.ts`
-  via tsx, but never type-checks the package).
-- `--max-warnings 0` — current reality: 15 warnings; **9 come from the
-  git-tracked `Claude Design Screens/` mockup dir, which is linted today**.
-  Decide its fate (eslint-ignore, or delete the dir from the repo), fix the 6
-  real ones (`prompt.ts`, `ClaimGraphRF.tsx` exhaustive-deps, `forecast.ts`,
-  `proposals.test.ts` ×2, `worker/index.ts` anonymous default export), then flip.
+**Cheap, high-value — all shipped except the last:**
+- ~~Forecast unit tests~~ **DONE (session 50).** `scripts/forecast-sanity.ts`
+  ported to `src/lib/forecast.test.ts` as 29 tests over its 30 assertions, and
+  the script deleted so the two cannot drift.
+- ~~Enum-sync vitest test~~ **DONE (session 49).** `src/lib/enum-sync.test.ts`,
+  scoped to the copies no compiler in this gate reads: the two excluded npm
+  packages and the tool-description prose. The in-repo sites were re-keyed off
+  the canonical type instead, so `tsc` fails at the site that has not handled a
+  new kind, and a test asserting what the compiler proves would be ceremony.
+- ~~Early types↔schema drift test~~ **DONE (session 50).**
+  `src/lib/jsonld.test.ts` runs `graphLD` and `fullClaimLD` over a fixture
+  covering every kind and optional branch, asserts the fixture is valid input
+  under Zod *and* valid output under `v0.json`, and uses the same Ajv
+  construction as `clients/validate.ts` so the two cannot disagree.
+- ~~Forbidden-string gates~~ **DONE (batch 1).** `canonical-urls.test.ts` on
+  source, `scripts/check-built-urls.mjs` on `out/`.
+- ~~`clients/` type-check~~ **DONE (session 48),** along with `mcp-server`'s.
+  Both are in `build_commands` and provision their own `node_modules`.
+- `--max-warnings 0` — **still open.** Current reality: 13 warnings, 0 errors.
+  Decide the `Claude Design Screens/` mockup dir's fate (eslint-ignore, or
+  delete it), fix the remainder, then flip.
 
 **Medium:**
 - `jsonld.ts` serializer tests (edge direction, dossier attachment,
@@ -315,9 +310,9 @@ dry-run, mcp-server typecheck, **served-output Ajv validation against
   colors; drives B). **v3:** `vocab.ts` landed and closed the origin half of
   this; `tokens.ts` does not exist, so the 59 re-typed hex values stand. The
   enum and kind→row/letter maps still have no single source either (A4, B).
-- ~~**Add a route error boundary**~~ **CLOSED v3:** `src/app/graph/error.tsx`
+- ~~**Add a route error boundary**~~ **CLOSED:** `src/app/graph/error.tsx`
   exists.
-- ~~**De-stale the docs (consolidated list)**~~ **CLOSED v3**, across two
+- ~~**De-stale the docs (consolidated list)**~~ **CLOSED**, across two
   sessions. Session 46 fixed the `public/graph-engine.js` renderer description
   in CLAUDE.md and README.md. Session 47 fixed the remaining four: the retired
   `scripts/generate-prediction.ts` (the layout map now lists what `scripts/`
@@ -340,10 +335,10 @@ over ground the seven v1 agents didn't cover.
 
 | # | Sev | Where | Defect |
 |---|-----|-------|--------|
-| E1 | ~~HIGH~~ **CLOSED v3** | `ClaimGraphRF.tsx:102-118` + `persist.ts` | **The landing page's inline graph hydrates the `/graph` editor's localStorage sandbox.** `loadPersisted()` runs unconditionally; the self-heal check (`mode !== "fullbleed" || …`) exempts inline mode from all validation. Any visitor who ever edited on `/graph` sees their scratch state — all domains, fullbleed coordinates, deleted seeds — on the canonical marketing surface, while the header still shows counts from the real `engineData`. Fix: skip `loadPersisted()` in inline mode (or per-mode keys). |
-| E2 | ~~MED~~ **CLOSED v3** | `persist.ts:49-53` | Corrupt-but-parseable state passes the shape check (only `nodes[0]` is inspected; `edges` never) and **crashes render before any `clearPersisted()` — a persistent white-screen** on both `/graph` and (via E1) the landing page, until manual localStorage surgery. Fix: Zod-validate the payload (per the repo's own rule), try/catch → clear + rebuild; plus the D error boundary. |
-| E3 | ~~MED~~ **CLOSED v3** | `persist.ts:10` | No seed/content versioning: `aboard.graph.v3` invalidates only on a hand-bumped key, so **returning visitors never see content merged into `data/` after their first edit** — for a board whose content is the product. Fix: stamp a seed hash; on mismatch offer refresh/merge. |
-| E4 | ~~MED~~ **CLOSED v3** | `ClaimGraphRF.tsx:347-366` | Undo/redo restores group `style.width/height` without `updateNodeInternals` — reintroducing exactly the stale-measure/undraggable-pill bug the code's own comment at `:322-327` documents (and `knowledge/issues.md` records). Fix: rAF-call `updateNodeInternals` for style-changed groups after undo/redo. |
+| E1 | ~~HIGH~~ **CLOSED** | `ClaimGraphRF.tsx:102-118` + `persist.ts` | **The landing page's inline graph hydrates the `/graph` editor's localStorage sandbox.** `loadPersisted()` runs unconditionally; the self-heal check (`mode !== "fullbleed" || …`) exempts inline mode from all validation. Any visitor who ever edited on `/graph` sees their scratch state — all domains, fullbleed coordinates, deleted seeds — on the canonical marketing surface, while the header still shows counts from the real `engineData`. Fix: skip `loadPersisted()` in inline mode (or per-mode keys). |
+| E2 | ~~MED~~ **CLOSED** | `persist.ts:49-53` | Corrupt-but-parseable state passes the shape check (only `nodes[0]` is inspected; `edges` never) and **crashes render before any `clearPersisted()` — a persistent white-screen** on both `/graph` and (via E1) the landing page, until manual localStorage surgery. Fix: Zod-validate the payload (per the repo's own rule), try/catch → clear + rebuild; plus the D error boundary. |
+| E3 | ~~MED~~ **CLOSED** | `persist.ts:10` | No seed/content versioning: `aboard.graph.v3` invalidates only on a hand-bumped key, so **returning visitors never see content merged into `data/` after their first edit** — for a board whose content is the product. Fix: stamp a seed hash; on mismatch offer refresh/merge. |
+| E4 | ~~MED~~ **CLOSED** | `ClaimGraphRF.tsx:347-366` | Undo/redo restores group `style.width/height` without `updateNodeInternals` — reintroducing exactly the stale-measure/undraggable-pill bug the code's own comment at `:322-327` documents (and `knowledge/issues.md` records). Fix: rAF-call `updateNodeInternals` for style-changed groups after undo/redo. |
 | E5 | MED | `GraphFullbleed.tsx:39-65` | Global shortcuts ignore edit-mode and modal state: with editing off, `n`/Cmd+Z still mutate the graph; with the node editor open and focus on a non-input surface, `n` fires `addNode()` → replaces `editingNode`, silently discarding the user's typed draft. Fix: gate on `editable` + no-modal-open. |
 | E6 | MED | `NodeEditorModal.tsx:108`, `EdgeEditorModal.tsx:29`, `GraphFullbleed.tsx:230-259` | Modals: no `aria-modal`, no accessible name, no focus trap/initial focus, no Escape (editors); the JSON-LD modal lacks even `role="dialog"`. Fix: native `<dialog>` or full ARIA + focus management; axe-core test (C). |
 | E7 | LOW | `ClaimGraphRF.tsx:575-595,707-772` | Filing/moving a claim into a collapsed group leaves it visible, detached below the 220×56 pill, edges showing while siblings hide. Fix: auto-expand the target, or apply the collapse path's `hidden`+remap. |
@@ -355,7 +350,7 @@ over ground the seven v1 agents didn't cover.
 | # | Sev | Where | Defect |
 |---|-----|-------|--------|
 | E10 | ~~MED~~ **LOW, partly closed s51** | `worker/index.ts:240` (`readGraph`) | **The Worker still mints ids against the deployed `/api/graph` asset**, so a claim or dossier proposal filed inside the deploy window can pick an id that already exists on `main`. Two of the v3 premises were wrong and are corrected here. **(1) Deploy-on-merge already exists**: Cloudflare Workers Builds is wired to the repo through the dashboard, not `.github/`, which is why `ls .github/workflows` looked like no automation. Verified by probing the live site for `--edge-evidences`, a token session 49 merged hours earlier, and finding it in the deployed CSS. The window is therefore one build cycle (minutes), not "until someone remembers to deploy". **(2) "Concurrent agents mint the same id into conflicting PRs" is not silent**: both PRs create the same path, so the second is an add/add merge conflict GitHub shows and a human gates. Annoying, not corrupting. What session 51 fixed: the 422 is now a structured `409 id_collision` naming the id, the path, `retryable: true` and a per-kind remediation (`src/lib/proposal-errors.ts`, tested). Only claims and dossiers can reach it, since they alone `PUT` without a `sha`. **Still open**: a stale *edge* id appends a duplicate id into `edges.yaml` and fails at CI's integrity check on the PR rather than at submit, which is a different defect from this one; and reading ids live from GitHub at `ctx.base` would close the window to zero, at the cost of API calls per proposal. Both are deliberate deferrals, not oversights. |
-| E11 | ~~MED~~ **CLOSED v3** | `src/lib/data/integrity.ts:131-136`, `loader.ts:81-88` | **Frontmatter is never reconciled with file location.** A claim's `domain:` is checked for membership in known domains, not equality with the directory it was loaded from; filenames are never compared with frontmatter `id`. A claim in `data/inequality/` declaring `domain: democratic_backsliding` (or `S2.md` containing `id: S3`) passes CI; JSON-LD mis-groups it, and the Worker's `claimPath()`/`dossierPath()`/forecast path (`worker/index.ts:614-615` derives the path from the *attached claim's* domain) point at files that don't exist → every later proposal against it 502s. Fix: assert dir==domain and basename==id for all four file types in `integrityErrors`. |
+| E11 | ~~MED~~ **CLOSED** | `src/lib/data/integrity.ts:131-136`, `loader.ts:81-88` | **Frontmatter is never reconciled with file location.** A claim's `domain:` is checked for membership in known domains, not equality with the directory it was loaded from; filenames are never compared with frontmatter `id`. A claim in `data/inequality/` declaring `domain: democratic_backsliding` (or `S2.md` containing `id: S3`) passes CI; JSON-LD mis-groups it, and the Worker's `claimPath()`/`dossierPath()`/forecast path (`worker/index.ts:614-615` derives the path from the *attached claim's* domain) point at files that don't exist → every later proposal against it 502s. Fix: assert dir==domain and basename==id for all four file types in `integrityErrors`. |
 | E12 | MED | `src/lib/data/exporter.ts:77-90` | The PR-pack **re-mints edge ids from `E1` and emits whole-file `data/<domain>/edges.yaml` replacements**; its README says "drop the files into `data/`". For an existing domain that deletes every live edge (and integrity passes afterward — the evidence is gone), and the fresh `E1/E2` collide if hand-merged. Fix: mint from the existing-id list (reuse `nextSequentialId`) and emit append-fragments. |
 | E13 | LOW | `worker/index.ts:284-313` | Orphaned `agent/…` branches: the branch ref is created first; if the commit PUT or PR POST fails, nothing deletes it. Fix: best-effort ref delete on the two failure paths. |
 | E14 | LOW | `worker/index.ts:716,724` | Limiter ordering: auth precedes the rate limit, so the 401 path is entirely unthrottled (bearer-token guessing is bounded only by platform protections — fine while tokens are high-entropy; worth a comment). Conversely the limiter runs before payload validation, so agents burn their 10/min on 422s while debugging. Both are defensible; make them deliberate. |
@@ -382,40 +377,48 @@ against `v0.json` (ran Ajv directly); no data file has out-of-schema keys; no
 `headers()`/`cookies()`/hydration-hazard dates anywhere; `withinRateLimit` is
 race-free and covered; `providers.local.json` is gitignored with no secrets.
 
-## Sequencing (v2 — #46/#47/#48 are all merged; every batch branches off `main`)
+## Sequencing (batches 1, 2 and 3 shipped; every batch branches off `main`)
 
 Batches are ordered by user-visible value over effort; each lists its
-acceptance gate. A1 stays the only *live production* defect.
+acceptance gate. A1, the only *live production* defect, shipped in batch 1.
 
 1. ~~**Hotfix PR**~~ **SHIPPED.** A1, A2, and both forbidden-string gates
    (`canonical-urls.test.ts` on source, `check-built-urls.mjs` on built
-   output). Verified green in the v3 sweep.
+   output). Verified green again in the current status block.
 2. ~~**Graph-state integrity PR**~~ **SHIPPED** as `fix/graph-state-integrity`
    (recorded in `knowledge/issues.md`): E1, E2, E3, E4 and `graph/error.tsx`.
-   Verified in the v3 sweep. Note E5 was not in this batch and is still live,
+   Verified again in the current status block. Note E5 was not in this batch
+   and is still live,
    so the graph's keyboard surface remains ungated.
-3. **Type-layer honesty PR:** A3 (`z.iso.datetime()`), A4 (derive the four
-   sites from `EdgeKind.options`), `z.strictObject` (verified free today),
-   enum-sync test over all 9+ B-sites, early Ajv drift test, forecast-sanity
-   ported to vitest. *Accept:* a deliberately bad `createdAt` fails `npm test`
-   with a named file; an `evidences` edge renders.
+3. ~~**Type-layer honesty PR**~~ **SHIPPED**, across sessions 49 and 50. A4
+   and the enum-sync test in 49; A3, `z.strictObject`, the schema-drift test and
+   the forecast port in 50. Both acceptance criteria met, and A3 was fixed with
+   a pattern copied from `v0.json` rather than the `z.iso.datetime()` this entry
+   proposed, which would have rejected all twelve date-only `resolutionDate`
+   values. Two extra defects surfaced from fault-testing: the loader named the
+   wrong file on a parse failure, and the two write doors had come to disagree
+   about unknown keys.
 4. **Write-path robustness — mostly SHIPPED (session 47).** A6, A7, A8, A9,
    A5 and E11 all landed, with the pure helpers extracted to `src/lib/pr-body.ts`
    so the Worker's decisions are unit-tested. The acceptance gate is met: the
    forged-provenance fixture renders inert. Still open in this batch: E13
    (orphaned branch cleanup), E15 (the one-liners and duplicate-relation
-   refusal), and the **E10 decision** (GitHub-raw reads vs deploy-on-merge;
-   everything id-minting-shaped depends on it). E10 is now the largest single
-   piece of unfixed write-path risk.
+   refusal), E14, and the remainder of E10 after session 51 downgraded it: a
+   stale *edge* id still fails at CI rather than at submit, and reading ids live
+   at `ctx.base` would close the window to zero at the cost of API calls per
+   proposal. Both are deliberate deferrals.
 5. **Gate-ratchet PR:** `--max-warnings 0` (after the `Claude Design Screens/`
    decision: ignore vs delete), `noUncheckedIndexedAccess` (48-error budget,
-   probed), coverage thresholds, dependency gate, `clients/` typecheck,
-   `z.toJSONSchema` semantic check. Flip each to blocking only when green.
-6. **Refactor PRs (one each, browser-QA'd):** `ClaimGraphRF` split (now 1128
-   lines, 9 extractable units), `tokens.ts` extraction, hover/connection perf
-   (corrected targets in D), the `claims/[id]/page.tsx` split, E12 exporter
-   append-semantics, E16–E21 cleanups. `vocab.ts` and the docs de-stale are
-   done (v3).
+   probed), coverage thresholds, dependency gate, `z.toJSONSchema` semantic
+   check. The `clients/` and `mcp-server` type-checks landed in session 48. Add
+   the gap session 48 named and nobody has closed: `code_globs` has no reader
+   for config, so `ci.yml` and `wrangler.jsonc` go unchecked. Flip each to
+   blocking only when green.
+6. **Refactor PRs (one each, browser-QA'd):** `ClaimGraphRF` split (now 1139
+   lines and still growing, 9 extractable units), `tokens.ts` extraction,
+   hover/connection perf (corrected targets in D), the `claims/[id]/page.tsx`
+   split, E12 exporter append-semantics, E16-E21 cleanups. `vocab.ts` and the
+   docs de-stale are done.
 
 Cross-cutting rule for every batch: if a fix has a matching C-gate, the gate
 lands in the same PR as the fix — a fix without its regression net is half a
