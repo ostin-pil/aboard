@@ -33,16 +33,24 @@ import { EdgeMarkerDefs } from "./EdgeMarkers";
 import { EdgePopover } from "./EdgePopover";
 import { alignColumn, distributeX, type XBox } from "./align";
 import {
-  LAYOUT,
   collapseGroupEdges,
   collapseGroupNodes,
   engineToRF,
   expandGroupEdges,
   expandGroupNodes,
-  makeDomainGroupNode,
   recomputeGroupBounds,
   rfToEngine,
 } from "./engine-to-rf";
+import {
+  applyEdgeDomainFlags,
+  applyNodeDomainFlags,
+  applyXPositions,
+  claimsInDomain,
+  groupClaimsInto,
+  moveClaimsToRow,
+  resolveExpandTarget,
+  saveClaimNode,
+} from "./graph-ops";
 import { GraphContext, type GraphContextValue } from "./GraphContext";
 import { exportClientJSONLD } from "./jsonld-export";
 import { NodeEditorModal } from "./NodeEditorModal";
@@ -60,10 +68,8 @@ import { mintClaimId } from "./mint-id";
 import {
   isClaimNode,
   isGroupNode,
-  orderParentsFirst,
   type ClaimEdge,
   type ClaimNode,
-  type CollapsedRemap,
   type GraphNode,
 } from "./types";
 
@@ -398,43 +404,14 @@ function ClaimGraphRFInner({
     requestAnimationFrame(() => rf.fitView({ padding: mode === "inline" ? 0.05 : 0.15 }));
   }, [buildInstance, onReady, rf, mode]);
 
-  // Apply domain filter by mutating outOfDomain flags on claim nodes / edges.
+  // Apply the domain filter by setting outOfDomain flags on claims and edges.
+  // Membership is read once, from the committed graph, so the node pass and the
+  // edge pass cannot disagree about who is in the domain.
   useEffect(() => {
-    if (activeDomain === "all") {
-      setNodes((ns) =>
-        ns.map((n) => {
-          if (!isClaimNode(n) || !n.data.outOfDomain) return n;
-          return { ...n, data: { ...n.data, outOfDomain: false } };
-        })
-      );
-      setEdges((es) =>
-        es.map((e) =>
-          e.data?.outOfDomain
-            ? { ...e, data: { ...e.data, outOfDomain: false } }
-            : e
-        )
-      );
-      return;
-    }
-    const inDomain = new Set<string>();
-    for (const n of nodesRef.current) {
-      if (isClaimNode(n) && n.data.domain === activeDomain) inDomain.add(n.id);
-    }
-    setNodes((ns) =>
-      ns.map((n) => {
-        if (!isClaimNode(n)) return n;
-        const out = !inDomain.has(n.id);
-        if (n.data.outOfDomain === out) return n;
-        return { ...n, data: { ...n.data, outOfDomain: out } };
-      })
-    );
-    setEdges((es) =>
-      es.map((e) => {
-        const out = !(inDomain.has(e.source) && inDomain.has(e.target));
-        if (e.data?.outOfDomain === out) return e;
-        return { ...e, data: { ...(e.data!), outOfDomain: out } };
-      })
-    );
+    const inDomain =
+      activeDomain === "all" ? null : claimsInDomain(nodesRef.current, activeDomain);
+    setNodes((ns) => applyNodeDomainFlags(ns, inDomain));
+    setEdges((es) => applyEdgeDomainFlags(es, inDomain));
   }, [activeDomain, setNodes, setEdges]);
 
   // onZoom — track viewport zoom changes.
@@ -522,132 +499,12 @@ function ClaimGraphRFInner({
 
   const onNodeSave = useCallback(
     (draft: ClaimNode) => {
-      // Whether this save files the claim into a *collapsed* group is settled
-      // here, against the committed graph, rather than inside the updater
-      // below: a state updater has to stay pure, and React may run it twice.
-      // Null unless the group exists, is collapsed, and this save is what moves
-      // the claim into it — editing the title of a claim already inside a
-      // collapsed group must not pop the group open.
-      const expandTarget = ((): { groupId: string; childIds: Set<string> } | null => {
-        if (mode !== "fullbleed" || !draft.data.domain) return null;
-        const before = nodesRef.current.find((n) => n.id === draft.id);
-        const currentDomain =
-          before && isClaimNode(before) ? before.data.domain : undefined;
-        if (before && draft.data.domain === currentDomain) return null;
-        const groupId = `__domain_${draft.data.domain}`;
-        const group = nodesRef.current.find((n) => n.id === groupId);
-        if (!group || !isGroupNode(group) || !group.data.collapsed) return null;
-        return {
-          groupId,
-          childIds: new Set(
-            nodesRef.current
-              .filter((n): n is ClaimNode => isClaimNode(n) && n.parentId === groupId)
-              .map((n) => n.id)
-          ),
-        };
-      })();
+      // Settled here, against the committed graph, rather than inside the
+      // updater below: a state updater has to stay pure, and React may run it
+      // twice.
+      const expandTarget = resolveExpandTarget(nodesRef.current, draft, mode);
 
-      setNodes((ns) => {
-        const idx = ns.findIndex((n) => n.id === draft.id);
-        const isNew = idx < 0;
-        const existing = isNew ? null : ns[idx];
-
-        // Inline mode has no groups — preserve position/parent on edit,
-        // append on create.
-        if (mode !== "fullbleed") {
-          if (isNew) return [...ns, draft];
-          const merged: ClaimNode = {
-            ...draft,
-            position: existing!.position,
-            ...(existing!.parentId
-              ? { parentId: existing!.parentId, extent: "parent" as const }
-              : {}),
-          };
-          const next = ns.slice();
-          next[idx] = merged;
-          return next;
-        }
-
-        const domain = draft.data.domain;
-        const currentDomain =
-          existing && isClaimNode(existing) ? existing.data.domain : undefined;
-        const domainChanged = isNew || domain !== currentDomain;
-
-        // Plain edit that didn't touch the domain → keep the node exactly
-        // where it sits (don't yank a manually-placed claim into a slot).
-        if (!domainChanged) {
-          const merged: ClaimNode = {
-            ...draft,
-            position: existing!.position,
-            ...(existing!.parentId
-              ? { parentId: existing!.parentId, extent: "parent" as const }
-              : {}),
-          };
-          const next = ns.slice();
-          next[idx] = merged;
-          return next;
-        }
-
-        // New claim, or its domain changed → (re)slot it. Removing the old
-        // instance first lets recomputeGroupBounds shrink the prior group.
-        const layout = LAYOUT[mode];
-        let working = ns.filter((n) => n.id !== draft.id);
-
-        if (domain) {
-          const groupId = `__domain_${domain}`;
-          if (!working.some((n) => n.id === groupId)) {
-            working = [...working, makeDomainGroupNode(domain, working, mode)];
-          }
-          // The target group is collapsed: expand it, so the claim lands
-          // somewhere the user can see. The alternative was to hide the new
-          // claim inside the pill, which is consistent but reads as the save
-          // having done nothing. Either way the old behaviour was wrong — it
-          // left the claim visible and detached below the 220x56 pill, drawing
-          // edges to siblings that were hidden.
-          if (expandTarget) {
-            working = expandGroupNodes(
-              working,
-              expandTarget.groupId,
-              expandTarget.childIds,
-              mode
-            );
-          }
-          const row = draft.data.row;
-          let col = 0;
-          for (const n of working) {
-            if (isClaimNode(n) && n.parentId === groupId && n.data.row === row) col++;
-          }
-          const placed: ClaimNode = {
-            ...draft,
-            parentId: groupId,
-            extent: "parent",
-            position: {
-              x: layout.padX + col * (layout.nodeW + layout.colGap),
-              y: layout.padY + layout.groupHeaderH + layout.rowY[row],
-            },
-            data: { ...draft.data, col },
-          };
-          working = [...working, placed];
-        } else {
-          // Domain cleared → ungroup. Convert the old local position to
-          // absolute so the claim doesn't jump to the origin.
-          let position = draft.position;
-          if (existing && isClaimNode(existing) && existing.parentId) {
-            const parent = ns.find((n) => n.id === existing.parentId);
-            if (parent) {
-              position = {
-                x: parent.position.x + existing.position.x,
-                y: parent.position.y + existing.position.y,
-              };
-            }
-          }
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { parentId: _p, extent: _e, ...rest } = draft;
-          working = [...working, { ...rest, position } as ClaimNode];
-        }
-
-        return orderParentsFirst(recomputeGroupBounds(working, mode));
-      });
+      setNodes((ns) => saveClaimNode(ns, draft, mode, expandTarget));
       // The edge half of the same expansion: un-hide the group's internal edges
       // and un-point its boundary edges from the pill they were aimed at.
       if (expandTarget) {
@@ -754,67 +611,11 @@ function ClaimGraphRFInner({
     );
   }, [setNodes]);
 
-  // Group selected claims into a named domain. Creates the domain group node
-  // if it doesn't already exist, reparents the claims (converting absolute
-  // positions to parent-relative), then recomputes group bounds.
   const bulkGroupInto = useCallback(
     (domainName: string) => {
       if (selectedClaimIds.length === 0) return;
       const selSet = new Set(selectedClaimIds);
-      const layout = LAYOUT[mode];
-
-      setNodes((ns) => {
-        const groupId = `__domain_${domainName}`;
-        const groupExists = ns.some((n) => n.id === groupId);
-
-        let working = ns.slice();
-
-        if (!groupExists) {
-          working = [...working, makeDomainGroupNode(domainName, working, mode)];
-        }
-
-        // Next free column per row among the target group's *existing*
-        // children (claims not being moved). Moved claims append into clean,
-        // non-overlapping grid slots so the result is predictable.
-        const nextCol: Record<1 | 2 | 3, number> = { 1: 0, 2: 0, 3: 0 };
-        for (const n of working) {
-          if (
-            isClaimNode(n) &&
-            n.parentId === groupId &&
-            !selSet.has(n.id)
-          ) {
-            const r = n.data.row;
-            nextCol[r] = nextCol[r] + 1;
-          }
-        }
-
-        const slotFor = (row: 1 | 2 | 3) => {
-          const col = nextCol[row];
-          nextCol[row] = col + 1;
-          return {
-            x: layout.padX + col * (layout.nodeW + layout.colGap),
-            y: layout.padY + layout.groupHeaderH + layout.rowY[row],
-          };
-        };
-
-        // Reparent each selected claim into a tidy slot.
-        working = working.map((n) => {
-          if (!isClaimNode(n) || !selSet.has(n.id)) return n;
-          const row = n.data.row;
-          const pos = slotFor(row);
-          return {
-            ...n,
-            parentId: groupId,
-            extent: "parent" as const,
-            position: pos,
-            data: { ...n.data, domain: domainName, col: nextCol[row] - 1 },
-            selected: false,
-          };
-        });
-
-        return orderParentsFirst(recomputeGroupBounds(working, mode));
-      });
-
+      setNodes((ns) => groupClaimsInto(ns, selSet, domainName, mode));
       requestAnimationFrame(() => {
         snapshot();
         persist();
@@ -824,34 +625,11 @@ function ClaimGraphRFInner({
     [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]
   );
 
-  // Move every selected claim onto an explicit row (1=symptom, 2=mechanism,
-  // 3=leverage). Updates data.row AND position.y together so the semantic
-  // layer can't desync from the visual one (rfToEngine serializes data.row
-  // verbatim). Unlike the old "row of the first selected" behaviour, ALL
-  // selected claims move — there is no skipped anchor node.
   const bulkMoveToRow = useCallback(
     (targetRow: 1 | 2 | 3) => {
       if (selectedClaimIds.length < 1) return;
       const selSet = new Set(selectedClaimIds);
-      const layout = LAYOUT[mode];
-      // Y lives in each node's own coordinate space — grouped children are
-      // relative to their group, ungrouped claims are absolute. Compute per
-      // node so a mixed selection lands at the right Y in either space.
-      const rowYFor = (n: ClaimNode) =>
-        n.parentId
-          ? layout.padY + layout.groupHeaderH + layout.rowY[targetRow]
-          : layout.rowY[targetRow];
-
-      setNodes((ns) =>
-        ns.map((n) => {
-          if (!isClaimNode(n) || !selSet.has(n.id)) return n;
-          return {
-            ...n,
-            position: { ...n.position, y: rowYFor(n) },
-            data: { ...n.data, row: targetRow },
-          };
-        })
-      );
+      setNodes((ns) => moveClaimsToRow(ns, selSet, targetRow, mode));
       requestAnimationFrame(() => {
         snapshot();
         persist();
@@ -861,43 +639,11 @@ function ClaimGraphRFInner({
     [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]
   );
 
-  // Horizontal align / distribute. Pure-positional (X only) — rows carry
-  // semantic meaning so Y is left to bulkMoveToRow. Selected claims may live
-  // in different groups, so work in absolute X then convert back per-node.
   const applyXResult = useCallback(
     (compute: (boxes: XBox[]) => Map<string, number>) => {
       if (selectedClaimIds.length < 2) return;
       const selSet = new Set(selectedClaimIds);
-      const layout = LAYOUT[mode];
-
-      setNodes((ns) => {
-        const groupX = new Map<string, number>();
-        for (const n of ns) {
-          if (isGroupNode(n)) groupX.set(n.id, n.position.x);
-        }
-        const offsetOf = (n: ClaimNode) =>
-          n.parentId ? groupX.get(n.parentId) ?? 0 : 0;
-
-        const boxes: XBox[] = ns
-          .filter((n): n is ClaimNode => isClaimNode(n) && selSet.has(n.id))
-          .map((n) => ({
-            id: n.id,
-            x: offsetOf(n) + n.position.x,
-            w: layout.nodeW,
-          }));
-
-        const result = compute(boxes);
-        if (result.size === 0) return ns;
-
-        const next = ns.map((n) => {
-          if (!isClaimNode(n) || !result.has(n.id)) return n;
-          const absX = result.get(n.id)!;
-          let localX = absX - offsetOf(n);
-          if (n.parentId) localX = Math.max(layout.padX, localX);
-          return { ...n, position: { ...n.position, x: localX } };
-        });
-        return recomputeGroupBounds(next, mode);
-      });
+      setNodes((ns) => applyXPositions(ns, selSet, compute, mode));
       requestAnimationFrame(() => {
         snapshot();
         persist();
