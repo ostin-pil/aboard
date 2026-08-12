@@ -54,6 +54,7 @@ const GATE_COVERAGE: Record<string, GateCoverage> = {
   },
   "npx tsc --noEmit": { step: "Type-check", run: "npx tsc --noEmit" },
   "npm run lint": { step: "Lint", run: "npm run lint" },
+  "npm run check:exports": { step: "Check exports", run: "npm run check:exports" },
   "npm run typecheck:mcp": {
     step: "Type-check the MCP server",
     equivalent:
