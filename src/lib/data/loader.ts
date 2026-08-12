@@ -201,8 +201,3 @@ export function getGraph(): ClaimGraph {
   cached = loadAll();
   return cached;
 }
-
-// useful for the migration script + tests; resets the module-level cache
-export function _resetGraphCache() {
-  cached = null;
-}

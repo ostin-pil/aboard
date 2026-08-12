@@ -16,10 +16,6 @@ export function getClaim(id: string): Claim | undefined {
   return graph.claims.find((c) => c.id === id);
 }
 
-export function getEdges(): Edge[] {
-  return graph.edges;
-}
-
 export function getEdgesForClaim(id: string): {
   incoming: Edge[];
   outgoing: Edge[];
@@ -41,10 +37,6 @@ export function getDossierForClaim(id: string): Dossier | undefined {
 export function getClaimsWithDossiers(): Claim[] {
   const ids = new Set(graph.dossiers.map((d) => d.attachedToClaimId));
   return graph.claims.filter((c) => ids.has(c.id));
-}
-
-export function getAnalysis(id: string): Analysis | undefined {
-  return graph.analyses.find((a) => a.id === id);
 }
 
 export function getAnalysesForClaim(claim: Claim): Analysis[] {
