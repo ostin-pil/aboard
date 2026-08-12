@@ -217,8 +217,16 @@ Convention: `prefix(topic): short description`
 **Prefixes:**
 - `feat` — new feature or capability
 - `fix` — bug fix
+- `refactor` — structural change with no behaviour change
 - `docs` — documentation, session logs, research
 - `chore` — config, scripts, tooling, dependencies
+
+`refactor` was added in session 55, which produced seven commits the other
+four prefixes could only misdescribe: a 1207-line component split into tested
+modules, changing no behaviour. Filing that under `chore` (documented as
+config and tooling) or `fix` (no bug) would have made the prefix say less than
+nothing. A deliberate behaviour change inside a restructure is still its own
+`fix` commit, so the distinction stays honest.
 
 **Topics:** `claims`, `graph`, `dossier`, `forecast`, `schema`, `jsonld`, `ui`, `data`, `lib`, `scripts`, `mcp`, `research`, `sessions`, `config`, `deps`, `claude`
 
