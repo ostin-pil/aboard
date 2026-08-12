@@ -18,7 +18,7 @@
  * factory in `ensemble-predict.ts` keyed by `ProviderConfig.kind`.
  */
 
-export type ProviderKind = "openai-compatible" | "ollama-native" | "anthropic-native";
+type ProviderKind = "openai-compatible" | "ollama-native" | "anthropic-native";
 
 export interface ProviderConfig {
   /** Human label used to identify this entry in CLI flags (`--providers a,b,c`). */

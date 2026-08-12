@@ -18,6 +18,7 @@ npm run typecheck:mcp     # mcp-server/, which the root tsconfig excludes
 npm run typecheck:clients # clients/, likewise excluded
 npm run check:built-urls  # asserts over out/; run it after a build
 npm run check:config      # ci.yml + wrangler.jsonc; the only reader either has
+npm run check:exports     # knip; dead exports, which nothing else in the gate sees
 shellcheck $(git ls-files '*.sh')   # shell scripts; session-end and CI both gate on it
 ```
 
@@ -80,6 +81,33 @@ and `worker/index.ts` each document as mirroring the other. Cloudflare accepts
 only 10 or 60 for that period, so the single legal edit is also the one that
 makes `retry-after` lie to every rate-limited caller, with tsc, the tests and
 the dry-run all staying green.
+
+`check:exports` covers a class of fault every other command here is blind to by
+construction. `tsconfig.json` does not set `noUnusedLocals`, and an exported
+symbol is used as far as `no-unused-vars` is concerned, so a declaration nothing
+imports type-checks, lints, tests and builds clean indefinitely. Session 54
+found `useGraphInstance` that way, by reading the code during an audit, and
+asked for a gate that would have named it. Pointed at the tree it was added to,
+knip named 30 more: 24 exported but only ever used inside their own file, 3 dead
+outright, and 3 that were the tool being wrong.
+
+Those last three are the reason the config is worth reading. `src/lib/types.ts`
+pairs `export const X = z.enum(...)` with `export type X = z.infer<typeof X>`
+for every schema, and for `SourceKind`, `AnalysisKind` and `ResolvedOutcome`
+nothing currently imports the runtime half. That is a fact about today's call
+sites, not evidence the schema is dead, so the file is named as an entry point
+in `knip.jsonc` with the argument written next to it. A contract file is exactly
+where "no importer" stops meaning "delete it". The one other exemption,
+`tailwindcss`, is reached through `@import` in `globals.css` and postcss, which
+knip resolves through neither.
+
+`knip.jsonc` also carries the entry points knip cannot infer, and getting those
+wrong is how this kind of gate becomes noise: run bare, it reported all three
+`worker/*.ts` files as unused, then the dependencies only they import, then the
+`src/lib/mcp/*` exports only they consume. `wrangler.jsonc` names only
+`worker/index.ts` as `main`; `mcp.ts` and `oauth.ts` are reached through the
+OAuth provider's config object rather than a static import, so all three are
+listed by hand.
 
 The second used to be a real hole, because nothing in `npm test` validated
 serializer output at all. `src/lib/jsonld.test.ts` closes the part that matters:
@@ -254,6 +282,11 @@ read either extension, so eslint is the only automated check that will.
 After any change under `clients/` or `mcp-server/`, run `npm run typecheck:clients`
 or `npm run typecheck:mcp`. The root `tsc` excludes both directories, and `tsx`
 runs them without type-checking, so nothing else reads them.
+
+After deleting a call site, run `npm run check:exports`. Removing the last
+importer of something is what turns a live export into a dead one, and that is
+the moment no other command in the gate will say so. The same check reads
+`knip.jsonc`, so run it after editing that too.
 
 After any change to `.github/workflows/ci.yml` or `wrangler.jsonc`, run
 `npm run check:config`. Nothing else in the gate parses either file. Editing

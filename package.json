@@ -10,6 +10,7 @@
     "test": "vitest run",
     "check:built-urls": "node scripts/check-built-urls.mjs",
     "check:config": "npx tsx scripts/check-config.ts",
+    "check:exports": "knip",
     "lint:resolution": "npx tsx scripts/lint-resolution.ts",
     "typecheck:mcp": "cd mcp-server && (test -d node_modules || npm ci) && npm run typecheck",
     "typecheck:clients": "cd clients && (test -d node_modules || npm ci) && npm run typecheck"
@@ -39,6 +40,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "jsdom": "^29.1.1",
+    "knip": "6.32.2",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"

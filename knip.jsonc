@@ -1,0 +1,76 @@
+// Config for `npm run check:exports`, the unused-export gate.
+//
+// knip's defaults do not describe this repo. Run bare, it called all three
+// `worker/*.ts` files unused, then called the dependencies only they import
+// unused as a consequence, then called the `src/lib/mcp/*` exports only they
+// consume unused for the same reason: 19 unused files, 3 unused dependencies
+// and 25 unused exports, of which the great majority were the tool not knowing
+// where the code is entered from. What is below is that knowledge, written
+// down, and it is the whole reason the gate's output can be trusted.
+{
+  "$schema": "https://unpkg.com/knip@6/schema.jsonc",
+
+  // The Next.js app is found by knip's own plugin, which reads `src/app/**` and
+  // knows `page`/`layout`/`route`/`opengraph-image`/`sitemap` are entered by the
+  // framework rather than imported. These are the entry points it cannot infer:
+  //
+  //   worker/*.ts   the Cloudflare Worker. `wrangler.jsonc`'s `main` names
+  //                 index.ts; mcp.ts and oauth.ts reach it through the OAuth
+  //                 provider's config object rather than a static import, so
+  //                 the edge is invisible to a resolver. All three are named.
+  //   scripts/*     the gate commands, run by `npx tsx` / `node` out of
+  //                 package.json, plus the forecaster entry, which is run by
+  //                 hand and wired to no gate command at all.
+  //   *.test.ts     vitest reads these directly.
+  //
+  // `src/lib/types.ts` is here for a different reason: it is a published
+  // surface, not a module that happens to be imported. Every schema in it is
+  // declared twice by the file's own idiom, `export const X = z.enum(...)`
+  // beside `export type X = z.infer<typeof X>`, and the pair is the contract
+  // that `public/schema/v0.json` and `research/schema.md` are held in lockstep
+  // with. knip reported three of the ~20 schema constants (SourceKind,
+  // AnalysisKind, ResolvedOutcome) because no current call site imports the
+  // runtime validator, only the derived type. Un-exporting exactly those three
+  // would make the file inconsistent with its own rule to satisfy a tool. In a
+  // contract file, "nothing imports it yet" is not evidence that it is dead.
+  "entry": [
+    "worker/index.ts",
+    "worker/mcp.ts",
+    "worker/oauth.ts",
+    "scripts/*.ts",
+    "scripts/*.mjs",
+    "scripts/forecasters/ensemble-predict.ts",
+    "src/lib/types.ts",
+    "src/**/*.test.ts"
+  ],
+
+  // Scoped to the three trees the root package actually owns. Everything else
+  // in the repo is outside it on purpose, not skipped because it was awkward:
+  //
+  //   clients/, mcp-server/   independent npm packages, each with its own
+  //                           tsconfig and its own gate command
+  //                           (typecheck:clients, typecheck:mcp). Neither has
+  //                           an import reaching into src/ (checked), so
+  //                           leaving them out cannot hide a live consumer of
+  //                           anything reported here.
+  //   Claude Design Screens/  imported mockups. Not built, not linted; the root
+  //                           .prose-mint.toml already carves them out.
+  //   .claude/worktrees/      a concurrent session's checkout lives inside the
+  //                           repo (worktree_dir in the lifecycle manifest).
+  //                           These globs are relative to the repo root and so
+  //                           do not reach into one, which is the same hazard
+  //                           eslint.config.mjs spells out and handles with an
+  //                           explicit ignore.
+  "project": ["src/**/*.{ts,tsx}", "worker/**/*.ts", "scripts/**/*.{ts,mjs}"],
+
+  // Reached from `globals.css` via `@import "tailwindcss"`, and through
+  // `@tailwindcss/postcss` in postcss.config.mjs. knip resolves neither, so it
+  // reports the dependency as unused every run. The alternative to naming it
+  // here is a permanently-red gate, which is a gate nobody reads.
+  "ignoreDependencies": ["tailwindcss"],
+
+  // An export used only by a test still counts as used: test files are entry
+  // points above, so their imports are real references. A helper that exists
+  // for a test is reachable code, and the alternative flags every fixture.
+  "includeEntryExports": false
+}

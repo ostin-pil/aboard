@@ -38,6 +38,7 @@ log_presence_regex: '^sessions/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_session.*\.md$'
 # without one classifies a session as code and then verifies nothing, which is
 # worse than skipping, because a green gate reads as verification.
 #   *.ts/*.tsx  tsc, vitest, next build          (root tsconfig only)
+#   *.ts/*.tsx  check:exports                    (dead exports, session 56)
 #   *.ts        typecheck:mcp, typecheck:clients (the two excluded sub-packages)
 #   *.sh        shellcheck                       (session 45)
 #   *.js/*.mjs  eslint                           (session 46)
@@ -69,6 +70,18 @@ log_presence_regex: '^sessions/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_session.*\.md$'
 # cannot be caught by ci.yml: the workflow does not parse, so it does not run,
 # and the failure looks like CI having nothing to say.
 #
+# The "*.ts"/"*.tsx" pair gained a second reader in session 56 for a reason the
+# other entries here do not have: it was already covered, and covered honestly,
+# by commands that still could not see this class of fault. tsc runs without
+# noUnusedLocals, and eslint's no-unused-vars treats an exported symbol as used
+# by definition, so a declaration nothing imports passes every command in this
+# list forever. Session 54 caught `useGraphInstance` by reading the code. Run
+# once against the tree it was added to, check:exports named 30 more.
+#
+# "*.jsonc" now has a second reader too, since knip.jsonc is where the entry
+# points and the two argued exemptions live. A fault there does not fail
+# silently the way ci.yml does: knip exits non-zero on an unparseable config.
+#
 # "*.yaml" is the one that was never a config gap at all. Everything under data/
 # is *.yaml, so a session that only edits a forecast matched no glob, classified
 # as docs, and skipped the build — and the build is the data gate, running the
@@ -76,7 +89,7 @@ log_presence_regex: '^sessions/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_session.*\.md$'
 # F1.yaml, which `npm run build` rejects naming the file and the field, and
 # which the session gate would never have run.
 code_globs: ["*.ts", "*.tsx", "*.js", "*.mjs", "*.sh", "*.yaml", "*.yml", "*.jsonc"]
-build_commands: ["shellcheck $(git ls-files '*.sh')", "npm run check:config", "npx tsc --noEmit", "npm run lint", "npm run typecheck:mcp", "npm run typecheck:clients", "npm run lint:resolution -- --strict", "npm run build", "npm run check:built-urls"]
+build_commands: ["shellcheck $(git ls-files '*.sh')", "npm run check:config", "npx tsc --noEmit", "npm run lint", "npm run check:exports", "npm run typecheck:mcp", "npm run typecheck:clients", "npm run lint:resolution -- --strict", "npm run build", "npm run check:built-urls"]
 test_commands: ["npm test"]          # vitest, unit tests over the pure lib modules
 # none, because the two sub-package commands provision themselves: each is
 # `test -d node_modules || npm ci` before its typecheck, so it fails closed on a

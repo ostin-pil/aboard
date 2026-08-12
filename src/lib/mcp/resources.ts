@@ -68,7 +68,7 @@ export type ResourceTemplateDescriptor = {
  * without a network. Per-claim reads are advertised as a template instead,
  * which is exactly what templates are for.
  */
-export const RESOURCES: readonly ResourceDescriptor[] = [
+const RESOURCES: readonly ResourceDescriptor[] = [
   {
     uri: GRAPH_RESOURCE_URI,
     name: "claim-graph",
@@ -87,7 +87,7 @@ export const RESOURCES: readonly ResourceDescriptor[] = [
  * the ids to substitute, and the description says so — a template with no
  * companion enumeration is otherwise a dead end.
  */
-export const RESOURCE_TEMPLATES: readonly ResourceTemplateDescriptor[] = [
+const RESOURCE_TEMPLATES: readonly ResourceTemplateDescriptor[] = [
   {
     uriTemplate: CLAIM_RESOURCE_TEMPLATE,
     name: "claim",

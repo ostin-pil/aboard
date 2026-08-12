@@ -62,6 +62,15 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Dead exports are invisible to every other step here: tsc has no
+      # noUnusedLocals, and an exported symbol is by definition "used" as far as
+      # eslint's no-unused-vars is concerned, so an export nothing imports type-
+      # checks, lints and builds clean forever. Session 54 found `useGraphInstance`
+      # that way, by hand, during an audit. Wired up against the tree it was added
+      # to, this named 30 more in one run.
+      - name: Check exports
+        run: npm run check:exports
+
       # The reverse of the gaps session 48 closed in the session gate: this one
       # ran only at session end, so a forecast a distrustful reader could not
       # settle could land through a PR from anyone who never runs /session-end.

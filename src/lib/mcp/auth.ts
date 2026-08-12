@@ -69,7 +69,7 @@ export type Credential =
       scopes: string[];
     };
 
-export type AuthChallenge = {
+type AuthChallenge = {
   status: 401 | 403;
   /** RFC 6750 error code, absent when the request carried no credential. */
   error?: "invalid_token" | "insufficient_scope";

@@ -1,6 +1,6 @@
 import type { Node, Edge } from "@xyflow/react";
 
-export type ClaimNodeData = {
+type ClaimNodeData = {
   kind: EngineNode["kind"];
   title: string;
   body: string;
@@ -22,13 +22,13 @@ export type ClaimNodeData = {
 // original child endpoint + handle is stashed here so expand can restore
 // it. Source and target are stashed independently (an edge can cross two
 // collapsed groups). Absent on edges that have never been re-pointed.
-export type CollapsedEndpoint = { node: string; handle: string | null };
+type CollapsedEndpoint = { node: string; handle: string | null };
 export type CollapsedRemap = {
   source?: CollapsedEndpoint;
   target?: CollapsedEndpoint;
 };
 
-export type ClaimEdgeData = {
+type ClaimEdgeData = {
   kind: EngineEdge["kind"];
   rationale: string;
   sources: EngineEdgeSource[];
@@ -52,7 +52,7 @@ export function canonicalEndpoints(e: ClaimEdge): { source: string; target: stri
   };
 }
 
-export type DomainGroupData = {
+type DomainGroupData = {
   domain: string;
   claimCount: number;
   collapsed: boolean;
