@@ -184,8 +184,6 @@ export function rfToEngine(
   return { domain, domains, nodes: engineNodes, edges: engineEdges };
 }
 
-export { COLLAPSED_GROUP_W, COLLAPSED_GROUP_H };
-
 /**
  * Resize each domainGroup node so it tightly contains its child claims.
  * No-op for collapsed groups (their pill size is fixed).

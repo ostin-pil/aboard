@@ -14,7 +14,7 @@ export type GraphSnapshot = { nodes: GraphNode[]; edges: ClaimEdge[] };
 export type History = { stack: GraphSnapshot[]; idx: number };
 
 /** Entries kept before the oldest is dropped. */
-export const HISTORY_LIMIT = 60;
+const HISTORY_LIMIT = 60;
 
 /**
  * One level deep: the node and edge objects and their `data`. Deeper is not
