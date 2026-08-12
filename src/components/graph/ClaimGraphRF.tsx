@@ -31,7 +31,6 @@ import { DomainGroupNode as DomainGroupNodeComp } from "./DomainGroupNode";
 import { EdgeEditorModal } from "./EdgeEditorModal";
 import { EdgeMarkerDefs } from "./EdgeMarkers";
 import { EdgePopover } from "./EdgePopover";
-import { alignColumn, distributeX, type XBox } from "./align";
 import {
   collapseGroupEdges,
   collapseGroupNodes,
@@ -43,12 +42,7 @@ import {
 import {
   applyEdgeDomainFlags,
   applyNodeDomainFlags,
-  applyXPositions,
   claimsInDomain,
-  groupClaimsInto,
-  moveClaimsToRow,
-  resolveExpandTarget,
-  saveClaimNode,
 } from "./graph-ops";
 import { GraphContext, type GraphContextValue } from "./GraphContext";
 import { exportClientJSONLD } from "./jsonld-export";
@@ -63,7 +57,8 @@ import {
   pruneLegacyStoreKeys,
   savePersisted,
 } from "./persist";
-import { mintClaimId } from "./mint-id";
+import { useBulkActions } from "./use-bulk-actions";
+import { useGraphEditing } from "./use-graph-editing";
 import { useGraphHistory } from "./use-graph-history";
 import {
   isClaimNode,
@@ -173,16 +168,6 @@ function ClaimGraphRFInner({
       }
     | null
   >(null);
-  const [editingNode, setEditingNode] = useState<{ node: ClaimNode | null } | null>(null);
-  const [editingEdge, setEditingEdge] = useState<{
-    id?: string;
-    source: string;
-    target: string;
-    sourceHandle?: string | null;
-    targetHandle?: string | null;
-    kind: EngineEdge["kind"];
-    isNew: boolean;
-  } | null>(null);
   const [activeDomain, setActiveDomain] = useState<string | "all">("all");
 
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -200,11 +185,15 @@ function ClaimGraphRFInner({
   // shortcuts mutate a read-only canvas anyway.
   const editableRef = useRef(editable);
   const editorOpenRef = useRef(false);
+  // Same reason again, one step further: `addNode` on the instance opens the
+  // node editor, which the editing hook below owns. The hook needs `commit`,
+  // `commit` needs the instance, and the instance needs the opener, so one of
+  // the three has to be read late. This is the cheapest of them.
+  const openNodeEditorRef = useRef<(id: string | null) => void>(() => {});
   useEffect(() => {
     nodesRef.current = nodes;
     edgesRef.current = edges;
     editableRef.current = editable;
-    editorOpenRef.current = editingNode !== null || editingEdge !== null;
   });
 
   const rf = useReactFlow();
@@ -286,11 +275,13 @@ function ClaimGraphRFInner({
         setNodes((ns) => collapseGroupNodes(ns, groupId, childIds));
         setEdges((es) => collapseGroupEdges(es, groupId, childIds));
       }
+      // Deliberately not `commitNextFrame`: collapsing is a view state, and
+      // the chrome's onPersist flashes "saved locally" and re-counts the
+      // graph. Neither is true of a chevron. The rest of the bookkeeping is
+      // the same, including the re-measure, without which React Flow keeps
+      // the group's old cached dims and the collapsed pill is undraggable.
+      // See knowledge/issues.md.
       requestAnimationFrame(() => {
-        // The group's style.width/height just changed; React Flow does
-        // not re-measure on its own, so its cached `measured` dims (used
-        // for drag coordinate mapping) stay stale and the collapsed pill
-        // becomes undraggable. Force a re-measure. See knowledge/issues.md.
         updateNodeInternals(groupId);
         snapshot();
         persist();
@@ -320,7 +311,7 @@ function ClaimGraphRFInner({
       // under the draft the modal was about to save.
       addNode: () => {
         if (!editableRef.current || editorOpenRef.current) return;
-        setEditingNode({ node: null });
+        openNodeEditorRef.current(null);
       },
       undo: () => {
         if (!editableRef.current || editorOpenRef.current) return;
@@ -355,6 +346,77 @@ function ClaimGraphRFInner({
       seedDrift: initial.seedDrift,
     };
   }, [data, mode, rf, setNodes, setEdges, undo, redo, resetHistory, initial.seedDrift]);
+
+  // The bookkeeping every graph mutation ends with: a new undo step, a write to
+  // the persisted sandbox, and the chrome's own callback. It was written out
+  // nine times, which is why nine handlers each carried four dependencies they
+  // never used for anything else.
+  const commit = useCallback(() => {
+    snapshot();
+    persist();
+    onPersist?.(buildInstance());
+  }, [snapshot, persist, buildInstance, onPersist]);
+
+  // The same, deferred a frame, which is what a caller wants right after a
+  // setState: the refs `commit` reads are mirrored on commit, so running it
+  // inline would record the graph as it was before the change. `remeasureGroup`
+  // covers the case where a group's box changed size and React Flow has to be
+  // told, since its cached dims otherwise stay at the old value.
+  const commitNextFrame = useCallback(
+    (remeasureGroup?: string) => {
+      requestAnimationFrame(() => {
+        if (remeasureGroup) updateNodeInternals(remeasureGroup);
+        commit();
+      });
+    },
+    [commit, updateNodeInternals]
+  );
+
+  const {
+    editingNode,
+    editingEdge,
+    isEditorOpen,
+    openNodeEditor,
+    openEdgeEditor,
+    proposeEdge,
+    closeNodeEditor,
+    closeEdgeEditor,
+    newId,
+    existingRowsCount,
+    onNodeSave,
+    onNodeDelete,
+    onEdgeSave,
+    onEdgeDelete,
+  } = useGraphEditing({
+    mode,
+    nodesRef,
+    setNodes,
+    setEdges,
+    commitNextFrame,
+  });
+
+  // Separate from the mirror effect above, and after the hook that owns these:
+  // both are read only from event handlers, so their commit-order relative to
+  // the other effects does not matter, while the graph mirror's does.
+  useEffect(() => {
+    editorOpenRef.current = isEditorOpen;
+    openNodeEditorRef.current = openNodeEditor;
+  });
+
+  const deleteNodes = useCallback(
+    (ids: string[]) => rf.deleteElements({ nodes: ids.map((id) => ({ id })) }),
+    [rf]
+  );
+
+  const {
+    selectedClaimIds,
+    bulkDelete,
+    bulkClearSelection,
+    bulkGroupInto,
+    bulkMoveToRow,
+    bulkAlignColumn,
+    bulkDistributeX,
+  } = useBulkActions({ nodes, mode, setNodes, deleteNodes, commitNextFrame });
 
   // onReady — fire once after first mount.
   const readyFiredRef = useRef(false);
@@ -400,229 +462,33 @@ function ClaimGraphRFInner({
       // handles to null so the edge binds to the persistent default handle.
       const norm = (h: string | null | undefined) =>
         !h || h.startsWith("full-") ? null : h;
-      setEditingEdge({
+      proposeEdge({
         source: c.source,
         target: c.target,
         sourceHandle: norm(c.sourceHandle),
         targetHandle: norm(c.targetHandle),
         kind,
-        isNew: true,
       });
     },
-    []
+    [proposeEdge]
   );
 
-  // Persist + history on node-position-change-end (after drag).
-  const onNodeDragStop = useCallback(() => {
-    snapshot();
-    persist();
-    onPersist?.(buildInstance());
-  }, [snapshot, persist, buildInstance, onPersist]);
+  // Persist + history on node-position-change-end (after drag). Inline rather
+  // than deferred: the drag is already over, so the refs are current.
+  const onNodeDragStop = useCallback(() => commit(), [commit]);
 
   // Backspace/Delete on selected elements — React Flow handles the deletion
-  // via deleteKeyCode; we just snapshot + persist after.
+  // via deleteKeyCode; we drop the orphaned edges and record it.
   const onNodesDelete = useCallback(
     (deleted: GraphNode[]) => {
       const ids = new Set(deleted.filter(isClaimNode).map((n) => n.id));
       if (ids.size === 0) return;
       setEdges((es) => es.filter((e) => !ids.has(e.source) && !ids.has(e.target)));
-      requestAnimationFrame(() => {
-        snapshot();
-        persist();
-        onPersist?.(buildInstance());
-      });
+      commitNextFrame();
     },
-    [setEdges, snapshot, persist, buildInstance, onPersist]
+    [setEdges, commitNextFrame]
   );
-  const onEdgesDelete = useCallback(
-    () => {
-      requestAnimationFrame(() => {
-        snapshot();
-        persist();
-        onPersist?.(buildInstance());
-      });
-    },
-    [snapshot, persist, buildInstance, onPersist]
-  );
-
-  // Editor save/delete handlers.
-  const newId = useCallback((kind: EngineNode["kind"], domain?: string) => {
-    const claims = nodesRef.current
-      .filter(isClaimNode)
-      .map((n) => ({ id: n.id, domain: n.data.domain }));
-    return mintClaimId(kind, domain, claims);
-  }, []);
-
-  const existingRowsCount = useCallback((row: 1 | 2 | 3) => {
-    return nodesRef.current.filter(
-      (n): n is ClaimNode => isClaimNode(n) && n.data.row === row
-    ).length;
-  }, []);
-
-  const onNodeSave = useCallback(
-    (draft: ClaimNode) => {
-      // Settled here, against the committed graph, rather than inside the
-      // updater below: a state updater has to stay pure, and React may run it
-      // twice.
-      const expandTarget = resolveExpandTarget(nodesRef.current, draft, mode);
-
-      setNodes((ns) => saveClaimNode(ns, draft, mode, expandTarget));
-      // The edge half of the same expansion: un-hide the group's internal edges
-      // and un-point its boundary edges from the pill they were aimed at.
-      if (expandTarget) {
-        setEdges((es) => expandGroupEdges(es, expandTarget.childIds));
-      }
-      setEditingNode(null);
-      requestAnimationFrame(() => {
-        // Same re-measure the chevron path needs: the group's style.width and
-        // height just changed and React Flow does not notice on its own, so its
-        // cached dims stay at the collapsed pill's and the group is undraggable.
-        if (expandTarget) updateNodeInternals(expandTarget.groupId);
-        snapshot();
-        persist();
-        onPersist?.(buildInstance());
-      });
-    },
-    [
-      mode,
-      setNodes,
-      setEdges,
-      snapshot,
-      persist,
-      buildInstance,
-      onPersist,
-      updateNodeInternals,
-    ]
-  );
-
-  const onNodeDelete = useCallback(
-    (id: string) => {
-      setNodes((ns) => ns.filter((n) => n.id !== id));
-      setEdges((es) => es.filter((e) => e.source !== id && e.target !== id));
-      setEditingNode(null);
-      requestAnimationFrame(() => {
-        snapshot();
-        persist();
-        onPersist?.(buildInstance());
-      });
-    },
-    [setNodes, setEdges, snapshot, persist, buildInstance, onPersist]
-  );
-
-  const onEdgeSave = useCallback(
-    (kind: EngineEdge["kind"]) => {
-      if (!editingEdge) return;
-      if (editingEdge.isNew) {
-        setEdges((es) => {
-          const newEdge: ClaimEdge = {
-            id: `${editingEdge.source}->${editingEdge.target}#${kind}#${Date.now()}`,
-            type: "claim",
-            source: editingEdge.source,
-            target: editingEdge.target,
-            ...(editingEdge.sourceHandle
-              ? { sourceHandle: editingEdge.sourceHandle }
-              : {}),
-            ...(editingEdge.targetHandle
-              ? { targetHandle: editingEdge.targetHandle }
-              : {}),
-            data: {
-              kind,
-              rationale: "",
-              sources: [],
-              crossDomain: false,
-              outOfDomain: false,
-            },
-          };
-          return [...es, newEdge];
-        });
-      } else {
-        setEdges((es) =>
-          es.map((e) =>
-            e.id === editingEdge.id
-              ? { ...e, data: { ...(e.data!), kind } }
-              : e
-          )
-        );
-      }
-      setEditingEdge(null);
-      requestAnimationFrame(() => {
-        snapshot();
-        persist();
-        onPersist?.(buildInstance());
-      });
-    },
-    [editingEdge, setEdges, snapshot, persist, buildInstance, onPersist]
-  );
-
-  const selectedClaimIds = useMemo(
-    () =>
-      nodes
-        .filter((n): n is ClaimNode => isClaimNode(n) && !!n.selected)
-        .map((n) => n.id),
-    [nodes]
-  );
-
-  const bulkDelete = useCallback(() => {
-    if (selectedClaimIds.length === 0) return;
-    rf.deleteElements({ nodes: selectedClaimIds.map((id) => ({ id })) });
-  }, [rf, selectedClaimIds]);
-
-  const bulkClearSelection = useCallback(() => {
-    setNodes((ns) =>
-      ns.map((n) => (n.selected ? { ...n, selected: false } : n))
-    );
-  }, [setNodes]);
-
-  const bulkGroupInto = useCallback(
-    (domainName: string) => {
-      if (selectedClaimIds.length === 0) return;
-      const selSet = new Set(selectedClaimIds);
-      setNodes((ns) => groupClaimsInto(ns, selSet, domainName, mode));
-      requestAnimationFrame(() => {
-        snapshot();
-        persist();
-        onPersist?.(buildInstance());
-      });
-    },
-    [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]
-  );
-
-  const bulkMoveToRow = useCallback(
-    (targetRow: 1 | 2 | 3) => {
-      if (selectedClaimIds.length < 1) return;
-      const selSet = new Set(selectedClaimIds);
-      setNodes((ns) => moveClaimsToRow(ns, selSet, targetRow, mode));
-      requestAnimationFrame(() => {
-        snapshot();
-        persist();
-        onPersist?.(buildInstance());
-      });
-    },
-    [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]
-  );
-
-  const applyXResult = useCallback(
-    (compute: (boxes: XBox[]) => Map<string, number>) => {
-      if (selectedClaimIds.length < 2) return;
-      const selSet = new Set(selectedClaimIds);
-      setNodes((ns) => applyXPositions(ns, selSet, compute, mode));
-      requestAnimationFrame(() => {
-        snapshot();
-        persist();
-        onPersist?.(buildInstance());
-      });
-    },
-    [selectedClaimIds, mode, setNodes, snapshot, persist, buildInstance, onPersist]
-  );
-
-  const bulkAlignColumn = useCallback(
-    () => applyXResult((boxes) => alignColumn(boxes)),
-    [applyXResult]
-  );
-  const bulkDistributeX = useCallback(
-    () => applyXResult((boxes) => distributeX(boxes)),
-    [applyXResult]
-  );
+  const onEdgesDelete = useCallback(() => commitNextFrame(), [commitNextFrame]);
 
   const availableDomains = useMemo(() => {
     const out = new Set<string>();
@@ -632,20 +498,6 @@ function ClaimGraphRFInner({
     }
     return Array.from(out).sort();
   }, [nodes]);
-
-  const onEdgeDelete = useCallback(() => {
-    if (!editingEdge?.id) {
-      setEditingEdge(null);
-      return;
-    }
-    setEdges((es) => es.filter((e) => e.id !== editingEdge.id));
-    setEditingEdge(null);
-    requestAnimationFrame(() => {
-      snapshot();
-      persist();
-      onPersist?.(buildInstance());
-    });
-  }, [editingEdge, setEdges, snapshot, persist, buildInstance, onPersist]);
 
   // Default edge marker per kind.
   const defaultEdgeOptions = useMemo(
@@ -669,28 +521,12 @@ function ClaimGraphRFInner({
         setPopoverEdge({ edge: e, anchor, cursor: ev }),
       scheduleCloseEdgePopover,
       cancelCloseEdgePopover,
-      openNodeEditor: (id) => {
-        if (id === null) {
-          setEditingNode({ node: null });
-          return;
-        }
-        const live = nodesRef.current.find((n) => n.id === id);
-        if (live && isClaimNode(live)) setEditingNode({ node: live });
-      },
+      openNodeEditor,
       openEdgeEditor: (e) => {
-        if ("data" in e && e.data) {
-          const ee = e as ClaimEdge;
-          setEditingEdge({
-            id: ee.id,
-            source: ee.source,
-            target: ee.target,
-            kind: ee.data?.kind ?? "causes",
-            isNew: false,
-          });
-        } else {
-          const ne = e as { source: string; target: string; kind: EngineEdge["kind"] };
-          setEditingEdge({ ...ne, isNew: true });
-        }
+        // An existing edge carries `data`; anything else is a proposal for an
+        // edge that does not exist yet.
+        if ("data" in e && e.data) openEdgeEditor(e as ClaimEdge);
+        else proposeEdge(e as { source: string; target: string; kind: EngineEdge["kind"] });
       },
       isNeighbor,
       toggleDomainCollapse,
@@ -700,6 +536,9 @@ function ClaimGraphRFInner({
       mode,
       focusId,
       isNeighbor,
+      openNodeEditor,
+      openEdgeEditor,
+      proposeEdge,
       scheduleCloseEdgePopover,
       cancelCloseEdgePopover,
       toggleDomainCollapse,
@@ -816,7 +655,7 @@ function ClaimGraphRFInner({
           node={editingNode.node}
           onSave={onNodeSave}
           onDelete={onNodeDelete}
-          onClose={() => setEditingNode(null)}
+          onClose={closeNodeEditor}
           newId={newId}
           existingRowsCount={existingRowsCount}
           availableDomains={availableDomains}
@@ -829,7 +668,7 @@ function ClaimGraphRFInner({
           draft={editingEdge}
           onSave={onEdgeSave}
           onDelete={onEdgeDelete}
-          onClose={() => setEditingEdge(null)}
+          onClose={closeEdgeEditor}
         />
       )}
     </div>
