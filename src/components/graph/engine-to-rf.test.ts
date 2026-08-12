@@ -1,14 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { expandGroupEdges, expandGroupNodes } from "./engine-to-rf";
+import {
+  collapseGroupEdges,
+  collapseGroupNodes,
+  expandGroupEdges,
+  expandGroupNodes,
+} from "./engine-to-rf";
 import type { ClaimEdge, GraphNode } from "./types";
 
 /**
- * Expanding a collapsed domain group. Extracted from `toggleDomainCollapse`
- * because a second caller needed it: filing a claim into a collapsed group
- * used to run none of this, which is E7 — the claim landed visible and
- * detached below the pill with edges drawn to hidden siblings.
- *
- * These tests pin the transform both callers now share.
+ * Collapsing and expanding a domain group. Expand was extracted from
+ * `toggleDomainCollapse` in session 54 because a second caller needed it:
+ * filing a claim into a collapsed group used to run none of this, which is E7
+ * — the claim landed visible and detached below the pill with edges drawn to
+ * hidden siblings. Collapse followed it out here in session 55, so both
+ * directions of the same geometry are testable rather than only one.
  */
 
 const GROUP = "__domain_inequality";
@@ -147,5 +152,102 @@ describe("expandGroupEdges", () => {
     const unrelated = edge({ id: "far", source: "M1", target: "L1" });
     const [out] = expandGroupEdges([unrelated], childIds);
     expect(out).toBe(unrelated);
+  });
+});
+
+describe("collapseGroupNodes", () => {
+  const childIds = new Set(["IS1", "IS2"]);
+  const expanded = [group(false), child("IS1", false), child("IS2", false, 340), outsider("M1")];
+
+  it("sets the collapsed flag and the fixed pill size", () => {
+    const out = collapseGroupNodes(expanded, GROUP, childIds);
+    const g = out.find((n) => n.id === GROUP)!;
+    expect((g.data as { collapsed: boolean }).collapsed).toBe(true);
+    expect(g.style?.width).toBe(220);
+    expect(g.style?.height).toBe(56);
+  });
+
+  it("hides the children", () => {
+    const out = collapseGroupNodes(expanded, GROUP, childIds);
+    expect(out.filter((n) => childIds.has(n.id)).every((n) => n.hidden === true)).toBe(true);
+  });
+
+  it("leaves nodes outside the group alone", () => {
+    const out = collapseGroupNodes(expanded, GROUP, childIds);
+    expect(out.find((n) => n.id === "M1")).toBe(expanded.find((n) => n.id === "M1"));
+  });
+});
+
+describe("collapseGroupEdges", () => {
+  const childIds = new Set(["IS1", "IS2"]);
+
+  it("hides an edge that runs between two children", () => {
+    const out = collapseGroupEdges(
+      [edge({ id: "internal", source: "IS1", target: "IS2" })],
+      GROUP,
+      childIds
+    );
+    expect(out[0].hidden).toBe(true);
+    expect(out[0].source).toBe("IS1");
+  });
+
+  it("re-points a boundary edge at the pill and stashes the real endpoint", () => {
+    const [out] = collapseGroupEdges(
+      [edge({ id: "boundary", source: "IS1", target: "M1", sourceHandle: "s-bottom" })],
+      GROUP,
+      childIds
+    );
+    expect(out.source).toBe(GROUP);
+    expect(out.sourceHandle).toBeNull();
+    expect(out.target).toBe("M1");
+    expect(out.hidden).toBe(false);
+    expect(out.data?.collapsedRemap?.source).toEqual({ node: "IS1", handle: "s-bottom" });
+    expect(out.data?.collapsedRemap?.target).toBeUndefined();
+  });
+
+  it("leaves an edge with neither end inside untouched", () => {
+    const unrelated = edge({ id: "far", source: "M1", target: "L1" });
+    const [out] = collapseGroupEdges([unrelated], GROUP, childIds);
+    expect(out).toBe(unrelated);
+  });
+
+  // The pair is only correct if it composes: what collapse stashes is exactly
+  // what expand needs to put back. Testing either alone would miss a change to
+  // the remap shape that both halves agree on and no caller can use.
+  it("round-trips a boundary edge through expand", () => {
+    const original = edge({
+      id: "boundary",
+      source: "IS1",
+      target: "M1",
+      sourceHandle: "s-bottom",
+    });
+    const [restored] = expandGroupEdges(
+      collapseGroupEdges([original], GROUP, childIds),
+      childIds
+    );
+    expect(restored.source).toBe("IS1");
+    expect(restored.sourceHandle).toBe("s-bottom");
+    expect(restored.target).toBe("M1");
+    expect(restored.data?.collapsedRemap).toBeUndefined();
+  });
+
+  // An edge already re-pointed by a *different* group's collapse keeps that
+  // group's remap: collapsing the second group must add to the stash, not
+  // replace it, or expanding the first can never find its endpoint again.
+  it("keeps another group's remap when a second group collapses", () => {
+    const crossing = edge({
+      id: "crossing",
+      source: "__domain_other",
+      target: "IS2",
+      data: {
+        kind: "causes",
+        collapsedRemap: { source: { node: "OS1", handle: null } },
+      },
+    } as Partial<ClaimEdge> & Pick<ClaimEdge, "id">);
+    const [out] = collapseGroupEdges([crossing], GROUP, childIds);
+    expect(out.source).toBe("__domain_other");
+    expect(out.target).toBe(GROUP);
+    expect(out.data?.collapsedRemap?.source).toEqual({ node: "OS1", handle: null });
+    expect(out.data?.collapsedRemap?.target).toEqual({ node: "IS2", handle: null });
   });
 });

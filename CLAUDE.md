@@ -184,11 +184,17 @@ src/
     InterpretationCard.tsx              claim interpretation panel
     ThemeToggle.tsx                     system/light/dark
     graph/                              React Flow graph
-      ClaimGraphRF.tsx                  the canvas
+      ClaimGraphRF.tsx                  the canvas: state, wiring, render
       ClaimNode.tsx, ClaimEdge.tsx, DomainGroupNode.tsx, RowLabels.tsx
       NodeEditorModal.tsx, EdgeEditorModal.tsx, BulkActionsToolbar.tsx
-      NodePopover.tsx, EdgePopover.tsx
-      engine-to-rf.ts                   EngineGraphData to React Flow
+      NodePopover.tsx, EdgePopover.tsx, EdgeMarkers.tsx
+      engine-to-rf.ts                   EngineGraphData to React Flow; collapse/expand
+      graph-ops.ts                      pure transforms the state updaters apply
+      history.ts                        the undo stack as data
+      seed.ts                           canonical build or persisted sandbox
+      use-graph-history.ts              undo/redo bound to React Flow
+      use-graph-editing.ts              the two editor modals
+      use-bulk-actions.ts               the multi-select toolbar's actions
       persist.ts                        localStorage layout
       GraphContext.tsx, align.ts, jsonld-export.ts, types.ts
   lib/
@@ -239,8 +245,16 @@ Convention: `prefix(topic): short description`
 **Prefixes:**
 - `feat` — new feature or capability
 - `fix` — bug fix
+- `refactor` — structural change with no behaviour change
 - `docs` — documentation, session logs, research
 - `chore` — config, scripts, tooling, dependencies
+
+`refactor` was added in session 55, which produced seven commits the other
+four prefixes could only misdescribe: a 1207-line component split into tested
+modules, changing no behaviour. Filing that under `chore` (documented as
+config and tooling) or `fix` (no bug) would have made the prefix say less than
+nothing. A deliberate behaviour change inside a restructure is still its own
+`fix` commit, so the distinction stays honest.
 
 **Topics:** `claims`, `graph`, `dossier`, `forecast`, `schema`, `jsonld`, `ui`, `data`, `lib`, `scripts`, `mcp`, `research`, `sessions`, `config`, `deps`, `claude`
 
@@ -306,3 +320,19 @@ narrows the inferred type and `tsc` exits 0. Verified by planting exactly that
 fault. Remember the schema is the spec, so a deliberate shape change means
 editing `public/schema/v0.json` and `research/schema.md` in the same commit,
 and that test is what holds the three in agreement.
+
+After any change under `src/components/graph/`, run `npm test`. Since session
+55 the graph's arithmetic lives in pure modules with their own suites
+(`graph-ops`, `history`, `seed`, the collapse and expand pair in
+`engine-to-rf`), and a slot column, a coordinate conversion or a dropped undo
+step is a defect `tsc` and the build both accept. What no suite reaches is the
+canvas wiring, so a change to `ClaimGraphRF.tsx` or a `use-*.ts` hook still
+wants a browser pass against `npm run build` output rather than `npm run dev`.
+
+One caveat on that browser pass, measured in session 55 and reproduced on the
+base commit before being believed: an automated tab reports
+`document.visibilityState === "hidden"`, never paints, and therefore never
+fires `requestAnimationFrame`. Since every commit path defers to rAF, nothing
+persists and no node is ever rendered. Patch `window.requestAnimationFrame` to
+a timer in the console to drive it. `reset` freezes such a tab outright, on
+`main` as much as on a branch.
