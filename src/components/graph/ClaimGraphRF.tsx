@@ -52,11 +52,11 @@ import { RowLabels } from "./RowLabels";
 import {
   clearPersisted,
   computeSeedHash,
-  hydrateFromPersisted,
   loadPersisted,
   pruneLegacyStoreKeys,
   savePersisted,
 } from "./persist";
+import { resolveSeed } from "./seed";
 import { useBulkActions } from "./use-bulk-actions";
 import { useGraphEditing } from "./use-graph-editing";
 import { useGraphHistory } from "./use-graph-history";
@@ -101,48 +101,12 @@ function ClaimGraphRFInner({
 }: Props) {
   // Seed the initial React Flow state once: the canonical build plus its seed
   // hash, or a validated persisted sandbox (fullbleed only). Runs at mount and
-  // when data/mode change.
+  // when data/mode change. `loadPersisted` is pure, so reading it in render is
+  // safe; the write it implies is the effect below.
   const initial = useMemo(() => {
     const canonical = engineToRF(data, mode);
     const seedHash = computeSeedHash(canonical.nodes);
-    // Inline is a read-only display of canonical data/: it has no edit
-    // affordances and nothing worth persisting. The persisted sandbox belongs
-    // to fullbleed (/graph); reading it here put a visitor's editor state —
-    // other domains, deleted seeds, collapsed groups — on the landing page,
-    // and let its group chevrons write back to the shared key. Build fresh.
-    if (mode === "inline") {
-      return { ...canonical, seedHash, seedDrift: false, dropStored: false };
-    }
-    const loaded = loadPersisted(seedHash);
-    if (loaded.status === "ok") {
-      try {
-        const hydrated = hydrateFromPersisted(loaded.persisted);
-        // Self-heal on schema drift: a fullbleed snapshot must contain at least
-        // one domainGroup node. A snapshot pre-dating a structural refactor
-        // (e.g. before multi-domain landed) would rehydrate into an inert graph
-        // — drop it and rebuild. Load-bearing; see knowledge/issues.md.
-        if (hydrated.nodes.some(isGroupNode)) {
-          return {
-            ...hydrated,
-            seedHash,
-            seedDrift: loaded.seedDrift,
-            dropStored: false,
-          };
-        }
-      } catch {
-        // Validated by Zod but still unhydratable: belt-and-braces, since the
-        // hydrate runs in render and a throw here would white-screen the route.
-        // Fall through to rebuild from canonical.
-      }
-    }
-    // Nothing usable was stored. `dropStored` asks the effect below to delete
-    // what is there; the deletion cannot happen here, in render.
-    return {
-      ...canonical,
-      seedHash,
-      seedDrift: false,
-      dropStored: loaded.status !== "empty",
-    };
+    return resolveSeed(canonical, seedHash, mode, loadPersisted(seedHash));
   }, [data, mode]);
 
   // The storage writes the memo above used to make mid-render: dropping a
