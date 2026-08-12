@@ -32,7 +32,7 @@ export type JsonSchema = Record<string, unknown>;
  * tool a call names and whether the caller may run it; the Worker performs the
  * IO this describes.
  */
-export type ToolHandler =
+type ToolHandler =
   /** Reads a projection of the published JSON-LD. Public: no token required. */
   | { kind: "read"; op: ReadOp }
   /**

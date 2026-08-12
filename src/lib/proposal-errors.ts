@@ -24,7 +24,7 @@
  */
 
 /** Which call in the submit sequence failed. */
-export type SubmitStep = "base-ref" | "branch" | "commit" | "pull-request";
+type SubmitStep = "base-ref" | "branch" | "commit" | "pull-request";
 
 /**
  * Whether a commit meant to create a file or update one.
@@ -35,7 +35,7 @@ export type SubmitStep = "base-ref" | "branch" | "commit" | "pull-request";
  * which was intended, the status alone cannot distinguish "the id is taken"
  * from "someone else wrote this file since I read it".
  */
-export type CommitIntent = "create" | "update";
+type CommitIntent = "create" | "update";
 
 export type SubmitFailure = {
   step: SubmitStep;

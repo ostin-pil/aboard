@@ -57,7 +57,7 @@ function agentLD(agent: AgentAttribution) {
   };
 }
 
-export function claimLD(claim: Claim, base: string) {
+function claimLD(claim: Claim, base: string) {
   return {
     "@type": "schema:Claim",
     "@id": `${base}/claims/${claim.id}`,
@@ -83,7 +83,7 @@ export function claimLD(claim: Claim, base: string) {
   };
 }
 
-export function edgeLD(edge: Edge, base: string) {
+function edgeLD(edge: Edge, base: string) {
   return {
     "@type": "aboard:CausalEdge",
     "@id": `${base}/edges/${edge.id}`,
@@ -108,7 +108,7 @@ function baseRateLD(b: BaseRate) {
   };
 }
 
-export function forecastLD(forecast: Forecast, base: string) {
+function forecastLD(forecast: Forecast, base: string) {
   return {
     "@type": "aboard:Forecast",
     "@id": `${base}/forecasts/${forecast.id}`,
@@ -149,7 +149,7 @@ export function forecastLD(forecast: Forecast, base: string) {
   };
 }
 
-export function analysisLD(analysis: Analysis, base: string) {
+function analysisLD(analysis: Analysis, base: string) {
   return {
     "@type": "aboard:Analysis",
     "@id": `${base}/analyses/${analysis.id}`,

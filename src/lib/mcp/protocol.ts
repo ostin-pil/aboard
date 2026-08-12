@@ -55,7 +55,7 @@ export const SERVER_VERSION = "0.1.0";
  *  its single source (`canonical-urls.test.ts` enforces that), and the Worker
  *  bundle gains no `process.env` read, which it has no runtime for. A deployed
  *  Worker only ever answers on the canonical origin anyway. */
-export const SERVER_INFO = {
+const SERVER_INFO = {
   name: "aboard",
   title: "aboard",
   version: SERVER_VERSION,
@@ -64,7 +64,7 @@ export const SERVER_INFO = {
 
 /** Shown to a model when it connects. Says what the substrate is and what the
  *  write posture is, because both change how an agent should use the tools. */
-export const SERVER_INSTRUCTIONS =
+const SERVER_INSTRUCTIONS =
   "aboard is a board of falsifiable claims about systemic problems: claims linked by " +
   "causal edges, time-boxed forecasts, and steel-manned dual dossiers with ranked cruxes. " +
   "Read tools are public and need no credential. The four propose_* tools require an " +
@@ -141,7 +141,7 @@ export function parseMessage(raw: unknown): ParsedMessage {
 
 // --- versions and eras -----------------------------------------------------
 
-export function isSupportedVersion(version: string): boolean {
+function isSupportedVersion(version: string): boolean {
   return (SUPPORTED_PROTOCOL_VERSIONS as readonly string[]).includes(version);
 }
 
@@ -160,7 +160,7 @@ export function isModernVersion(version: string): boolean {
 }
 
 /** The version named in the body's `_meta`, if any. */
-export function metaProtocolVersion(params: Record<string, unknown>): string | null {
+function metaProtocolVersion(params: Record<string, unknown>): string | null {
   const meta = asRecord(params._meta);
   const version = meta?.[META_KEY];
   return typeof version === "string" ? version : null;
@@ -215,7 +215,7 @@ function mismatch(message: string): JsonRpcErrorBody {
  * disagreement between them is a security bug, so the spec requires rejecting
  * it rather than picking a winner.
  */
-export function validateModernHeaders(
+function validateModernHeaders(
   message: Extract<ParsedMessage, { type: "request" | "notification" }>,
   headers: HeaderReader,
 ): JsonRpcErrorBody | null {
@@ -278,7 +278,7 @@ export function validateModernHeaders(
  */
 const CAPABILITIES = { tools: {}, resources: {} } as const;
 
-export function initializeResult(requestedVersion: unknown): Record<string, unknown> {
+function initializeResult(requestedVersion: unknown): Record<string, unknown> {
   return {
     protocolVersion: negotiateLegacyVersion(requestedVersion),
     capabilities: CAPABILITIES,
@@ -287,7 +287,7 @@ export function initializeResult(requestedVersion: unknown): Record<string, unkn
   };
 }
 
-export function discoverResult(): Record<string, unknown> {
+function discoverResult(): Record<string, unknown> {
   return {
     supportedVersions: [...SUPPORTED_PROTOCOL_VERSIONS],
     capabilities: CAPABILITIES,

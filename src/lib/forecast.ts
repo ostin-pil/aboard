@@ -106,7 +106,7 @@ export function aggregate(predictions: Prediction[]): AggregateStats {
 // leaveOneOut — the key diagnostic for an ensemble reversal
 // ---------------------------------------------------------------------------
 
-export type LeaveOneOutEntry = {
+type LeaveOneOutEntry = {
   /** Index of the dropped prediction in the original `predictions` array. */
   droppedIndex: number;
   /** Model id of the dropped prediction (provenance only — NOT a key). */

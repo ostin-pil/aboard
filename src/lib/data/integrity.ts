@@ -14,7 +14,7 @@ import type { ClaimGraph } from "@/lib/types";
  * errors already read.
  */
 
-export type EntityKind =
+type EntityKind =
   | "claim"
   | "edge"
   | "forecast"

@@ -22,6 +22,17 @@
   //                 package.json, plus the forecaster entry, which is run by
   //                 hand and wired to no gate command at all.
   //   *.test.ts     vitest reads these directly.
+  //
+  // `src/lib/types.ts` is here for a different reason: it is a published
+  // surface, not a module that happens to be imported. Every schema in it is
+  // declared twice by the file's own idiom, `export const X = z.enum(...)`
+  // beside `export type X = z.infer<typeof X>`, and the pair is the contract
+  // that `public/schema/v0.json` and `research/schema.md` are held in lockstep
+  // with. knip reported three of the ~20 schema constants (SourceKind,
+  // AnalysisKind, ResolvedOutcome) because no current call site imports the
+  // runtime validator, only the derived type. Un-exporting exactly those three
+  // would make the file inconsistent with its own rule to satisfy a tool. In a
+  // contract file, "nothing imports it yet" is not evidence that it is dead.
   "entry": [
     "worker/index.ts",
     "worker/mcp.ts",
@@ -29,6 +40,7 @@
     "scripts/*.ts",
     "scripts/*.mjs",
     "scripts/forecasters/ensemble-predict.ts",
+    "src/lib/types.ts",
     "src/**/*.test.ts"
   ],
 
