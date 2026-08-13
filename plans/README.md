@@ -16,6 +16,15 @@ order they could be picked up; pick any.
   (`agent-surface`, `mcp-write-path`, `integrity-foundations`, `corpus-growth`)
   against the verified state of the code, which several of them predate.
 
+- [audit-2026-08.md](audit-2026-08.md) — the 2026-08-13 audit round:
+  findings in five families (S security, P performance, U untracked debt,
+  M distribution, R records) plus nine session-sized chunk plans covering
+  them and the carried E-items. Its Suggested order supersedes the
+  2026-07-11 ordering below for near-term work: truth batch → security →
+  instrumentation → bundle → distribution mechanics → launch post, with
+  the exporter/edge-identity, worker-test and small-items chunks
+  interleaving freely.
+
 ## Open — deadline-driven (from the 2026-07-11 review)
 
 | Plan | Deadline | Effort | Prereq |
@@ -26,6 +35,7 @@ order they could be picked up; pick any.
 
 | Plan | Effort | Decision-heavy? | Prereq |
 | --- | --- | --- | --- |
+| [audit-2026-08.md](audit-2026-08.md) | 9 chunks, ~½–1 day each | Light — chunk 6 picks a test harness; the rest is decided | Chunk 8 (launch post) wants chunks 1, 4 and ideally 7 first; others independent |
 | [integrity-foundations.md](integrity-foundations.md) | do-now slice shipped (session 34); enforcement half unscoped | Decisions taken; see its Status | Enforcement half was gated on the MCP write path, which is now met |
 | [repo-hardening.md](repo-hardening.md) | ~3–4 hr | Light — license choice | §4 blocked on domain choice; rest none |
 | [agent-surface.md](agent-surface.md) | ~3–5 hr | Light — /agents vs /about section | Canonical domain (deploy) |
