@@ -120,7 +120,7 @@ reports_dir: reports                 # report output
 audit_stale_days: 90                 # flag docs with no commit in this many days
 issues_file: knowledge/issues.md     # ISS-NNN tracker for the issues skill
 jargon_terms: ["claim graph", "JSON-LD", "dossier", "crux", "leverage point", "forecast", "frontmatter"]
-plan_doc: none
+plan_doc: plans/README.md            # roadmap index; front-loads plans/audit-2026-08.md (session 57)
 workflow_rule: .claude/rules/workflow.md
 scratch_paths: [.claude/settings.local.json, .claude/worktrees]
 
