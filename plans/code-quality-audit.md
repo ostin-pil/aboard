@@ -116,7 +116,7 @@ deleted.
 | E18 | `mcp-server/src/http.ts` still defaults to `http://localhost:3000`, where `/api/proposals` does not exist |
 | E19 | The dark token set is still duplicated between `[data-theme="dark"]` and `prefers-color-scheme` |
 | E20 | Tailwind is imported and **zero** utility classes are used anywhere. Adopt or drop |
-| E21 | `sitemap.ts` exists; no `robots.ts`, no `alternates.canonical` |
+| E21 | Robots and sitemap halves closed; `alternates.canonical` and `/graph` metadata still open |
 | C | `--max-warnings 0` (13 warnings, blocked on the `Claude Design Screens/` decision), `noUncheckedIndexedAccess` (48 errors, probed), coverage thresholds, dependency gate |
 
 Two gaps named by later sessions, not in the original audit: `code_globs` has no
@@ -382,7 +382,7 @@ over ground the seven v1 agents didn't cover.
 | E18 | LOW | `mcp-server/src/http.ts:10` | Default `ABOARD_API_BASE_URL` is `http://localhost:3000`, where `next dev` serves **no** `/api/proposals` (it's Worker-only) — default-config writes fail with a misleading 404. Fix: default to the production origin, or fail with a "write path needs the Worker URL" message. |
 | E19 | LOW | `src/app/globals.css:66-131,232-239,353-360` | The full dark-token set is duplicated verbatim between `:root[data-theme="dark"]` and the `prefers-color-scheme` block (same for the toggle glyph and RF colorMode rules) — the same duplication-drift class as the enum/hex findings, CSS-side: edit one block, silently fork the palette between toggle-dark and system-dark users. Fix: shared indirection layer, or a diff-match check. |
 | E20 | LOW | `globals.css:1,129-142,163-168` | Tailwind is imported but **zero utility classes are used anywhere** — all styling is hand-rolled `ag-*`/semantic classes; the `@theme inline` alias block and `header.top.fixed` are dead. Either adopt utilities or drop the dependency (and fix CLAUDE.md's "Tailwind v4 + design tokens" description). |
-| E21 | LOW | `src/app/**` | Metadata beyond A1: no `alternates.canonical` anywhere, no robots/sitemap (all four conventional locations absent), and `/graph` exports no metadata at all. `CANONICAL_ORIGIN` already exists — wire it into canonicals + a sitemap over `getClaims()`. (Positive: all three OG generators correctly export `alt`/`size`/`contentType` + `force-static`, with `generateStaticParams`.) |
+| E21 | LOW | `src/app/**` | **Half closed, verified session 58.** Closed: robots and sitemap both shipped — `public/robots.txt` is a deliberate static file carrying the allow stance and Content Signals (its header explains why static: Cloudflare's managed robots.txt is disabled for the zone so nothing overrides it), and `src/app/sitemap.ts` exists. Still open: no `alternates.canonical` anywhere (`claims/[id]/page.tsx:42` uses `alternates` but only for `types`, pointing at the JSON-LD and Markdown twins), and `/graph` still exports no metadata at all. `CANONICAL_ORIGIN` already exists — wire it into canonicals. (Positive: all three OG generators correctly export `alt`/`size`/`contentType` + `force-static`, with `generateStaticParams`.) |
 
 ### Verified-fine (so nobody re-audits them)
 
