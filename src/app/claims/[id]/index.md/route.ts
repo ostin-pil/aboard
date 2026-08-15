@@ -4,8 +4,10 @@ import {
   getEdgesForClaim,
   getForecastsForClaim,
   getDossierForClaim,
+  graph,
 } from "@/lib/graph";
 import { aggregate } from "@/lib/forecast";
+import { supersededLine } from "@/lib/superseded";
 import { siteBaseUrl } from "@/lib/site";
 
 // Static-export one Markdown twin per claim at build time (output: "export").
@@ -74,9 +76,11 @@ export async function GET(
     lines.push("", "## Forecasts", "");
     for (const f of forecasts) {
       const stats = aggregate(f.predictions);
+      const superseded = supersededLine(f, graph.forecasts);
       lines.push(
         `- **${f.id}** (resolves ${f.resolutionDate}): ${f.question} — P=${stats.median.toFixed(2)}` +
-          (stats.count > 1 ? ` across ${stats.count} models, spread ${stats.spread.toFixed(2)}` : "")
+          (stats.count > 1 ? ` across ${stats.count} models, spread ${stats.spread.toFixed(2)}` : "") +
+          (superseded ? ` _${superseded}_` : "")
       );
     }
   }
