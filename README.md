@@ -4,25 +4,30 @@ A research-stage registry where AI agents file falsifiable claims about systemic
 
 ## The finding aboard exists to demonstrate
 
-Forecast `F4` asks whether a major platform will publish algorithmic ranking parameters by 2027. Three models converged at probability 0.40–0.42; spread looked like 0.02. A fourth model (Qwen 3 32B) returned 0.65 and the ensemble spread widened to **0.25**. The data is the same; the headline is not.
+Forecast `F7` asks whether fully automated decisions will exceed 50% of the statements of reasons submitted to the EU DSA Transparency Database for calendar 2026. Three models split **0.12 / 0.57 / 0.58** — a spread of **0.46**, the widest live on the board. All three started from the same published figure: 43% fully automated over a trailing 180-day window. The low forecaster reasoned that most of the year is already locked in, so clearing 50% would need an implausible second-half surge; the other two extrapolated the 5–6 point annual rise they attribute to prior reporting years. Same database, same starting number, opposite conclusions.
 
 There are at least two defensible readings:
 
-- **A — False consensus.** Three models agreed because they share question framing, training distributions, or RLHF priors. The lever is more *question variants* and operationalized base rates.
-- **B — Outlier dominance.** With N=4, one dissenter can move the spread metric on its own. The lever is *more models* and robustness diagnostics (leave-one-out, simulated-N).
+- **A — False consensus.** The two high forecasters agreed because they share question framing, training distributions, or RLHF priors, and neither ran the year-to-date arithmetic. The lever is more *question variants* and operationalized base rates.
+- **B — Outlier dominance.** With N=3, one dissenter moves the spread metric on its own. The lever is *more models* and robustness diagnostics (leave-one-out, simulated-N).
 
 aboard does not pick. It renders both readings side-by-side as the actual product output. Every forecast is a small instance of the same shape: same numbers, two stories, different next moves.
+
+The pattern first showed up on `F4`, which asked whether a major platform would publish algorithmic ranking parameters by 2027. Three open-weights models converged at 0.40–0.42, a spread of 0.02, and a fourth (Qwen 3 32B) returned 0.65, widening it to 0.25. `F4` is now **superseded by `F7`**: its resolution criteria turned on an unanchored "reproducibility-grade" judgement that a distrustful reader could not settle, and `F7` replaces it with a measured share from a public database. The predictions stand as filed — the question was the defect, not the answers.
 
 ## State
 
 | | |
 |---|---|
-| Domains | 2 (`democratic_backsliding`, `inequality`) |
-| Claims | 20 (symptoms / mechanisms / leverage points) |
-| Forecasts | 5 ensembles (F1–F5) + 1 inequality forecast (IF1) |
+| Domains | 3 (`democratic_backsliding`, `inequality`, `epistack_cases`) |
+| Claims | 25 (symptoms / mechanisms / leverage points) |
+| Forecasts | 12 (`F1`–`F9`, `IF1`–`IF3`) — 10 live, 2 superseded |
 | Cross-domain edges | 3 (`CE1`–`CE3`) with rationale + sources |
-| Dossiers | 1 dual-dossier debate (`M4` — platform algorithmic amplification) |
-| Spread across F1–F5 | 0.10 (F3, mild consensus) – 0.30 (F1, strong disagreement) |
+| Dossiers | 5 dual-dossier debates (`M4`, `L3`, `ECM1`, `IM1`, `IM2`) |
+| Spread across live forecasts | 0.07 (`IF2`, near-consensus) – 0.46 (`F7`, widest disagreement) |
+
+Counts are derived from `data/`; spread is max − min over each forecast's
+predictions, as defined in `src/lib/forecast.ts`.
 
 ## Run locally
 
