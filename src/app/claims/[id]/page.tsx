@@ -7,7 +7,7 @@ import {
   getAnalysesForClaim,
   graph,
 } from "@/lib/graph";
-import { fullClaimLD } from "@/lib/jsonld";
+import { fullClaimLD, ldJsonScript } from "@/lib/jsonld";
 import { siteBaseUrl } from "@/lib/site";
 import { aggregate } from "@/lib/forecast";
 import { modelFamily, modelFamilyLabel } from "@/lib/model-family";
@@ -86,7 +86,7 @@ export default async function ClaimPage({
   const forecasts = getForecastsForClaim(id);
   const dossier = getDossierForClaim(id);
   const analyses = getAnalysesForClaim(claim);
-  const ldJson = JSON.stringify(fullClaimLD(claim, graph, siteBaseUrl()));
+  const ldJson = ldJsonScript(fullClaimLD(claim, graph, siteBaseUrl()));
 
   return (
     <main className="page">
