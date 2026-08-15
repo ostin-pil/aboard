@@ -939,18 +939,22 @@ const siteHandler = {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
       return await route(request, env);
-    } catch (error) {
+    } catch {
       // Anything that reaches here is a bug rather than a rejected request, but
       // an agent should still get the structured envelope every other failure
-      // on this endpoint returns, not the platform's bare 500 with an HTML
-      // body it cannot parse. The message is included because every caller is
-      // authenticated and the repo is public; there is nothing here a caller
-      // could not already see.
-      return fail(
-        500,
-        "internal_error",
-        error instanceof Error ? error.message : "Unhandled error.",
-      );
+      // on this endpoint returns, not the platform's bare 500 with an HTML body
+      // it cannot parse. `internal_error` is the part a client can act on, and
+      // it is stable.
+      //
+      // The thrown message is deliberately not forwarded. This used to be
+      // justified by "every caller is authenticated", which was never true of
+      // this handler: `route()` also serves anonymous `/mcp` reads,
+      // `/api/whoami`, markdown negotiation and every static asset, so an
+      // unauthenticated caller could read whatever a bug happened to put in an
+      // exception. The repo being public bounds the impact, not the exposure.
+      // Server-side visibility is chunk 4's job (`plans/audit-2026-08.md`);
+      // until then a failure here is diagnosed from the platform's own logs.
+      return fail(500, "internal_error", "Internal error.");
     }
   },
 };
