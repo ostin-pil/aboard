@@ -426,3 +426,43 @@ restructure is its own `fix` commit.
 **Scope.** Cosmetic. The counter is wrong; the graph state is not.
 
 Status: open — filed in session 58 from session 55's what-next item 9.
+
+---
+
+## 2026-08-15 — a worktree without its own install makes `check:exports` lie
+
+**Symptom.** `npm run check:exports` exits 1 in a `.claude/worktrees/*` session,
+reporting `react-dom` and `@types/react-dom` as unused dependencies and `next`,
+`eslint`, `vitest` and `knip` as "unlisted binaries". The same command exits 0
+on `main` in the primary checkout, against the same `knip.jsonc`.
+
+**Cause.** A git worktree under `.claude/worktrees/` has no `node_modules` of
+its own, and Node's resolution walks *up* to the primary checkout's — which is
+why `tsc`, `vitest` and `next build` all work there without an install. knip
+does not walk up. It resolves dependencies relative to the project root, finds
+either no `node_modules` or (worse) one containing only tool caches that vitest
+and jiti created, and concludes the dependencies are not installed. Every
+finding is an artifact; none is a real dead export.
+
+The empty-but-present case is the confusing one: `rmdir` refuses it because
+`.cache/jiti` and `.vite/vitest` are inside, so the directory looks like an
+install to knip and like garbage to everything else.
+
+**Fix.** Run `npm install` inside the worktree once. Costs disk, and it is the
+only way the command reports honestly there.
+
+**Why it matters beyond one command.** `check:exports` is in the manifest's
+`build_commands`, so `/lifecycle-kit:session-end` runs it in whatever directory
+the session lives in. A worktree session without an install therefore fails its
+own gate for a reason that has nothing to do with its changes, and the failure
+reads like a real dead-export finding.
+
+**Related, same root.** `jsdom` was declared in `package.json` (`^29.1.1`) and
+absent from the shared `node_modules`, so `src/components/graph/focus-trap.test.ts`
+failed to start its worker and 21 tests silently did not run. `npm test` still
+printed a green-looking "563 passed" with one failed suite above it. A stale
+install degrades quietly; the count dropping from 584 to 563 was the only
+signal.
+
+Status: open as a gotcha — no code fix, and worth checking first when a
+worktree session's gate fails a command that passes on `main`.
