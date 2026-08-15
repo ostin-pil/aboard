@@ -12,6 +12,7 @@ import { siteBaseUrl } from "@/lib/site";
 import { aggregate } from "@/lib/forecast";
 import { modelFamily, modelFamilyLabel } from "@/lib/model-family";
 import { InterpretationCard } from "@/components/InterpretationCard";
+import { SupersededNotice } from "@/components/SupersededNotice";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -265,8 +266,9 @@ export default async function ClaimPage({
             const stats = aggregate(f.predictions);
             const isEnsemble = stats.count > 1;
             return (
-              <div className="forecast" key={f.id}>
+              <div className="forecast" key={f.id} id={f.id}>
                 <div className="forecast-head">
+                  <SupersededNotice forecast={f} />
                   <h3 className="question">{f.question}</h3>
                   <div className="resolves">
                     <span className="id">{f.id}</span>

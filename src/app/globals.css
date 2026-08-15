@@ -1300,6 +1300,12 @@ h1.headline em { font-style: normal; color: var(--muted); font-weight: 400; }
 .forecast-head .resolves .sep { color: var(--line-2); padding: 0 8px; }
 .forecast-head .criteria { font-style: italic; color: var(--muted); font-size: 14px; line-height: 1.55; margin: 0; }
 
+/* Superseded marker. Muted rather than alarming: a superseded forecast is
+   historical record, not an error, and its predictions still stand. */
+.superseded-notice { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px; font-size: 13px; line-height: 1.5; color: var(--muted); }
+.superseded-tag { flex: none; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line-2); border-radius: 3px; padding: 2px 6px; }
+.superseded-notice a { color: var(--mech-fg); text-decoration: underline; text-underline-offset: 2px; }
+
 .ensemble-head {
   padding: 18px 22px 14px; border-bottom: 1px dashed var(--line);
   display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap;

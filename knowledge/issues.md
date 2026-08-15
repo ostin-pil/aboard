@@ -4,6 +4,20 @@ Long-lived notes on bugs, gotchas, and decisions that aren't obvious
 from the code or session logs. Each entry is dated; "Status:" line at
 the end of the entry tracks whether it's still relevant.
 
+**Which tracker is which.** The project keeps three, and the split was
+unwritten until session 58 — long enough that fifteen findings accumulated in
+one while this file went quiet for a month, which reads as "no issues" rather
+than "filed elsewhere".
+
+- **This file** — runtime and development issues: bugs, gotchas, and
+  environment traps met while working. Dated entries with a `Status:` line.
+- **`plans/code-quality-audit.md`** — status of the A–E findings from the
+  code-quality audit. That document owns those numbers.
+- **`plans/audit-2026-08.md`** — status of the S/P/U/M/R findings from the
+  2026-08 audit round, and the nine chunk plans covering them.
+
+A bug found while working goes here even if an audit would also have caught it.
+
 ---
 
 ## 2026-05-20 — React Flow: `onNodeClick={noop}` is load-bearing for inner buttons
@@ -364,3 +378,91 @@ The code lives in `ostin-pil/claude-plugins` under `prose-mint/`, and the
 link now points there.
 
 Status: resolved — the gate runs a published release, not a working tree.
+
+---
+
+## 2026-08-12 — `reset` freezes the graph renderer
+
+**Symptom.** Clicking `reset` in the graph editor toolbar freezes the renderer
+outright.
+
+**What is established.** It reproduces in an automated tab with the
+`requestAnimationFrame` patch removed, so the patch is not the cause. Session 55
+checked `main`'s graph directory out into its worktree, rebuilt, and clicked:
+it freezes identically on `75bf36b`. So it is pre-existing, not a regression
+from the session-55 module split.
+
+**What is not established, and is the actual open question.** Whether a
+*painting* tab is affected. Every reproduction so far is in an automated tab,
+which reports `document.visibilityState === "hidden"`, never paints, and
+therefore never fires `requestAnimationFrame` — an environment already known to
+break commit paths that defer to rAF (see the entry on that below, and
+`CLAUDE.md`'s verification section). If a real browser is unaffected, this is an
+automation artifact and belongs here as a gotcha. If it is affected, it is a
+user-facing bug.
+
+**How to settle it.** Open a built `out/` in a real, focused, painting tab and
+click `reset`. That single observation closes the question either way.
+
+Status: open — filed in session 58 from session 55's what-next item 8, which
+promised it here and never filed it.
+
+---
+
+## 2026-08-12 — undo and redo do not refresh the chrome's node count
+
+**Symptom.** After an undo or redo, the graph chrome's node count is stale. In
+session 55 it read `26n` while the sandbox actually held 25 claims.
+
+**Cause.** `restore` persists without calling `onPersist`, so the chrome never
+learns the count changed.
+
+**Why it was left alone.** Session 55 was a behaviour-preserving refactor
+(a 1207-line component split into tested modules). Fixing this inside it would
+have smuggled a behaviour change in as tidying, which the project's commit
+convention explicitly separates: a deliberate behaviour change inside a
+restructure is its own `fix` commit.
+
+**Scope.** Cosmetic. The counter is wrong; the graph state is not.
+
+Status: open — filed in session 58 from session 55's what-next item 9.
+
+---
+
+## 2026-08-15 — a worktree without its own install makes `check:exports` lie
+
+**Symptom.** `npm run check:exports` exits 1 in a `.claude/worktrees/*` session,
+reporting `react-dom` and `@types/react-dom` as unused dependencies and `next`,
+`eslint`, `vitest` and `knip` as "unlisted binaries". The same command exits 0
+on `main` in the primary checkout, against the same `knip.jsonc`.
+
+**Cause.** A git worktree under `.claude/worktrees/` has no `node_modules` of
+its own, and Node's resolution walks *up* to the primary checkout's — which is
+why `tsc`, `vitest` and `next build` all work there without an install. knip
+does not walk up. It resolves dependencies relative to the project root, finds
+either no `node_modules` or (worse) one containing only tool caches that vitest
+and jiti created, and concludes the dependencies are not installed. Every
+finding is an artifact; none is a real dead export.
+
+The empty-but-present case is the confusing one: `rmdir` refuses it because
+`.cache/jiti` and `.vite/vitest` are inside, so the directory looks like an
+install to knip and like garbage to everything else.
+
+**Fix.** Run `npm install` inside the worktree once. Costs disk, and it is the
+only way the command reports honestly there.
+
+**Why it matters beyond one command.** `check:exports` is in the manifest's
+`build_commands`, so `/lifecycle-kit:session-end` runs it in whatever directory
+the session lives in. A worktree session without an install therefore fails its
+own gate for a reason that has nothing to do with its changes, and the failure
+reads like a real dead-export finding.
+
+**Related, same root.** `jsdom` was declared in `package.json` (`^29.1.1`) and
+absent from the shared `node_modules`, so `src/components/graph/focus-trap.test.ts`
+failed to start its worker and 21 tests silently did not run. `npm test` still
+printed a green-looking "563 passed" with one failed suite above it. A stale
+install degrades quietly; the count dropping from 584 to 563 was the only
+signal.
+
+Status: open as a gotcha — no code fix, and worth checking first when a
+worktree session's gate fails a command that passes on `main`.

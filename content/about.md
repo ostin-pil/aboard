@@ -26,17 +26,17 @@ readings:
   - label: Reading A
     title: False consensus
     body: >-
-      Three models agreed because they share question framing, training
-      distribution, or RLHF priors. Apparent agreement on a single phrasing is
-      not evidence about the world.
+      The two high forecasters agreed because they share question framing,
+      training distribution, or RLHF priors. Apparent agreement on a single
+      phrasing is not evidence about the world.
     implies: >-
       more question variants, operationalized base rates, framing-sensitivity
       diagnostics
   - label: Reading B
     title: Outlier dominance
     body: >-
-      With N=4, a single dissenter can move the spread metric on its own. The
-      headline is a statistical-power artifact; a 5th model could re-tighten it
+      With N=3, a single dissenter can move the spread metric on its own. The
+      headline is a statistical-power artifact; a 4th model could re-tighten it
       entirely.
     implies: >-
       larger N, leave-one-out and simulated-N robustness checks
@@ -44,8 +44,8 @@ spreadReadings:
   F1: Strong disagreement on out-party affect direction.
   F2: Strong disagreement on OECD insecurity composite.
   F3: Mild consensus that news HHI will not drop.
-  F4: Was 0.02 with N=3 — see above.
-  F5: Tighter consensus that no G7 binding law lands.
+  F4: Superseded by F7. The three open-weights models sat at 0.02; Qwen 3 widened it to 0.25, later additions to 0.30.
+  F5: Superseded by F6 and F8. Tighter consensus that no G7 binding law lands.
   F6: Models discount registry growth the seed reads as near-certain.
   F7: Widest spread in the corpus. Models read 43% as within reach of 50%; the seed reads most of calendar 2026 as already banked at 43%.
   F8: Consensus that a legally mandated report does get published.
@@ -85,12 +85,15 @@ prompt. The credibility play is radical transparency, not hidden authorship.
 
 ## What we found
 
-Forecast `F4` asks whether a major platform will publish algorithmic ranking
-parameters by 2027. The first three open-weights models converged at probability
-**0.40–0.42**; spread looked like 0.02 — a tight consensus that the answer is
-*no*. After raising `maxTokens` for Qwen 3, the fourth prediction landed at
-**0.65** and the ensemble spread widened to **0.25** at N=4. The data is the
-same; the headline is not.
+Forecast `F7` asks whether fully automated decisions will exceed 50% of the
+statements of reasons submitted to the EU DSA Transparency Database for calendar
+2026. Three models split **0.12 / 0.57 / 0.58** — a spread of **0.46**, the
+widest live on the board. All three began from the same published figure: 43%
+fully automated across a trailing 180-day window. The low forecaster read most
+of calendar 2026 as already banked at 43%, so clearing 50% would need an
+implausible second-half surge; the other two extrapolated the 5–6 point annual
+rise they attribute to prior reporting years. The data is the same; the headline
+is not.
 
 There are at least two defensible readings, with different implied next moves.
 aboard renders both as the product output rather than picking one.
@@ -105,6 +108,15 @@ varies meaningfully by question shape:
 Spread is the headline aboard cares about. Where it's wide, the system is
 telling you the models disagree under identical input. Where it's narrow, you
 should be asking whether the question framing did the work.
+
+The pattern first showed up on `F4`, which asked whether a major platform would
+publish algorithmic ranking parameters by 2027. Three open-weights models
+converged at **0.40–0.42**, a spread of 0.02, and after `maxTokens` was raised
+for Qwen 3 the fourth prediction landed at **0.65**, widening the spread to
+0.25. `F4` is now superseded by `F7`: its resolution criteria turned on an
+unanchored "reproducibility-grade" judgement that a distrustful reader could not
+settle, and `F7` replaces it with a measured share from a public database. The
+predictions stand as filed — the question was the defect, not the answers.
 
 ## Why dossiers don't synthesize
 

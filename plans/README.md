@@ -14,7 +14,9 @@ order they could be picked up; pick any.
   rigor** (3a integrity-foundations schema/lint, 3b ensemble run + short-horizon
   slate + 2 dossiers). It orders and reconciles the per-workstream plans below
   (`agent-surface`, `mcp-write-path`, `integrity-foundations`, `corpus-growth`)
-  against the verified state of the code, which several of them predate.
+  against the verified state of the code, which several of them predate. Three
+  of those four have since shipped; only `integrity-foundations` is still open,
+  and only its enforcement half.
 
 - [audit-2026-08.md](audit-2026-08.md) — the 2026-08-13 audit round:
   findings in five families (S security, P performance, U untracked debt,
@@ -29,7 +31,7 @@ order they could be picked up; pick any.
 
 | Plan | Deadline | Effort | Prereq |
 | --- | --- | --- | --- |
-| [funding-applications.md](funding-applications.md) | Rolling (micro-grants now) | ~1 day writing + evidence package | Evidence items: FLF entry (submitted, see Shipped), repo-hardening, one resolved forecast |
+| [funding-applications.md](funding-applications.md) | Rolling (micro-grants now) | ~1 day writing + evidence package | Evidence items: FLF entry (submitted, see Shipped), repo-hardening, one resolved forecast — **calendar-blocked until 2027-01-31**, the earliest resolution date in `data/` (F9); no amount of work brings it forward |
 
 ## Open — build
 
@@ -38,8 +40,6 @@ order they could be picked up; pick any.
 | [audit-2026-08.md](audit-2026-08.md) | 9 chunks, ~½–1 day each | Light — chunk 6 picks a test harness; the rest is decided | Chunk 8 (launch post) wants chunks 1, 4 and ideally 7 first; others independent |
 | [integrity-foundations.md](integrity-foundations.md) | do-now slice shipped (session 34); enforcement half unscoped | Decisions taken; see its Status | Enforcement half was gated on the MCP write path, which is now met |
 | [repo-hardening.md](repo-hardening.md) | ~3–4 hr | Light — license choice | §4 blocked on domain choice; rest none |
-| [agent-surface.md](agent-surface.md) | ~3–5 hr | Light — /agents vs /about section | Canonical domain (deploy) |
-| [corpus-growth.md](corpus-growth.md) | ~1–2 days | Medium — dossier targets, forecast slate | none remaining; §3's integrity-foundations prereq shipped in session 34 |
 | [domain-on-create.md](domain-on-create.md) | ~1–2 hr | Light — slot-on-create vs leave-free | None |
 | [cross-domain-claim-drag.md](cross-domain-claim-drag.md) | ~half-day | Yes — extent strategy, confirm UX, coordinate math | None |
 | [editor-mode-posture.md](editor-mode-posture.md) | ~3 hr (Posture 2) / ~12+ hr (Posture 3) | Yes — three postures to choose between | None |
@@ -54,8 +54,9 @@ order they could be picked up; pick any.
 
 Suggested order (2026-07-11 review), with the FLF entry since submitted and its
 deadline passed: integrity-foundations (do-now slice shipped in session 34) →
-repo-hardening → agent-surface → corpus-growth, with funding applications
-running in parallel as evidence items land. The pre-review plans
+repo-hardening, with funding applications running in parallel as evidence items
+land. `agent-surface` and `corpus-growth` were the next two links in that chain
+and have both since shipped (see Shipped). The pre-review plans
 (domain-on-create, cross-domain-claim-drag, editor-mode-posture,
 open-weights-forecaster) remain independent and can interleave.
 
@@ -66,6 +67,23 @@ the math.
 
 ## Shipped
 
+- [agent-surface.md](agent-surface.md) — done. §1 `llms.txt`
+  (`src/app/llms.txt/route.ts`), §2 entity-page navigation (a Markdown twin per
+  claim and per dossier, plus `/index.md`, `/auth.md` and
+  `/.well-known/api-catalog`), §3 the agent instructions page in the
+  `## For agents` form the plan allowed rather than a separate `/agents` route
+  (`content/about.md:183`), and §4 crawl affordances (`src/app/sitemap.ts`,
+  `public/robots.txt`). Residue: the `/agents` route was never built and the
+  plan's own decision note allowed either, so the choice is made, not pending.
+  Moved here in session 58 after verifying each deliverable exists; the audit
+  (R5) found it still listed as open.
+- [corpus-growth.md](corpus-growth.md) — substantially done. §1 the inequality
+  ensemble ran (`IF1`–`IF3`, multi-model), §2 grew the corpus from 1 dossier to
+  5 (`M4`, `L3`, `ECM1`, `IM1`, `IM2`), §3 landed the short-horizon slate with
+  six forecasts resolving on or before 2027-03-31 (`F6`–`F9`, `IF2`, `IF3`)
+  against a target of three to five. Residue, stated rather than buried: §2's
+  "+1 dossier per session thereafter" cadence did not hold and is not being
+  tracked as a commitment. Moved here in session 58 (R5).
 - [flf-epistack-entry.md](flf-epistack-entry.md) — submitted by the 2026-07-19
   deadline. The writeup-led entry (Fork C) went in: the external-anchor thesis
   and both-readings methodology as the substance, the deployed site as the

@@ -8,11 +8,22 @@ behavior worth re-verifying.
 
 ## 2026-05-21 — localStorage self-heal on schema drift
 
-**Under test.** The `useMemo` in
-`src/components/graph/ClaimGraphRF.tsx` (`ClaimGraphRFInner`,
-around line 97). When `mode === "fullbleed"` and the persisted
-snapshot rehydrates without any `domainGroup` node, the cache is
-dropped and the graph rebuilds from `data/`.
+**Under test.** `resolveSeed` in `src/components/graph/seed.ts`. When
+`mode === "fullbleed"` and the persisted snapshot rehydrates without any
+`domainGroup` node, the stored sandbox is rejected (`dropStored`) and the graph
+rebuilds from `data/`.
+
+Re-anchored in session 58. This decision used to live in a `useMemo` inside
+`ClaimGraphRFInner` in `ClaimGraphRF.tsx`, which is where the original wording
+pointed ("around line 97"); session 55 moved it into `seed.ts` as a pure
+function. Two lessons the audit drew from that (R8): a line number is the first
+thing to rot, and the reason this document is worth keeping current is that the
+canvas wiring is the one part of the graph no automated suite reaches.
+
+`resolveSeed` now has unit coverage of its own in `seed.test.ts`, so the cases
+below are narrower than they were: what they still buy is the round trip
+through real localStorage and a real render, which the unit tests deliberately
+do not touch.
 
 ### TC-1. Happy path — fullbleed persists and rehydrates intact
 
