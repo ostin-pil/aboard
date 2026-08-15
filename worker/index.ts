@@ -35,6 +35,9 @@ import {
   buildEdge,
   buildPrediction,
   buildDossier,
+  MAX_PROPOSAL_BYTES,
+  ProposalTooLarge,
+  readCappedJson,
   type TokenIdentity,
 } from "../src/lib/proposals";
 import {
@@ -127,14 +130,6 @@ type OAuthHelpers = {
 const RATE_LIMIT_PERIOD_S = 60;
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
-
-/**
- * Largest proposal body we will buffer. Comfortably above the sum of the
- * per-field bounds in `proposals.ts` plus JSON overhead, so a legal proposal
- * never trips it and this stays what it is: a guard against reading a large
- * body, not a second content limit to keep in sync.
- */
-const MAX_PROPOSAL_BYTES = 256 * 1024;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body, null, 2), { status, headers: JSON_HEADERS });
@@ -833,11 +828,13 @@ async function runProposal(
     return fail(503, "not_configured", "The proposals endpoint has no GitHub credential configured.");
   }
 
-  // Refuse an oversized body before buffering it. The per-field bounds in
-  // `proposals.ts` are the real limit on a proposal's size; this only stops us
-  // reading a large body into memory to discover that. A chunked request has no
-  // `content-length`, in which case the schema bounds are the whole defence —
-  // which is why they are the ones that matter.
+  // Refuse an oversized body before reading a byte of it. This is the cheap
+  // half: `content-length` is self-reported and missing on a chunked request,
+  // so it rejects the honest oversize case early and settles nothing else. The
+  // enforced cap is in `readCappedJson`, which counts what actually arrives.
+  // The per-field bounds in `proposals.ts` remain the real limit on a
+  // proposal's content; neither of these is a second content limit to keep in
+  // sync with them.
   const declaredLength = Number(request.headers.get("content-length") ?? "");
   if (Number.isFinite(declaredLength) && declaredLength > MAX_PROPOSAL_BYTES) {
     return fail(
@@ -850,7 +847,14 @@ async function runProposal(
   let raw: unknown;
   try {
     raw = await readEnvelope();
-  } catch {
+  } catch (error) {
+    if (error instanceof ProposalTooLarge) {
+      return fail(
+        413,
+        "payload_too_large",
+        `Proposal body exceeds the limit of ${MAX_PROPOSAL_BYTES} bytes.`,
+      );
+    }
     return fail(400, "invalid_json", "Request body is not valid JSON.");
   }
 
@@ -884,7 +888,7 @@ async function handleProposal(
   if (request.method !== "POST") {
     return fail(405, "method_not_allowed", "POST a proposal envelope to this endpoint.");
   }
-  return runProposal(request, env, credential, () => request.json(), HTTP_ENTRY_POINT);
+  return runProposal(request, env, credential, () => readCappedJson(request), HTTP_ENTRY_POINT);
 }
 
 // --- Markdown content negotiation ------------------------------------------
