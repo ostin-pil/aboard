@@ -23,13 +23,17 @@
 # than incidental. Reversing it lets the PEM be deleted once the key is in the
 # keychain, while keeping the PEM path working for a machine without one.
 #
-# From a PEM the script derives the hex itself and checks the matching public
-# key against the TXT record before contacting the registry, so a wrong or
-# rotated key fails here with a clear message instead of as an opaque auth
-# error two steps later. The keychain path gets no such check: it holds the
-# scalar alone, and deriving a public key from it would mean reconstructing the
-# EC key just to re-verify what was stored deliberately. A wrong keychain entry
-# therefore fails at `login` instead of here.
+# Both file and keychain keys are checked against the TXT record before the
+# registry is contacted, so a wrong or rotated key fails here with a clear
+# message instead of as an opaque auth error two steps later. From a PEM the
+# script derives the hex itself; from the keychain it reconstructs the point
+# with node's createECDH, the scalar being all that is stored.
+#
+# The keychain gets a shape check first, because `add-generic-password` stores
+# whatever it is handed. Session 59 found an 8-character value under this
+# service name, which under the new ordering would have outranked the PEM and
+# reached `login` as an opaque failure. A malformed entry is now skipped with a
+# warning; a well-formed one that does not match the record is fatal.
 #
 # Two notes on handling. mcp-publisher accepts the key only as a command-line
 # flag, so it is briefly visible to `ps` on this machine while login runs; it
@@ -52,6 +56,28 @@ ROOT="$(git rev-parse --show-toplevel)"
 readonly CARD="$ROOT/public/.well-known/mcp.json"
 
 die() { echo "error: $*" >&2; exit 1; }
+
+# The compressed P-384 public point for a raw hex scalar, base64-encoded, in the
+# same form the apex TXT record carries after `p=`. Prints nothing if node is
+# missing or the scalar will not load, so the caller decides what that means.
+#
+# node rather than openssl because openssl has no one-liner from a bare scalar
+# (it wants a key file), while createECDH takes exactly that. The scalar arrives
+# on stdin and never as an argument: an argument would be visible to `ps`, the
+# hazard this file's header notes for `mcp-publisher login`.
+derive_pub_from_scalar() {
+  command -v node >/dev/null 2>&1 || return 0
+  node -e '
+    let hex = "";
+    process.stdin.on("data", (d) => (hex += d));
+    process.stdin.on("end", () => {
+      const crypto = require("crypto");
+      const ecdh = crypto.createECDH("secp384r1");
+      ecdh.setPrivateKey(Buffer.from(hex.trim(), "hex"));
+      process.stdout.write(ecdh.getPublicKey(null, "compressed").toString("base64"));
+    });
+  ' 2>/dev/null || true
+}
 
 # The registry entry the world sees, matched on name and remote URL. Prints the
 # published version on success. Exit 1 means "not published", not "failed".
@@ -133,7 +159,21 @@ if [[ -z "$key" ]]; then
     echo "  ignoring the $KEYCHAIN_SERVICE keychain entry: expected 96 hex characters, got ${#key}" >&2
     key=""
   elif [[ -n "$key" ]]; then
-    echo "  using the $KEYCHAIN_SERVICE keychain entry"
+    # Well-formed is not the same as correct, so check it against the record the
+    # way the PEM branch does. A wrong-but-plausible scalar is the one case the
+    # shape check above cannot see.
+    keychain_pub="$(printf '%s' "$key" | derive_pub_from_scalar)"
+    if [[ -z "$keychain_pub" ]]; then
+      # No node, or the scalar would not load. Warn rather than block: this
+      # check exists to fail early with a clear message, and `login` still
+      # rejects a wrong key a moment later.
+      echo "  warning: could not derive a public key from the keychain entry, so it was not checked against the TXT record" >&2
+      echo "  using the $KEYCHAIN_SERVICE keychain entry"
+    elif [[ "$keychain_pub" != "$dns_pub" ]]; then
+      die "the $KEYCHAIN_SERVICE keychain entry does not match the TXT record; rotate the record or store the right key"
+    else
+      echo "  the $KEYCHAIN_SERVICE keychain entry matches the record"
+    fi
   fi
 fi
 
