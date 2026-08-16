@@ -123,7 +123,16 @@ key="${MCP_PUBLISHER_KEY:-}"
 
 if [[ -z "$key" ]]; then
   key="$(security find-generic-password -w -s "$KEYCHAIN_SERVICE" 2>/dev/null || true)"
-  if [[ -n "$key" ]]; then
+  # Shape-check before trusting it. The keychain is now the first source
+  # consulted, so anything sitting under that service name outranks the PEM,
+  # and `security add-generic-password` will happily store a typo. Session 59
+  # found exactly that: an 8-character value under this service, which would
+  # have reached `login` as an opaque auth failure with the PEM never read.
+  # Falling through costs nothing when the entry is good.
+  if [[ -n "$key" && ! "$key" =~ ^[0-9a-f]{96}$ ]]; then
+    echo "  ignoring the $KEYCHAIN_SERVICE keychain entry: expected 96 hex characters, got ${#key}" >&2
+    key=""
+  elif [[ -n "$key" ]]; then
     echo "  using the $KEYCHAIN_SERVICE keychain entry"
   fi
 fi
