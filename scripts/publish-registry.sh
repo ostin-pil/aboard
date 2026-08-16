@@ -14,13 +14,22 @@
 # me.untype/* namespace. The key is looked for in three places, in order:
 #
 #   MCP_PUBLISHER_KEY        the raw scalar as 96 hex characters
-#   MCP_PUBLISHER_KEY_FILE   a PEM (defaults to key.pem at the repo root)
 #   the login keychain       security add-generic-password -s mcp-publisher-untype -a untype.me -w
+#   MCP_PUBLISHER_KEY_FILE   a PEM (defaults to key.pem at the repo root)
+#
+# The keychain outranks the PEM as of session 59. It used to be the other way
+# round, which meant a key.pem sitting in the repo root silently won over the
+# keychain copy, and the file's continued existence was load-bearing rather
+# than incidental. Reversing it lets the PEM be deleted once the key is in the
+# keychain, while keeping the PEM path working for a machine without one.
 #
 # From a PEM the script derives the hex itself and checks the matching public
 # key against the TXT record before contacting the registry, so a wrong or
 # rotated key fails here with a clear message instead of as an opaque auth
-# error two steps later.
+# error two steps later. The keychain path gets no such check: it holds the
+# scalar alone, and deriving a public key from it would mean reconstructing the
+# EC key just to re-verify what was stored deliberately. A wrong keychain entry
+# therefore fails at `login` instead of here.
 #
 # Two notes on handling. mcp-publisher accepts the key only as a command-line
 # flag, so it is briefly visible to `ps` on this machine while login runs; it
@@ -111,6 +120,14 @@ dns_pub="${dns_record##*p=}"
 
 pem="${MCP_PUBLISHER_KEY_FILE:-$ROOT/key.pem}"
 key="${MCP_PUBLISHER_KEY:-}"
+
+if [[ -z "$key" ]]; then
+  key="$(security find-generic-password -w -s "$KEYCHAIN_SERVICE" 2>/dev/null || true)"
+  if [[ -n "$key" ]]; then
+    echo "  using the $KEYCHAIN_SERVICE keychain entry"
+  fi
+fi
+
 if [[ -z "$key" && -f "$pem" ]]; then
   # A compressed P-384 point is 49 bytes, and the DER public key ends with it.
   derived="$(openssl ec -in "$pem" -pubout -conv_form compressed -outform DER 2>/dev/null |
@@ -125,10 +142,7 @@ if [[ -z "$key" && -f "$pem" ]]; then
   [[ ${#key} -eq 98 && "$key" == 00* ]] && key="${key:2}"
   [[ ${#key} -eq 96 ]] || die "expected a 96-character P-384 scalar from $pem, got ${#key}"
 fi
-if [[ -z "$key" ]]; then
-  key="$(security find-generic-password -w -s "$KEYCHAIN_SERVICE" 2>/dev/null || true)"
-fi
-[[ -n "$key" ]] || die "no signing key: set MCP_PUBLISHER_KEY, put a PEM at $pem, or add $KEYCHAIN_SERVICE to the keychain"
+[[ -n "$key" ]] || die "no signing key: add $KEYCHAIN_SERVICE to the keychain, set MCP_PUBLISHER_KEY, or put a PEM at $pem"
 
 echo "Logging in..."
 trap 'mcp-publisher logout >/dev/null 2>&1 || true' EXIT
