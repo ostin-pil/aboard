@@ -30,9 +30,11 @@ import {
   checkGateParity,
   checkWranglerWiring,
   parseJsonc,
+  LIMITER_MIRRORS,
   type CiStep,
   type ConfigFinding,
   type GateCoverage,
+  type LimiterBinding,
   type WranglerConfig,
 } from "../src/lib/config-lint";
 
@@ -150,17 +152,22 @@ function wrangler(): WranglerConfig | undefined {
 }
 
 /**
- * `RATE_LIMIT_PERIOD_S` out of `worker/index.ts` by source match.
+ * Each limiter's mirror constant out of its source file, by source match.
  *
- * Read as text rather than imported because `worker/index.ts` exports only its
- * default fetch handler, the same constraint session 47 hit with A6 and session
- * 51 with the proposal-error classifier. `undefined` here is itself a finding,
- * so a rename surfaces rather than silently disabling the mirror check.
+ * Read as text rather than imported because the worker modules export only what
+ * the runtime needs (`worker/index.ts` its default fetch handler), the same
+ * constraint session 47 hit with A6 and session 51 with the proposal-error
+ * classifier. `undefined` for any entry is itself a finding, so a rename
+ * surfaces rather than silently disabling that mirror check.
  */
-function rateLimitPeriodS(): number | undefined {
-  const source = readFileSync(at("worker/index.ts"), "utf8");
-  const match = /const RATE_LIMIT_PERIOD_S\s*=\s*(\d+)/.exec(source);
-  return match === null ? undefined : Number(match[1]);
+function limiterPeriods(): Record<LimiterBinding, number | undefined> {
+  const periods = {} as Record<LimiterBinding, number | undefined>;
+  for (const mirror of LIMITER_MIRRORS) {
+    const source = readFileSync(at(mirror.source), "utf8");
+    const match = new RegExp(`const ${mirror.constant}\\s*=\\s*(\\d+)`).exec(source);
+    periods[mirror.binding] = match === null ? undefined : Number(match[1]);
+  }
+  return periods;
 }
 
 /** `output` from `next.config.ts`, by source match, for the same reason. */
@@ -187,7 +194,7 @@ if (config !== undefined) {
   findings.push(
     ...checkWranglerWiring({
       config,
-      rateLimitPeriodS: rateLimitPeriodS(),
+      limiterPeriods: limiterPeriods(),
       mainExists: typeof config.main === "string" && existsSync(at(config.main)),
       nextOutput: nextOutput(),
     })
