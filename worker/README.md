@@ -203,6 +203,65 @@ KV or a Durable Object), and it is per-Cloudflare-location and eventually
 consistent, so the effective cap is approximate. That is the right shape for
 capping blast radius; it is not exact accounting.
 
+## Telemetry
+
+The Worker writes one Analytics Engine data point per event on its three
+agent-facing surfaces (the `EVENTS` binding, dataset `aboard_events`;
+`src/lib/telemetry.ts` builds the rows and is unit-tested there):
+
+| `index1` | `blob1` | `blob2` |
+| --- | --- | --- |
+| `proposal` | outcome class: `accepted`, `unauthorized`, `rate_limited`, `rejected`, `failed` | entry point: `POST /api/proposals` or the MCP tool name |
+| `mcp_call` | tool name | `credentialed` or `anonymous` |
+| `twin` | pathname served as its Markdown twin | — |
+
+No tokens, no logins, no payload content, and every dimension is a closed or
+corpus-bounded set. Two honest bounds of its own. `mcp_call`'s who-dimension
+is credential *presence*, not validity — resolving a credential just to label
+a row would put a KV lookup on the anonymous read path, which deliberately
+touches no storage. And a write through MCP counts twice by design, once as
+`mcp_call` and once as `proposal`: the former counts the door, the latter the
+decision, whichever door it came through.
+
+Like the limiter, the binding **fails open**: unbound or erroring, `record` is
+a no-op and requests are unaffected, so telemetry going missing looks exactly
+like no traffic. That is why `npm run check:config` pins the binding name, the
+dataset name and the `Env` field against each other — a rename anywhere in
+that triangle errors nowhere at runtime.
+
+### Querying it
+
+The [SQL API](https://developers.cloudflare.com/analytics/analytics-engine/sql-api/)
+answers with an API token carrying *Account Analytics: Read* (create one at
+dash.cloudflare.com/profile/api-tokens; the account id is in the dashboard's
+URL). "Did anyone call the API this week":
+
+```bash
+curl "https://api.cloudflare.com/client/v4/accounts/<account_id>/analytics_engine/sql" \
+  -H "Authorization: Bearer <token>" \
+  --data "SELECT index1, blob1, SUM(_sample_interval) AS events
+          FROM aboard_events
+          WHERE timestamp > NOW() - INTERVAL '7' DAY
+          GROUP BY index1, blob1
+          ORDER BY index1, events DESC"
+```
+
+`SUM(_sample_interval)` rather than `COUNT()`: at high volume Analytics Engine
+samples per index, and the column says how many original rows each surviving
+row stands for. At this Worker's volumes it will read 1 for a long time; the
+query is written to stay correct when it stops.
+
+Retention is three months. The Workers Free allowance is 100,000 data points
+written and 10,000 SQL queries per day. The dataset is created by the first
+write, so before any traffic `SHOW TABLES` comes back empty rather than
+erroring — an empty answer from the query above means no traffic, provided
+the deploy carried the binding (see the pin above for how that is kept true).
+
+`observability.enabled` in `wrangler.jsonc` turns on Workers Logs (3-day
+retention on the free plan) for the one thing these rows do not carry: the
+500 path deliberately returns a generic body, so the platform's log is where
+an exception gets diagnosed.
+
 ## The MCP endpoint (`POST /mcp`)
 
 A remote [Model Context Protocol](https://modelcontextprotocol.io) server, so
