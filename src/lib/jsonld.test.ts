@@ -3,7 +3,7 @@ import { join } from "node:path";
 import Ajv2020, { type ValidateFunction } from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 import { describe, it, expect } from "vitest";
-import { graphLD, fullClaimLD } from "@/lib/jsonld";
+import { graphLD, fullClaimLD, dossierLD, ldJsonScript } from "@/lib/jsonld";
 import {
   Analysis,
   Claim,
@@ -293,5 +293,46 @@ describe("fullClaimLD against v0.json", () => {
     const doc = fullClaimLD(claims[2], fixture, BASE) as Record<string, unknown>;
     expect(doc).not.toHaveProperty("aboard:dossier");
     expectValid(doc, "FullClaimResponse");
+  });
+});
+
+describe("ldJsonScript", () => {
+  // S1. The claim and dossier pages embed these documents in a
+  // `<script type="application/ld+json">` block, whose content is raw text: the
+  // HTML parser scans it for `</script` and nothing else. `JSON.stringify`
+  // leaves `<` alone, so a statement carrying a literal `</script>` would close
+  // the block and turn the remainder of the document into live markup. Every
+  // string field here is agent-proposed through `POST /api/proposals`, which
+  // bounds length and not characters.
+  const HOSTILE = '</script><img src=x onerror="alert(1)">';
+
+  it("emits no raw < for a claim whose statement closes the script block", () => {
+    const claim = { ...claims[0], statement: HOSTILE, title: HOSTILE };
+    const embedded = ldJsonScript(fullClaimLD(claim, fixture, BASE));
+    expect(embedded).not.toContain("<");
+  });
+
+  it("emits no raw < for a dossier whose theses close the script block", () => {
+    const base = dossiers[0];
+    const dossier = {
+      ...base,
+      pro: { ...base.pro, thesis: HOSTILE },
+      con: { ...base.con, steelmannedSummary: HOSTILE },
+    };
+    const embedded = ldJsonScript(dossierLD(dossier, BASE));
+    expect(embedded).not.toContain("<");
+  });
+
+  // The escape has to be lossless, or the fix would trade an injection for
+  // corrupted output that no consumer could round-trip.
+  it("round-trips to the same document a bare stringify would produce", () => {
+    const claim = { ...claims[0], statement: HOSTILE };
+    const doc = fullClaimLD(claim, fixture, BASE);
+    expect(JSON.parse(ldJsonScript(doc))).toEqual(doc);
+  });
+
+  it("leaves a document with no angle brackets byte-identical", () => {
+    const doc = graphLD(fixture, BASE);
+    expect(ldJsonScript(doc)).toBe(JSON.stringify(doc));
   });
 });

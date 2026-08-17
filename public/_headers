@@ -18,6 +18,29 @@
 # Markdown branch `Cache-Control: no-store`, because Cloudflare's own cache
 # keys on Accept-Encoding rather than Accept.
 
+# Baseline security headers, site-wide (S6 in plans/audit-2026-08.md). The
+# OAuth consent screen sets its own stricter set in worker/oauth.ts and is
+# unaffected by this file; everything the static export serves had none.
+#
+# `nosniff` is the one that matters here. This site serves several
+# extensionless routes whose content type is asserted below rather than
+# inferred, and content sniffing is exactly the mechanism that overrides such an
+# assertion.
+#
+# `strict-origin-when-cross-origin` is the browser default already, stated
+# explicitly so it survives a default changing under us. Claim and dossier URLs
+# name what a reader is looking at, so the full path is worth not leaking
+# off-origin.
+#
+# No CSP. Next's static export inlines its bootstrap scripts, so a policy strict
+# enough to be worth having needs per-build hashes, and getting it wrong breaks
+# the page rather than logging a warning. Probed separately; the three headers
+# here do not wait on it.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
 /
   Link: </.well-known/api-catalog>; rel="api-catalog", </schema/v0.json>; rel="service-desc", </about>; rel="service-doc"
   Vary: Accept

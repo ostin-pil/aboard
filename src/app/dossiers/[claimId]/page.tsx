@@ -3,7 +3,7 @@ import {
   getClaimsWithDossiers,
   getDossierForClaim,
 } from "@/lib/graph";
-import { dossierLD } from "@/lib/jsonld";
+import { dossierLD, ldJsonScript } from "@/lib/jsonld";
 import { siteBaseUrl } from "@/lib/site";
 import { cruxRank, type Argument, type Crux } from "@/lib/types";
 import { notFound } from "next/navigation";
@@ -61,7 +61,7 @@ export default async function DossierPage({
     (a, b) => cruxRank(b) - cruxRank(a)
   );
   const total = sortedCruxes.length;
-  const ldJson = JSON.stringify(dossierLD(dossier, siteBaseUrl()));
+  const ldJson = ldJsonScript(dossierLD(dossier, siteBaseUrl()));
 
   return (
     <main className="dossier-page">

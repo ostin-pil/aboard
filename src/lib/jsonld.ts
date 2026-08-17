@@ -198,6 +198,33 @@ export function dossierLD(dossier: Dossier, base: string) {
   };
 }
 
+/**
+ * Serialize a JSON-LD document for embedding in `<script type="application/ld+json">`.
+ *
+ * `JSON.stringify` escapes nothing that matters inside a script element. The
+ * element's content is raw text, so the parser is not looking for entities or
+ * quotes — it is scanning for the string `</script`, and a literal one in any
+ * serialized field terminates the block early and hands the remainder to the
+ * HTML parser as live markup. Claim statements, source labels and dossier
+ * theses all reach these embeds from `POST /api/proposals`, where `LIMITS`
+ * bounds length and says nothing about characters.
+ *
+ * Replacing every `<` with its JSON unicode escape is the whole fix, and it is
+ * sufficient rather than merely convenient: every way out of a script element
+ * starts with that one character (`</script`, and `<!--`, which opens a
+ * comment state the parser does not leave at the next `>`). `&` and `>` need
+ * no handling here because raw text is not entity-decoded. The substitution is
+ * invisible to consumers, since a JSON parser reads the escape and the literal
+ * as the same string.
+ *
+ * The API routes are deliberately not routed through this: they serve
+ * `application/ld+json` over HTTP with no HTML parser in the path, so their
+ * output stays byte-identical to what `public/schema/v0.json` describes.
+ */
+export function ldJsonScript(doc: unknown): string {
+  return JSON.stringify(doc).replace(/</g, "\\u003c");
+}
+
 export function fullClaimLD(
   claim: Claim,
   graph: ClaimGraph,

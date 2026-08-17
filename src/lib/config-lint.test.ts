@@ -215,29 +215,69 @@ const WRANGLER = {
 
 const WIRING_OK = {
   config: WRANGLER,
-  rateLimitPeriodS: 60,
+  limiterPeriods: { PROPOSAL_LIMITER: 60, REGISTRATION_LIMITER: 60 },
   mainExists: true,
   nextOutput: "export",
 };
+
+/** The shipped ratelimits with one binding's period overridden. */
+function withPeriod(binding: string, period: unknown) {
+  return {
+    ...WRANGLER,
+    ratelimits: WRANGLER.ratelimits.map((l) =>
+      l.name === binding ? { ...l, simple: { ...l.simple, period } } : l,
+    ),
+  };
+}
 
 describe("checkWranglerWiring", () => {
   it("passes on the shipped configuration", () => {
     expect(checkWranglerWiring(WIRING_OK)).toEqual([]);
   });
 
-  it("catches the rate-limit period drifting from the Worker constant", () => {
+  it("catches the proposal period drifting from the Worker constant", () => {
     // 10 and 60 are the only values Cloudflare accepts, so this is the single
     // legal edit, and it is the one that silently breaks retry-after.
     const findings = checkWranglerWiring({
       ...WIRING_OK,
-      config: {
-        ...WRANGLER,
-        ratelimits: [{ name: "PROPOSAL_LIMITER", simple: { limit: 10, period: 10 } }],
-      },
+      config: withPeriod("PROPOSAL_LIMITER", 10),
     });
     expect(findings).toHaveLength(1);
     expect(findings[0].detail).toContain("retry-after");
+    expect(findings[0].detail).toContain("RATE_LIMIT_PERIOD_S");
   });
+
+  // S4. The identical obligation on the registration limiter, which nothing
+  // read until session 59. Both sides are 60 today, so no drift was live.
+  it("catches the registration period drifting from the OAuth constant", () => {
+    const findings = checkWranglerWiring({
+      ...WIRING_OK,
+      config: withPeriod("REGISTRATION_LIMITER", 10),
+    });
+    expect(findings).toHaveLength(1);
+    expect(findings[0].detail).toContain("retry-after");
+    expect(findings[0].detail).toContain("REGISTRATION_LIMIT_PERIOD_S");
+    expect(findings[0].detail).toContain("worker/oauth.ts");
+  });
+
+  // A matched pair can still be illegal: Cloudflare rejects anything but 10 or
+  // 60 at deploy, and every other check here would pass it.
+  it.each(["PROPOSAL_LIMITER", "REGISTRATION_LIMITER"])(
+    "catches an off-platform period on %s even when the mirror agrees",
+    (binding) => {
+      const findings = checkWranglerWiring({
+        ...WIRING_OK,
+        config: withPeriod(binding, 30),
+        limiterPeriods: { PROPOSAL_LIMITER: 30, REGISTRATION_LIMITER: 30 },
+      });
+      // Only the edited binding is off-platform; the other still reads 60 in
+      // wrangler.jsonc, so it reports a mirror mismatch against the 30.
+      const offPlatform = findings.filter((f) => f.detail.includes("fail at deploy"));
+      expect(offPlatform).toHaveLength(1);
+      expect(offPlatform[0].detail).toContain(binding);
+      expect(offPlatform[0].detail).toContain("10 or 60");
+    },
+  );
 
   it("catches a main entry point that does not exist", () => {
     const findings = checkWranglerWiring({ ...WIRING_OK, mainExists: false });
@@ -260,18 +300,25 @@ describe("checkWranglerWiring", () => {
     expect(findings[0].detail).toContain("static export");
   });
 
-  it("reports a renamed Worker constant rather than passing silently", () => {
-    const findings = checkWranglerWiring({ ...WIRING_OK, rateLimitPeriodS: undefined });
+  it.each([
+    ["PROPOSAL_LIMITER", "RATE_LIMIT_PERIOD_S"],
+    ["REGISTRATION_LIMITER", "REGISTRATION_LIMIT_PERIOD_S"],
+  ])("reports %s's constant going unread rather than passing silently", (binding, constant) => {
+    const findings = checkWranglerWiring({
+      ...WIRING_OK,
+      limiterPeriods: { ...WIRING_OK.limiterPeriods, [binding]: undefined },
+    });
     expect(findings).toHaveLength(1);
-    expect(findings[0].detail).toContain("RATE_LIMIT_PERIOD_S");
+    expect(findings[0].detail).toContain(constant);
   });
 
-  it("catches a missing PROPOSAL_LIMITER binding", () => {
+  it("catches a missing limiter binding, one finding per limiter", () => {
     const findings = checkWranglerWiring({
       ...WIRING_OK,
       config: { ...WRANGLER, ratelimits: [] },
     });
-    expect(findings).toHaveLength(1);
-    expect(findings[0].detail).toContain("PROPOSAL_LIMITER");
+    expect(findings).toHaveLength(2);
+    expect(findings.map((f) => f.detail).join(" ")).toContain("PROPOSAL_LIMITER");
+    expect(findings.map((f) => f.detail).join(" ")).toContain("REGISTRATION_LIMITER");
   });
 });

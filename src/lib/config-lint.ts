@@ -261,6 +261,42 @@ export type WranglerConfig = {
 };
 
 /**
+ * Every rate-limit binding in `wrangler.jsonc` and the constant that mirrors it.
+ *
+ * Both halves of each pair document the other in prose and neither enforced it.
+ * `PROPOSAL_LIMITER` was checked from session 53; `REGISTRATION_LIMITER` was
+ * not, which S4 in `plans/audit-2026-08.md` names: identical obligation, no
+ * reader. They happen to agree at 60 today, so the gap never showed.
+ *
+ * `scripts/check-config.ts` drives its source extraction off this table too, so
+ * a limiter added here is a limiter checked, rather than one more pair of
+ * comments trusting each other.
+ */
+export const LIMITER_MIRRORS = [
+  {
+    binding: "PROPOSAL_LIMITER",
+    constant: "RATE_LIMIT_PERIOD_S",
+    source: "worker/index.ts",
+  },
+  {
+    binding: "REGISTRATION_LIMITER",
+    constant: "REGISTRATION_LIMIT_PERIOD_S",
+    source: "worker/oauth.ts",
+  },
+] as const;
+
+export type LimiterBinding = (typeof LIMITER_MIRRORS)[number]["binding"];
+
+/**
+ * The only two values Cloudflare's rate-limiting accepts for `simple.period`.
+ *
+ * Worth asserting separately from the mirror: a matched pair at `period: 30`
+ * satisfies every check above and fails at deploy, which is the slowest place
+ * to find out.
+ */
+const LEGAL_PERIODS = [10, 60];
+
+/**
  * Checks the invariants `wrangler.jsonc` states in prose and nothing enforces.
  *
  * The rate-limit one is the reason this exists. `worker/index.ts` declares
@@ -273,14 +309,14 @@ export type WranglerConfig = {
  */
 export function checkWranglerWiring(input: {
   config: WranglerConfig;
-  /** `RATE_LIMIT_PERIOD_S` as read out of `worker/index.ts`. */
-  rateLimitPeriodS: number | undefined;
+  /** Each mirror constant in `LIMITER_MIRRORS`, as read out of its source file. */
+  limiterPeriods: Record<LimiterBinding, number | undefined>;
   /** Whether `config.main` resolves to a file that exists. */
   mainExists: boolean;
   /** `output` from `next.config.ts`. */
   nextOutput: string | undefined;
 }): ConfigFinding[] {
-  const { config, rateLimitPeriodS, mainExists, nextOutput } = input;
+  const { config, limiterPeriods, mainExists, nextOutput } = input;
   const findings: ConfigFinding[] = [];
   const check = "wrangler wiring";
 
@@ -319,31 +355,54 @@ export function checkWranglerWiring(input: {
   }
 
   const limiters = Array.isArray(config.ratelimits) ? config.ratelimits : [];
-  const proposal = limiters.find(
-    (l): l is { name: string; simple?: { period?: unknown } } =>
-      typeof l === "object" && l !== null && (l as { name?: unknown }).name === "PROPOSAL_LIMITER"
-  );
 
-  if (proposal === undefined) {
-    findings.push({
-      check,
-      detail: "wrangler.jsonc has no PROPOSAL_LIMITER ratelimit binding.",
-    });
-  } else if (rateLimitPeriodS === undefined) {
-    findings.push({
-      check,
-      detail:
-        "Could not read RATE_LIMIT_PERIOD_S from worker/index.ts, so the mirror " +
-        "with PROPOSAL_LIMITER's period cannot be checked. Was the constant renamed?",
-    });
-  } else if (proposal.simple?.period !== rateLimitPeriodS) {
-    findings.push({
-      check,
-      detail:
-        `PROPOSAL_LIMITER period is ${String(proposal.simple?.period)} in wrangler.jsonc ` +
-        `but RATE_LIMIT_PERIOD_S is ${rateLimitPeriodS} in worker/index.ts. The ` +
-        `retry-after header would lie to every rate-limited caller.`,
-    });
+  for (const mirror of LIMITER_MIRRORS) {
+    const declared = limiterPeriods[mirror.binding];
+    const limiter = limiters.find(
+      (l): l is { name: string; simple?: { period?: unknown } } =>
+        typeof l === "object" &&
+        l !== null &&
+        (l as { name?: unknown }).name === mirror.binding
+    );
+
+    if (limiter === undefined) {
+      findings.push({
+        check,
+        detail: `wrangler.jsonc has no ${mirror.binding} ratelimit binding.`,
+      });
+      continue;
+    }
+
+    const period = limiter.simple?.period;
+
+    // The platform constraint stands on its own: it holds whether or not the
+    // mirror agrees, and a matched-but-illegal pair fails only at deploy.
+    if (typeof period !== "number" || !LEGAL_PERIODS.includes(period)) {
+      findings.push({
+        check,
+        detail:
+          `${mirror.binding} period is ${String(period)} in wrangler.jsonc. ` +
+          `Cloudflare accepts only ${LEGAL_PERIODS.join(" or ")}, so this would ` +
+          `pass CI and fail at deploy.`,
+      });
+    }
+
+    if (declared === undefined) {
+      findings.push({
+        check,
+        detail:
+          `Could not read ${mirror.constant} from ${mirror.source}, so the mirror ` +
+          `with ${mirror.binding}'s period cannot be checked. Was the constant renamed?`,
+      });
+    } else if (period !== declared) {
+      findings.push({
+        check,
+        detail:
+          `${mirror.binding} period is ${String(period)} in wrangler.jsonc but ` +
+          `${mirror.constant} is ${declared} in ${mirror.source}. The retry-after ` +
+          `header would lie to every rate-limited caller.`,
+      });
+    }
   }
 
   return findings;

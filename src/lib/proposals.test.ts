@@ -19,6 +19,9 @@ import {
   type TokenIdentity,
   HTTP_ENTRY_POINT,
   LIMITS,
+  MAX_PROPOSAL_BYTES,
+  ProposalTooLarge,
+  readCappedJson,
 } from "@/lib/proposals";
 import { claimPrBody } from "@/lib/pr-body";
 import {
@@ -910,5 +913,92 @@ describe("dossierPath", () => {
     expect(dossierPath("ECM1", "epistack_cases")).toBe(
       "data/epistack_cases/dossiers/ECM1.yaml",
     );
+  });
+});
+
+describe("readCappedJson", () => {
+  // S2. The Worker's only body bound was the declared `content-length`, which a
+  // caller writes and a chunked request omits. Every request built here is
+  // chunked for exactly that reason: it is the shape the old check conceded and
+  // the schema was wrongly credited with covering.
+  const CHUNK = 64 * 1024;
+
+  /** A chunked POST whose body is produced lazily, counting what gets pulled. */
+  function chunkedPost(
+    chunks: Uint8Array[],
+  ): { request: Request; pulled: () => number } {
+    let index = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (index >= chunks.length) {
+          controller.close();
+          return;
+        }
+        controller.enqueue(chunks[index]);
+        index += 1;
+      },
+    });
+    const request = new Request("https://aboard.untype.me/api/proposals", {
+      method: "POST",
+      body: stream,
+      // Required by undici for a streaming body; absent from RequestInit's type.
+      duplex: "half",
+    } as RequestInit);
+    return { request, pulled: () => index };
+  }
+
+  function encode(text: string): Uint8Array {
+    return new TextEncoder().encode(text);
+  }
+
+  it("parses a body that fits", async () => {
+    const { request } = chunkedPost([encode('{"kind":"claim"}')]);
+    await expect(readCappedJson(request)).resolves.toEqual({ kind: "claim" });
+  });
+
+  it("parses a body reassembled across chunk boundaries", async () => {
+    const { request } = chunkedPost([
+      encode('{"kind":'),
+      encode('"claim","rationale"'),
+      encode(':"split"}'),
+    ]);
+    await expect(readCappedJson(request)).resolves.toEqual({
+      kind: "claim",
+      rationale: "split",
+    });
+  });
+
+  it("rejects a chunked body past the cap, which content-length never saw", async () => {
+    const oversize = Array.from({ length: 100 }, () => new Uint8Array(CHUNK));
+    const { request } = chunkedPost(oversize);
+    expect(request.headers.get("content-length")).toBeNull();
+    await expect(readCappedJson(request)).rejects.toBeInstanceOf(ProposalTooLarge);
+  });
+
+  // The point of streaming: a caller offering 6.4 MB must not get 6.4 MB read
+  // into memory before being refused.
+  it("stops pulling once the count crosses, rather than draining the body", async () => {
+    const oversize = Array.from({ length: 100 }, () => new Uint8Array(CHUNK));
+    const { request, pulled } = chunkedPost(oversize);
+    await expect(readCappedJson(request)).rejects.toBeInstanceOf(ProposalTooLarge);
+    // 256 KB of cap over 64 KB chunks means the fifth one crosses; allow a
+    // little for the stream reading ahead, but nowhere near the 100 on offer.
+    expect(pulled()).toBeGreaterThanOrEqual(5);
+    expect(pulled()).toBeLessThan(10);
+  });
+
+  it("accepts a body exactly at the cap", async () => {
+    const filler = "x".repeat(MAX_PROPOSAL_BYTES - '{"r":""}'.length);
+    const body = encode(`{"r":"${filler}"}`);
+    expect(body.byteLength).toBe(MAX_PROPOSAL_BYTES);
+    const { request } = chunkedPost([body]);
+    await expect(readCappedJson(request)).resolves.toEqual({ r: filler });
+  });
+
+  it("throws a plain SyntaxError on malformed JSON, so the 400 path still fires", async () => {
+    const { request } = chunkedPost([encode("{not json")]);
+    const error = await readCappedJson(request).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(SyntaxError);
+    expect(error).not.toBeInstanceOf(ProposalTooLarge);
   });
 });

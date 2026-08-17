@@ -54,6 +54,66 @@ export const LIMITS = {
 } as const;
 
 /**
+ * Largest proposal body the write path will buffer.
+ *
+ * Comfortably above the sum of `LIMITS` plus JSON overhead, so a legal proposal
+ * never trips it. This is a guard against *reading* a large body, not a second
+ * content limit to keep in sync with the bounds above.
+ */
+export const MAX_PROPOSAL_BYTES = 256 * 1024;
+
+/** Thrown by `readCappedJson` when a body runs past `MAX_PROPOSAL_BYTES`. */
+export class ProposalTooLarge extends Error {
+  constructor() {
+    super(`Proposal body exceeds ${MAX_PROPOSAL_BYTES} bytes.`);
+    this.name = "ProposalTooLarge";
+  }
+}
+
+/**
+ * Parse a JSON body, counting bytes as they arrive and aborting past the cap.
+ *
+ * `request.json()` buffers the whole body first and asks questions afterwards,
+ * so the `content-length` check in the Worker was the only thing between a
+ * caller and an unbounded read. That header is self-reported and absent
+ * entirely on a chunked request, which is the case the Worker's comment
+ * conceded while claiming the schema covered it. It does not: Zod bounds what
+ * gets committed, long after the bytes are already in memory.
+ *
+ * The stream is cancelled the moment the count crosses, so nothing past the cap
+ * is retained. The path is authenticated and rate limited either way, which is
+ * why this is worth exactly this much code and no more.
+ */
+export async function readCappedJson(request: Request): Promise<unknown> {
+  const body = request.body;
+  if (!body) throw new SyntaxError("Request has no body.");
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    total += value.byteLength;
+    if (total > MAX_PROPOSAL_BYTES) {
+      await reader.cancel();
+      throw new ProposalTooLarge();
+    }
+    chunks.push(value);
+  }
+
+  const buffer = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return JSON.parse(new TextDecoder().decode(buffer));
+}
+
+/**
  * `Source`, bounded for the write path.
  *
  * The bounds live here rather than on `Source` in `types.ts` on purpose. That
