@@ -1,7 +1,24 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { ClaimGraphRF } from "./graph/ClaimGraphRF";
+
+// Dynamic so the graph subtree — @xyflow/react, its stylesheet, and every
+// graph/ module — compiles into its own chunk instead of the shared initial
+// payload of every page that renders this component. `ssr: false` is what
+// splits it: the subtree is client-only anyway (see the mounted gate below),
+// so nothing is lost server-side. The loading placeholder matches the
+// pre-mount one, so the swap from "not yet mounted" to "chunk in flight" is
+// invisible.
+const ClaimGraphRF = dynamic(
+  () => import("./graph/ClaimGraphRF").then((m) => m.ClaimGraphRF),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="ag-canvas-loading" role="status" aria-label="Loading graph" />
+    ),
+  }
+);
 
 type Mode = "inline" | "fullbleed";
 
