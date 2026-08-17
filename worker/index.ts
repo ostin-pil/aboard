@@ -72,6 +72,12 @@ import { handleMcp } from "./mcp";
 import { whoamiResponse, withOAuth } from "./oauth";
 import { markdownTwinPath, prefersMarkdown } from "../src/lib/markdown-negotiation";
 import { withinRateLimit, type RateLimiter } from "../src/lib/rate-limit";
+import {
+  proposalEvent,
+  record,
+  twinEvent,
+  type AnalyticsDataset,
+} from "../src/lib/telemetry";
 
 interface Env {
   /** Static assets binding — the built `out/` directory. */
@@ -87,6 +93,12 @@ interface Env {
   /** Native Workers rate-limit binding, keyed per credential. Optional: when
    *  unbound the write path still works (the limiter fails open). */
   PROPOSAL_LIMITER?: RateLimiter;
+  /** Analytics Engine dataset for the three usage events (`src/lib/telemetry.ts`).
+   *  Optional for the same reason as the limiter: unbound, `record` is a no-op
+   *  and every request behaves identically. `check:config` pins this field name
+   *  against the binding in wrangler.jsonc, because a rename on either side
+   *  errors nowhere — the events would just stop arriving. */
+  EVENTS?: AnalyticsDataset;
   /** Injected into `env` by `@cloudflare/workers-oauth-provider` before it
    *  calls the default handler. Always present once the wrapper is in place,
    *  which is why it is not the signal for "OAuth is configured". */
@@ -792,6 +804,22 @@ async function runProposal(
   readEnvelope: () => Promise<unknown>,
   via: ProposalEntryPoint,
 ): Promise<Response> {
+  const response = await proposalResponse(request, env, credential, readEnvelope, via);
+  // Outcome class and entry point only — no identity, no payload. Recorded
+  // here rather than per call site so an MCP write and an HTTP write stay the
+  // same write in the telemetry too. A thrown bug bypasses this on its way to
+  // siteHandler's 500, which is what the observability logs are for.
+  record(env.EVENTS, proposalEvent(response.status, via));
+  return response;
+}
+
+async function proposalResponse(
+  request: Request,
+  env: Env,
+  credential: () => Promise<Credential>,
+  readEnvelope: () => Promise<unknown>,
+  via: ProposalEntryPoint,
+): Promise<Response> {
   const outcome = authorizeWrite(await credential(), challengeOptions(env));
   if (!outcome.allowed) {
     const { status, error, description, wwwAuthenticate } = outcome.challenge;
@@ -999,6 +1027,7 @@ async function route(request: Request, env: Env): Promise<Response> {
       credential,
       challengeOptions: challengeOptions(env),
       authRequired,
+      record: (point) => record(env.EVENTS, point),
       proposal: (envelope) =>
         runProposal(request, env, credential, async () => envelope, envelope.via),
     });
@@ -1007,7 +1036,13 @@ async function route(request: Request, env: Env): Promise<Response> {
   // An agent asking a page URL for Markdown gets the page's twin, so it does
   // not have to know the twin convention to get Markdown out of a plain link.
   const markdown = await serveMarkdownTwin(request, env);
-  if (markdown) return markdown;
+  if (markdown) {
+    // The one trace an agent-shaped read of the site leaves. The pathname is
+    // bounded by the corpus — the only pages that negotiate are the ones with
+    // built twins.
+    record(env.EVENTS, twinEvent(pathname));
+    return markdown;
+  }
 
   // Everything else is the static site.
   return env.ASSETS.fetch(request);
