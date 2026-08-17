@@ -170,6 +170,84 @@ describe("loadPersisted validation (E2)", () => {
   });
 });
 
+// The vectors the Zod schema used to catch, now caught by the hand-written
+// guard that replaced it (P2: the schema pulled the largest chunk on the
+// homepage into the bundle to validate a self-authored snapshot). Each entry
+// is a whole stored payload differing from a valid one in exactly the field
+// under test.
+describe("loadPersisted structural guard (P2)", () => {
+  const payload = (over: Record<string, unknown>) =>
+    JSON.stringify({
+      schemaVersion: STORE_SCHEMA_VERSION,
+      seedHash: "s",
+      nodes: [],
+      edges: [],
+      ...over,
+    });
+  const node = (over: Record<string, unknown>) =>
+    payload({ nodes: [{ kind: "claim", id: "S1", position: { x: 0, y: 0 }, data: {}, ...over }] });
+  const edge = (over: Record<string, unknown>) =>
+    payload({ edges: [{ id: "e", source: "A", target: "B", data: {}, ...over }] });
+
+  it.each([
+    ["a top-level array", "[]"],
+    ["a top-level scalar", '"aboard.graph.v3"'],
+    ["schemaVersion as a string", payload({ schemaVersion: "1" })],
+    ["seedHash as a number", payload({ seedHash: 7 })],
+    ["nodes as an object", payload({ nodes: {} })],
+    ["an unknown node kind", node({ kind: "mystery" })],
+    ["a node missing its kind", node({ kind: undefined })],
+    ["a node id as a number", node({ id: 7 })],
+    ["a position missing y", node({ position: { x: 0 } })],
+    ["a position with a string x", node({ position: { x: "0", y: 0 } })],
+    ["a position with a null x", node({ position: { x: null, y: 0 } })],
+    // JSON.parse("1e999") yields Infinity; z.number() accepted it, the guard
+    // does not — an infinite coordinate is meaningless to the layout math.
+    ["an infinite position", node({}).replace('"x":0', '"x":1e999')],
+    ["node data as an array", node({ data: [] })],
+    ["node data as a string", node({ data: "d" })],
+    ["hidden as a string", node({ hidden: "true" })],
+    ["parentId as a number", node({ parentId: 7 })],
+    ["style as a scalar", node({ kind: "domainGroup", style: 3 })],
+    ["style width as a string", node({ kind: "domainGroup", style: { width: "12" } })],
+    ["a null edge element", payload({ edges: [null] })],
+    ["an edge missing its target", edge({ target: undefined })],
+    ["an edge sourceHandle as a number", edge({ sourceHandle: 7 })],
+    ["an edge without data", edge({ data: undefined })],
+  ])("rejects %s", (_label, raw) => {
+    store().setItem(STORE_KEY, raw);
+    expect(loadPersisted("s")).toEqual({ status: "unusable" });
+  });
+
+  it("accepts every optional field at once", () => {
+    store().setItem(
+      STORE_KEY,
+      payload({
+        nodes: [
+          { kind: "claim", id: "S1", position: { x: 1, y: 2 }, parentId: "g", data: { kind: "symptom" }, hidden: true },
+          { kind: "domainGroup", id: "g", position: { x: 0, y: 0 }, data: { domain: "d" }, style: { width: 100, height: 50 }, hidden: false },
+        ],
+        edges: [
+          { id: "e", source: "S1", target: "S1", sourceHandle: "s-right", targetHandle: "t-left", data: { kind: "causes" }, hidden: true },
+        ],
+      })
+    );
+    expect(loadPersisted("s").status).toBe("ok");
+  });
+
+  it("tolerates unknown extra keys, keeping them", () => {
+    // Zod stripped extras; the guard passes the payload through untouched.
+    // hydrateFromPersisted reads named fields only, so extras are inert —
+    // this pins that a future field added by a newer build does not brick
+    // an older one's sandbox.
+    store().setItem(STORE_KEY, node({ futureField: { deep: true } }));
+    const out = loadPersisted("s");
+    expect(out.status).toBe("ok");
+    if (out.status !== "ok") return;
+    expect((out.persisted.nodes[0] as Record<string, unknown>).futureField).toEqual({ deep: true });
+  });
+});
+
 describe("pruneLegacyStoreKeys", () => {
   it("removes the pre-v3 key and leaves the current one", () => {
     store().setItem("aboard.graph.v2", "legacy");
