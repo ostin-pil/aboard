@@ -30,6 +30,7 @@ import {
 } from "../src/lib/mcp/protocol";
 import { authorizeWrite, RESOURCE_URI, type ChallengeOptions, type Credential } from "../src/lib/mcp/auth";
 import type { ReadOp, ToolDescriptor } from "../src/lib/mcp/tools";
+import { mcpCallEvent, type EventPoint } from "../src/lib/telemetry";
 
 export type ProposalEnvelopeInput = {
   kind: string;
@@ -77,6 +78,9 @@ export type McpDeps = {
    * function rather than importing the endpoint keeps the dependency one-way.
    */
   proposal: (envelope: ProposalEnvelopeInput) => Promise<Response>;
+  /** Usage telemetry, one point per `tools/call` (`src/lib/telemetry.ts`).
+   *  Optional and fire-and-forget: absent means no telemetry, never an error. */
+  record?: (point: EventPoint) => void;
 };
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" };
@@ -426,6 +430,12 @@ export async function handleMcp(request: Request, deps: McpDeps): Promise<Respon
     }
     return rpcResult(plan.id, plan.era, resourceResult(plan.uri, document), origin);
   }
+
+  // Count the call before authorization, so a rejected write still registers
+  // as usage. The who-dimension is credential presence, not validity — read
+  // tools never resolve a credential, and a KV lookup just to label a row
+  // would end the anonymous read path's touches-no-storage property.
+  deps.record?.(mcpCallEvent(plan.tool.name, request.headers.has("authorization")));
 
   // A write tool needs a credential, and a missing or insufficient one is a
   // transport-level answer rather than a tool result. The client, not the

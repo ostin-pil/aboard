@@ -93,6 +93,29 @@
     }
   ],
 
+  // Usage telemetry: one row per proposal decision, MCP tools/call, and
+  // Markdown-twin negotiation hit. src/lib/telemetry.ts builds the rows;
+  // worker/README.md documents the schema and how to query the dataset.
+  // Nothing to provision — the dataset is created on the first write. Unbound,
+  // telemetry is a no-op and every request behaves identically, which keeps a
+  // partial deploy whole. check:config pins the binding name against the
+  // Worker's Env field, because a rename on either side errors nowhere: the
+  // rows would just stop arriving, which is the one failure telemetry cannot
+  // report about itself.
+  "analytics_engine_datasets": [
+    { "binding": "EVENTS", "dataset": "aboard_events" }
+  ],
+
+  // Workers Logs, for what telemetry does not record: the 500 path returns a
+  // deliberately generic body (S5 in plans/audit-2026-08.md), so the
+  // platform's log is where an exception gets diagnosed. Sampling stays at 1 —
+  // at this Worker's volumes the free plan's daily allowance is not a
+  // constraint, and a sampled-away error is the expensive kind.
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+
   // Storage for the authorization server: registered clients, authorization
   // codes, grants and tokens. Unlike the rate-limit binding above, this is a
   // real namespace that must exist in the account, created with
