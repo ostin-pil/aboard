@@ -30,6 +30,7 @@ import {
   checkGateParity,
   checkWranglerWiring,
   parseJsonc,
+  ANALYTICS_MIRROR,
   LIMITER_MIRRORS,
   type CiStep,
   type ConfigFinding,
@@ -177,6 +178,16 @@ function nextOutput(): string | undefined {
   return match?.[1];
 }
 
+/**
+ * Whether the Worker's `Env` still declares the telemetry field, by source
+ * match again. The `\\?` pins the optional marker: the binding staying
+ * optional is what keeps a deploy without it whole.
+ */
+function eventsFieldDeclared(): boolean {
+  const source = readFileSync(at(ANALYTICS_MIRROR.source), "utf8");
+  return new RegExp(`\\b${ANALYTICS_MIRROR.binding}\\?:`).test(source);
+}
+
 const steps = ciSteps();
 if (steps !== undefined) {
   findings.push(
@@ -195,6 +206,7 @@ if (config !== undefined) {
     ...checkWranglerWiring({
       config,
       limiterPeriods: limiterPeriods(),
+      eventsFieldDeclared: eventsFieldDeclared(),
       mainExists: typeof config.main === "string" && existsSync(at(config.main)),
       nextOutput: nextOutput(),
     })

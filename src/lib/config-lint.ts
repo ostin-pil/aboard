@@ -258,6 +258,7 @@ export type WranglerConfig = {
   main?: unknown;
   assets?: { directory?: unknown; binding?: unknown } | unknown;
   ratelimits?: unknown;
+  analytics_engine_datasets?: unknown;
 };
 
 /**
@@ -288,6 +289,23 @@ export const LIMITER_MIRRORS = [
 export type LimiterBinding = (typeof LIMITER_MIRRORS)[number]["binding"];
 
 /**
+ * The telemetry binding, its dataset, and the Env field that reads it.
+ *
+ * Unlike the limiter mirrors there is no number to disagree about, only names,
+ * and the failure is quieter than a lying `retry-after`: `record` fails open
+ * by design, so a binding renamed on either side errors nowhere — the rows
+ * just stop arriving, which is the one fault telemetry cannot report about
+ * itself. The dataset name is pinned too, because the SQL in
+ * `worker/README.md` queries it by name and a rename would strand those
+ * queries against an empty table that looks like "no traffic".
+ */
+export const ANALYTICS_MIRROR = {
+  binding: "EVENTS",
+  dataset: "aboard_events",
+  source: "worker/index.ts",
+} as const;
+
+/**
  * The only two values Cloudflare's rate-limiting accepts for `simple.period`.
  *
  * Worth asserting separately from the mirror: a matched pair at `period: 30`
@@ -311,12 +329,14 @@ export function checkWranglerWiring(input: {
   config: WranglerConfig;
   /** Each mirror constant in `LIMITER_MIRRORS`, as read out of its source file. */
   limiterPeriods: Record<LimiterBinding, number | undefined>;
+  /** Whether `ANALYTICS_MIRROR.source` declares the `EVENTS` field on `Env`. */
+  eventsFieldDeclared: boolean;
   /** Whether `config.main` resolves to a file that exists. */
   mainExists: boolean;
   /** `output` from `next.config.ts`. */
   nextOutput: string | undefined;
 }): ConfigFinding[] {
-  const { config, limiterPeriods, mainExists, nextOutput } = input;
+  const { config, limiterPeriods, eventsFieldDeclared, mainExists, nextOutput } = input;
   const findings: ConfigFinding[] = [];
   const check = "wrangler wiring";
 
@@ -403,6 +423,45 @@ export function checkWranglerWiring(input: {
           `header would lie to every rate-limited caller.`,
       });
     }
+  }
+
+  const datasets = Array.isArray(config.analytics_engine_datasets)
+    ? config.analytics_engine_datasets
+    : [];
+  const events = datasets.find(
+    (d): d is { binding: string; dataset?: unknown } =>
+      typeof d === "object" &&
+      d !== null &&
+      (d as { binding?: unknown }).binding === ANALYTICS_MIRROR.binding
+  );
+
+  if (events === undefined) {
+    findings.push({
+      check,
+      detail:
+        `wrangler.jsonc has no ${ANALYTICS_MIRROR.binding} entry in ` +
+        `analytics_engine_datasets. record() fails open, so telemetry would ` +
+        `silently stop rather than error.`,
+    });
+  } else if (events.dataset !== ANALYTICS_MIRROR.dataset) {
+    findings.push({
+      check,
+      detail:
+        `${ANALYTICS_MIRROR.binding} writes to dataset ` +
+        `${JSON.stringify(events.dataset)}, but the queries in worker/README.md ` +
+        `read ${ANALYTICS_MIRROR.dataset}. They would answer "no traffic" from ` +
+        `an empty table.`,
+    });
+  }
+
+  if (!eventsFieldDeclared) {
+    findings.push({
+      check,
+      detail:
+        `Could not find the ${ANALYTICS_MIRROR.binding} field on Env in ` +
+        `${ANALYTICS_MIRROR.source}, so the binding in wrangler.jsonc has no ` +
+        `reader. Was the field renamed?`,
+    });
   }
 
   return findings;

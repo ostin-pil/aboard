@@ -211,11 +211,13 @@ const WRANGLER = {
     { name: "PROPOSAL_LIMITER", simple: { limit: 10, period: 60 } },
     { name: "REGISTRATION_LIMITER", simple: { limit: 5, period: 60 } },
   ],
+  analytics_engine_datasets: [{ binding: "EVENTS", dataset: "aboard_events" }],
 };
 
 const WIRING_OK = {
   config: WRANGLER,
   limiterPeriods: { PROPOSAL_LIMITER: 60, REGISTRATION_LIMITER: 60 },
+  eventsFieldDeclared: true,
   mainExists: true,
   nextOutput: "export",
 };
@@ -320,5 +322,38 @@ describe("checkWranglerWiring", () => {
     expect(findings).toHaveLength(2);
     expect(findings.map((f) => f.detail).join(" ")).toContain("PROPOSAL_LIMITER");
     expect(findings.map((f) => f.detail).join(" ")).toContain("REGISTRATION_LIMITER");
+  });
+
+  // The telemetry mirror. record() fails open by design, so none of these
+  // faults error anywhere at runtime — the rows just stop, which is the one
+  // failure telemetry cannot report about itself.
+  it("catches the EVENTS binding going missing from wrangler.jsonc", () => {
+    const findings = checkWranglerWiring({
+      ...WIRING_OK,
+      config: { ...WRANGLER, analytics_engine_datasets: [] },
+    });
+    expect(findings).toHaveLength(1);
+    expect(findings[0].detail).toContain("EVENTS");
+    expect(findings[0].detail).toContain("silently");
+  });
+
+  it("catches the dataset drifting from the name worker/README.md queries", () => {
+    const findings = checkWranglerWiring({
+      ...WIRING_OK,
+      config: {
+        ...WRANGLER,
+        analytics_engine_datasets: [{ binding: "EVENTS", dataset: "aboard_usage" }],
+      },
+    });
+    expect(findings).toHaveLength(1);
+    expect(findings[0].detail).toContain("aboard_events");
+    expect(findings[0].detail).toContain("worker/README.md");
+  });
+
+  it("reports the Env field going unread rather than passing silently", () => {
+    const findings = checkWranglerWiring({ ...WIRING_OK, eventsFieldDeclared: false });
+    expect(findings).toHaveLength(1);
+    expect(findings[0].detail).toContain("no ");
+    expect(findings[0].detail).toContain("renamed");
   });
 });
