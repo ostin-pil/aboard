@@ -273,7 +273,12 @@ async function readGraph(env: Env, request: Request): Promise<Graph | null> {
     if (!id || !domain) continue;
     claimIds.push(id);
     claimDomains.set(id, domain);
-    claimIdsByDomain.set(domain, [...(claimIdsByDomain.get(domain) ?? []), id]);
+    const inDomain = claimIdsByDomain.get(domain);
+    if (inDomain) {
+      inDomain.push(id);
+    } else {
+      claimIdsByDomain.set(domain, [id]);
+    }
   }
 
   const edges = body["aboard:edges"];

@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { ClaimEdge, GraphNode } from "./types";
 import { isClaimNode, orderParentsFirst } from "./types";
 
@@ -28,45 +27,104 @@ export const STORE_SCHEMA_VERSION = 1;
 // old hand-rolled truthiness checks, which inspected only nodes[0] and never
 // looked at edges at all (so `{nodes:[],edges:{}}` slipped through and threw in
 // the render-phase hydrate).
-const position = z.object({ x: z.number(), y: z.number() });
-const looseData = z.record(z.string(), z.unknown());
-const persistedNode = z.discriminatedUnion("kind", [
-  z.object({
-    kind: z.literal("claim"),
-    id: z.string(),
-    position,
-    parentId: z.string().optional(),
-    data: looseData,
-    hidden: z.boolean().optional(),
-  }),
-  z.object({
-    kind: z.literal("domainGroup"),
-    id: z.string(),
-    position,
-    data: looseData,
-    style: z
-      .object({ width: z.number().optional(), height: z.number().optional() })
-      .optional(),
-    hidden: z.boolean().optional(),
-  }),
-]);
-const persistedEdge = z.object({
-  id: z.string(),
-  source: z.string(),
-  target: z.string(),
-  sourceHandle: z.string().optional(),
-  targetHandle: z.string().optional(),
-  data: looseData,
-  hidden: z.boolean().optional(),
-});
-const persistedSchema = z.object({
-  schemaVersion: z.number(),
-  seedHash: z.string(),
-  nodes: z.array(persistedNode),
-  edges: z.array(persistedEdge),
-});
+//
+// Guarded by hand, not by Zod: this module rides the client bundle of every
+// page with a graph, and the Zod chunk it pulled in was the largest single
+// chunk on the homepage (~287 KB raw / ~65 KB gzip) — spent validating a
+// self-authored, single-origin localStorage snapshot. The guard checks the
+// same structure the schema did, with one deliberate tightening: positions
+// must be finite, where z.number() rejected only NaN and let Infinity
+// through to the layout math.
+type PersistedPosition = { x: number; y: number };
+type LooseData = Record<string, unknown>;
+type PersistedClaimNode = {
+  kind: "claim";
+  id: string;
+  position: PersistedPosition;
+  parentId?: string;
+  data: LooseData;
+  hidden?: boolean;
+};
+type PersistedGroupNode = {
+  kind: "domainGroup";
+  id: string;
+  position: PersistedPosition;
+  data: LooseData;
+  style?: { width?: number; height?: number };
+  hidden?: boolean;
+};
+type PersistedNode = PersistedClaimNode | PersistedGroupNode;
+type PersistedEdge = {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
+  data: LooseData;
+  hidden?: boolean;
+};
+type Persisted = {
+  schemaVersion: number;
+  seedHash: string;
+  nodes: PersistedNode[];
+  edges: PersistedEdge[];
+};
 
-type Persisted = z.infer<typeof persistedSchema>;
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+const isPosition = (v: unknown): v is PersistedPosition =>
+  isRecord(v) && Number.isFinite(v.x) && Number.isFinite(v.y);
+const optionalString = (v: unknown) => v === undefined || typeof v === "string";
+const optionalBoolean = (v: unknown) =>
+  v === undefined || typeof v === "boolean";
+const optionalNumber = (v: unknown) => v === undefined || typeof v === "number";
+
+function isPersistedNode(v: unknown): v is PersistedNode {
+  if (
+    !isRecord(v) ||
+    typeof v.id !== "string" ||
+    !isPosition(v.position) ||
+    !isRecord(v.data) ||
+    !optionalBoolean(v.hidden)
+  ) {
+    return false;
+  }
+  if (v.kind === "claim") return optionalString(v.parentId);
+  if (v.kind === "domainGroup") {
+    if (v.style === undefined) return true;
+    return (
+      isRecord(v.style) &&
+      optionalNumber(v.style.width) &&
+      optionalNumber(v.style.height)
+    );
+  }
+  return false;
+}
+
+function isPersistedEdge(v: unknown): v is PersistedEdge {
+  return (
+    isRecord(v) &&
+    typeof v.id === "string" &&
+    typeof v.source === "string" &&
+    typeof v.target === "string" &&
+    optionalString(v.sourceHandle) &&
+    optionalString(v.targetHandle) &&
+    isRecord(v.data) &&
+    optionalBoolean(v.hidden)
+  );
+}
+
+function isPersisted(v: unknown): v is Persisted {
+  return (
+    isRecord(v) &&
+    typeof v.schemaVersion === "number" &&
+    typeof v.seedHash === "string" &&
+    Array.isArray(v.nodes) &&
+    v.nodes.every(isPersistedNode) &&
+    Array.isArray(v.edges) &&
+    v.edges.every(isPersistedEdge)
+  );
+}
 
 /**
  * Stable, cheap hash of the canonical seed's claim identities (`id:kind`).
@@ -126,17 +184,16 @@ export function loadPersisted(expectedSeedHash: string): LoadOutcome {
     return { status: "unusable" };
   }
 
-  const result = persistedSchema.safeParse(json);
   // Corrupt, a pre-versioning payload, or a shape predating the current
   // schemaVersion — unusable either way. Drop and rebuild.
-  if (!result.success) return { status: "unusable" };
-  if (result.data.schemaVersion !== STORE_SCHEMA_VERSION) {
+  if (!isPersisted(json)) return { status: "unusable" };
+  if (json.schemaVersion !== STORE_SCHEMA_VERSION) {
     return { status: "unusable" };
   }
   return {
     status: "ok",
-    persisted: result.data,
-    seedDrift: result.data.seedHash !== expectedSeedHash,
+    persisted: json,
+    seedDrift: json.seedHash !== expectedSeedHash,
   };
 }
 

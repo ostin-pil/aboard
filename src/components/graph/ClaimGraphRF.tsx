@@ -509,11 +509,25 @@ function ClaimGraphRFInner({
     ]
   );
 
-  // Refit on resize.
+  // Refit on resize, debounced: a drag-resize delivers events per frame, and
+  // fitView is a full measure + zoom pass. Trailing-edge only, so the refit
+  // runs once on the settled size. setTimeout, not rAF — an automated
+  // (hidden) tab never fires rAF, and this must not add another path that
+  // silently does nothing there (see CLAUDE.md's browser-pass caveat).
   useLayoutEffect(() => {
-    const onResize = () => rf.fitView({ padding: mode === "inline" ? 0.05 : 0.15 });
+    let t: number | undefined;
+    const onResize = () => {
+      window.clearTimeout(t);
+      t = window.setTimeout(
+        () => rf.fitView({ padding: mode === "inline" ? 0.05 : 0.15 }),
+        150
+      );
+    };
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener("resize", onResize);
+    };
   }, [rf, mode]);
 
   const isInline = mode === "inline";

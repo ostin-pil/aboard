@@ -392,20 +392,35 @@ checked `main`'s graph directory out into its worktree, rebuilt, and clicked:
 it freezes identically on `75bf36b`. So it is pre-existing, not a regression
 from the session-55 module split.
 
-**What is not established, and is the actual open question.** Whether a
-*painting* tab is affected. Every reproduction so far is in an automated tab,
-which reports `document.visibilityState === "hidden"`, never paints, and
-therefore never fires `requestAnimationFrame` — an environment already known to
-break commit paths that defer to rAF (see the entry on that below, and
-`CLAUDE.md`'s verification section). If a real browser is unaffected, this is an
-automation artifact and belongs here as a gotcha. If it is affected, it is a
-user-facing bug.
+**Cause, found in session 61.** The freeze is not in the graph code at all.
+The toolbar's `reset` calls `confirm()` before touching anything
+(`GraphFullbleed.tsx:104`). A native dialog blocks the renderer's event loop
+synchronously until answered, and an automated tab has no way to show or
+answer it, so the block is permanent: the very click that opens it times out
+(`Input.dispatchMouseEvent`, 30s), and every later `Runtime.evaluate` hangs
+too, which is exactly the "freezes outright" session 55 recorded. rAF was
+never involved — a starved rAF callback leaves the main thread responsive,
+and this freeze does not.
 
-**How to settle it.** Open a built `out/` in a real, focused, painting tab and
-click `reset`. That single observation closes the question either way.
+**Proof, same tab, same regime.** With `window.confirm` stubbed to `true`,
+the identical click completes: the store key is removed, history resets, all
+28 nodes re-render, and a heartbeat interval keeps advancing. So the entire
+post-confirm reset path is sound, and the answer to the open question is
+that `reset` freezes no tab; an unanswerable dialog blocks any tab, and only
+automation makes it unanswerable. Automation artifact, not a user-facing
+bug. The general lesson is already in the harness docs: do not click
+controls that open native dialogs from an automated tab — stub `confirm`
+first.
 
-Status: open — filed in session 58 from session 55's what-next item 8, which
-promised it here and never filed it.
+**Two refinements to the session-55 record, measured while here.** An
+automated hidden tab does render nodes today: screenshots force composition,
+and the graph appears fully laid out. What stays true is that rAF never
+fires (0 callbacks in 600ms, measured) and timers are throttled to roughly
+1/s, so the documented `setTimeout` patch drives rAF-deferred commits at
+about 1Hz — slow but sufficient (a node drag persisted within 3s under it).
+
+Status: resolved (session 61) — automation artifact of `confirm()`;
+graph reset machinery verified sound.
 
 ---
 
