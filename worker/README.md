@@ -252,9 +252,13 @@ row stands for. At this Worker's volumes it will read 1 for a long time; the
 query is written to stay correct when it stops.
 
 Retention is three months. The Workers Free allowance is 100,000 data points
-written and 10,000 SQL queries per day. The dataset is created by the first
-write, so before any traffic `SHOW TABLES` comes back empty rather than
-erroring — an empty answer from the query above means no traffic, provided
+written and 10,000 SQL queries per day. One provisioning step exists, at the
+account level and once ever: enable Analytics Engine in the dashboard
+(Workers & Pages, Analytics Engine) before the first deploy of the binding —
+until then `wrangler deploy` fails with code 10089 naming the URL. Past that,
+the dataset itself is created by the first write, so before any traffic
+`SHOW TABLES` comes back empty rather than erroring — an empty answer from
+the query above means no traffic, provided
 the deploy carried the binding (see the pin above for how that is kept true).
 
 `observability.enabled` in `wrangler.jsonc` turns on Workers Logs (3-day

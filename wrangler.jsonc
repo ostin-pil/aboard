@@ -96,9 +96,12 @@
   // Usage telemetry: one row per proposal decision, MCP tools/call, and
   // Markdown-twin negotiation hit. src/lib/telemetry.ts builds the rows;
   // worker/README.md documents the schema and how to query the dataset.
-  // Nothing to provision — the dataset is created on the first write. Unbound,
-  // telemetry is a no-op and every request behaves identically, which keeps a
-  // partial deploy whole. check:config pins the binding name against the
+  // One provisioning step, account-level and once ever: Analytics Engine must
+  // be enabled in the dashboard (Workers & Pages > Analytics Engine), or the
+  // deploy itself fails with code 10089 naming the URL. Measured on the first
+  // deploy of this binding; the docs' "created on first write" is true only of
+  // the dataset, which does need no setup. Unbound, telemetry is a no-op and
+  // every request behaves identically, which keeps a partial deploy whole. check:config pins the binding name against the
   // Worker's Env field, because a rename on either side errors nowhere: the
   // rows would just stop arriving, which is the one failure telemetry cannot
   // report about itself.
