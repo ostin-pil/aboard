@@ -42,8 +42,8 @@
 # is the codepath here; `login` defaults to ed25519, so the algorithm is
 # passed explicitly below.
 #
-# To rotate: generate a new key (`openssl ecparam -genkey -name secp384r1`),
-# publish its public key as the apex TXT record, then run this script.
+# To rotate, follow knowledge/signing-key-rotation.md: keygen, TXT record,
+# keychain write, each verified before the previous copy is deleted.
 set -euo pipefail
 
 readonly DOMAIN="untype.me"

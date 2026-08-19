@@ -481,3 +481,48 @@ signal.
 
 Status: open as a gotcha — no code fix, and worth checking first when a
 worktree session's gate fails a command that passes on `main`.
+
+## 2026-08-19 — the registry signing key was lost to an interactive prompt
+
+**Symptom.** `security find-generic-password -w -s mcp-publisher-untype`
+returns `P@s5w0rd` — 8 characters, a placeholder, not the 96-hex P-384
+scalar the publish script expects. `key.pem` no longer exists on disk.
+Nothing on this machine can sign a registry republish.
+
+**Cause.** Reconstructed from `~/.zsh_history`. The key was generated
+2026-07-27 straight into `key.pem` at the repo root, with no second copy
+ever made. On 2026-08-16 this was pasted as one block, twice:
+
+```
+security add-generic-password -s mcp-publisher-untype -a untype.me -w
+rm key.pem
+```
+
+A bare `-w` makes `security` prompt interactively, and what got typed at
+that prompt was a placeholder, not the key. The `rm` on the next line of
+the same paste then deleted the only real copy immediately — before
+anything verified the store. The second run 53 seconds later could not
+overwrite (plain `add-generic-password` fails on an existing entry), so
+the placeholder stuck. The keychain item's creation timestamp
+(2026-08-16 09:47:25Z) matches the history entry to the second.
+
+Recovery was checked and exhausted on 2026-08-18: the login keychain has
+exactly one entry under that service, Trash has no `.pem`, the machine
+has no Time Machine backups and zero APFS local snapshots, and no
+`mcp-publisher` token file is cached.
+
+**Fix.** Rotate: the namespace identity is anchored in the `untype.me`
+apex TXT record, not in key continuity, so the loss costs one keygen,
+one DNS edit, and one keychain write. The verified command sequence is
+`knowledge/signing-key-rotation.md`; the publish script's own
+shape-and-match checks (added in session 59, hardened after this
+incident was measured) fail early on both a malformed and a mismatched
+keychain entry.
+
+**The general trap.** A secret store is verified by reading the value
+back, never by the store command exiting 0 — and a deletion never rides
+in the same paste as the store it depends on. `add-generic-password`
+stores whatever the prompt receives, silently.
+
+Status: open until the rotation playbook is executed; the DNS edit is
+the one operator step.
