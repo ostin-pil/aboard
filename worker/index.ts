@@ -79,7 +79,7 @@ import {
   type AnalyticsDataset,
 } from "../src/lib/telemetry";
 
-interface Env {
+export interface Env {
   /** Static assets binding — the built `out/` directory. */
   ASSETS: { fetch: (request: Request) => Promise<Response> };
   /** JSON: { "<secret-token>": { tokenId, operator, agent, agentId }, ... } */
@@ -1019,7 +1019,10 @@ const siteHandler = {
   },
 };
 
-async function route(request: Request, env: Env): Promise<Response> {
+/** Exported as the worker test suite's seam: everything aboard-owned happens
+ *  here, while the deployed entry point below adds only the third-party OAuth
+ *  provider wrapper, which is not ours to test. */
+export async function route(request: Request, env: Env): Promise<Response> {
   const { pathname } = new URL(request.url);
 
   // Resolved at most once per request, and only if something asks.
