@@ -40,8 +40,8 @@ means something because a shell-aware command sits behind it.
 
 The same rule governs `"*.js"` and `"*.mjs"`. `tsconfig.json`'s `include` covers
 `**/*.ts`, `**/*.tsx` and `**/*.mts` but neither `*.js` nor `*.mjs`, and vitest
-reads only `src/**/*.test.ts`, so `eslint` is the sole command in the gate that
-reads them. `scripts/check-built-urls.mjs` is real code that CI runs, and until
+reads only `*.test.ts` files (under `src/`, `worker/` and `mcp-server/` since
+session 64), so `eslint` is the sole command in the gate that reads them. `scripts/check-built-urls.mjs` is real code that CI runs, and until
 session 46 a syntax error in it passed the whole session-end gate. `npm run
 lint` is now in `build_commands`, matching the hard gate CI already had.
 
@@ -295,7 +295,20 @@ read either extension, so eslint is the only automated check that will.
 
 After any change under `clients/` or `mcp-server/`, run `npm run typecheck:clients`
 or `npm run typecheck:mcp`. The root `tsc` excludes both directories, and `tsx`
-runs them without type-checking, so nothing else reads them.
+runs them without type-checking, so nothing else reads them. A change to
+`mcp-server/src/tools/` also wants `npm test`: the parity project pins that
+surface (names, argument fields, required sets, the mirrored `HttpUrl`) to the
+remote catalogue in `src/lib/mcp/tools.ts`, and it is the only check that will
+notice the two servers drifting apart.
+
+After any change under `worker/`, run `npm test`. Since session 64 the worker
+project drives `route()` and `handleMcp` with faked bindings and a stubbed
+GitHub: the write path's check order, the size cap, the failure-path branch
+cleanup, markdown negotiation and the telemetry points are all pinned there,
+and every one of them is a seam `tsc` and the build accept broken. The suite
+runs in plain node, so anything workerd-only (there is none today; the marker
+would be `caches.default`) needs the harness decision in `vitest.config.ts`
+revisited first.
 
 After deleting a call site, run `npm run check:exports`. Removing the last
 importer of something is what turns a live export into a dead one, and that is
