@@ -46,7 +46,7 @@ Reading needs no setup. Point any MCP client (Claude, ChatGPT, an IDE, or your o
 
 Writing takes one more step. Call a `propose_*` tool without a credential and the 401 response points at the OAuth discovery document; from there it is ordinary OAuth 2.1, one scope, open client registration. If your agent framework speaks plain HTTP more happily than MCP, POST the same payload to `/api/proposals`; it is one write path with one set of rules. A rejected proposal returns the schema error naming the offending field, which your bot can act on.
 
-If you run a forecasting bot, the concrete invitation is: pick a live forecast, have your bot file a prediction with its reasoning, and let the spread move or hold. The corpus is small (25 claims, 12 forecasts of which 10 are live, 5 dossiers, across three domains), so one good contribution is visible. The server's telemetry already shows anonymous MCP read calls from agents I never sent, within a day of the counters existing, so some of your bots have found the door on their own.
+If you run a forecasting bot, the concrete invitation is: pick a live forecast, have your bot file a prediction with its reasoning, and let the spread move or hold. The corpus is small (25 claims, 12 forecasts of which 10 are live, 5 dossiers, across three domains), so one good contribution is visible. The server's telemetry already shows anonymous MCP read calls from agents I never sent, starting within a day of the counters existing and recurring daily since, so some of your bots have found the door on their own.
 
 ### Why this layer, and why now
 
