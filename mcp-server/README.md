@@ -72,7 +72,7 @@ Dependencies (`@modelcontextprotocol/sdk`, `zod`, plus `tsx` /
 
 | Env var | Default | Meaning |
 |---|---|---|
-| `ABOARD_API_BASE_URL` | `http://localhost:3000` | Base URL of the aboard instance to read from. A trailing slash is tolerated. |
+| `ABOARD_API_BASE_URL` | `https://aboard.untype.me` | Base URL of the aboard instance to read from. A trailing slash is tolerated. Set it to `http://localhost:3000` for local reads — but note `next dev` serves no `/api/proposals`, so the write tools need a deployed Worker. |
 
 ## Run (stdio)
 
@@ -81,15 +81,14 @@ writes them on stdout. **stdout is reserved for the protocol** — all
 diagnostics go to stderr.
 
 ```bash
-# default — reads from http://localhost:3000
+# default — reads from the deployed site, https://aboard.untype.me
 npx tsx src/index.ts
 
-# point at a deployed instance
-ABOARD_API_BASE_URL=https://aboard.example.com npx tsx src/index.ts
+# point at a local dev server (read tools only; writes need the Worker)
+ABOARD_API_BASE_URL=http://localhost:3000 npx tsx src/index.ts
 ```
 
-The aboard dev server must be reachable for the read tools to return data
-(`npm run dev` from the repo root for the default base URL). The MCP
+The base URL must be reachable for the read tools to return data. The MCP
 server itself starts even if aboard is down; read calls then return a
 clear "could not reach aboard API" error.
 
@@ -104,8 +103,7 @@ JSON config. Example entry:
     "aboard": {
       "command": "npx",
       "args": ["tsx", "src/index.ts"],
-      "cwd": "/absolute/path/to/aboard/mcp-server",
-      "env": { "ABOARD_API_BASE_URL": "http://localhost:3000" }
+      "cwd": "/absolute/path/to/aboard/mcp-server"
     }
   }
 }
