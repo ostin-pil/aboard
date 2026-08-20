@@ -1,75 +1,40 @@
 # Prose style
 
-What the prose gate checks, where it is relaxed, and why. Referenced by
-`prose_rule` in `.claude/lifecycle-manifest.md`; the executable gate is
-`bin/check-prose.sh` (`prose_gate`).
+What the prose gate checks, where it is relaxed, and why. Referenced by `prose_rule` in `.claude/lifecycle-manifest.md`; the executable gate is `bin/check-prose.sh` (`prose_gate`).
 
 ## What runs, and when
 
-`bin/check-prose.sh` wraps
-[prose-mint](https://github.com/ostin-pil/claude-plugins/tree/main/prose-mint),
-which scans markdown for structural AI-writing tells: em dashes, ASCII arrows,
-"not X but Y", bold-colon openers, AI-attribution boilerplate, hard-wrapped
-paragraphs, and a few more.
+`bin/check-prose.sh` wraps [prose-mint](https://github.com/ostin-pil/claude-plugins/tree/main/prose-mint), which scans markdown for structural AI-writing tells: em dashes, ASCII arrows, "not X but Y", bold-colon openers, AI-attribution boilerplate, hard-wrapped paragraphs, and a few more.
 
 It fires in two places:
 
-- **Session end.** `/lifecycle-kit:session-end` scans the PR body before the
-  merge gate, and rewrites-and-rescans until clean. This is the one that
-  matters: PR bodies are the most-read prose the project emits and the least
-  reviewed.
-- **On demand.** `/prose-check <path|PR#>` for a doc or PR you want checked
-  outside the session flow. Read-only; it reports and does not edit.
+- **Session end.** `/lifecycle-kit:session-end` scans the PR body before the merge gate, and rewrites-and-rescans until clean. This is the one that matters: PR bodies are the most-read prose the project emits and the least reviewed.
+- **On demand.** `/prose-check <path|PR#>` for a doc or PR you want checked outside the session flow. Read-only; it reports and does not edit.
 
-Nothing runs in CI. This is a style gate on human-facing prose, not a
-correctness gate on the product, and it has no business failing a build.
+Nothing runs in CI. This is a style gate on human-facing prose, not a correctness gate on the product, and it has no business failing a build.
 
 ## Where it is relaxed, and why
 
-`plans/` and `sessions/` ship their own `.prose-mint.toml` that disables the
-`hard-wrap` category. Both directories hard-wrap at ~76 columns by long-standing
-convention; the detector would flag the convention itself on every file. The
-exemption is per-directory rather than global because prose-mint discovery walks
-up from each scanned file and stops at the first config it finds.
+`plans/` and `sessions/` ship their own `.prose-mint.toml` that disables the `hard-wrap` category. Both directories hard-wrap at ~76 columns by long-standing convention; the detector would flag the convention itself on every file. The exemption is per-directory rather than global because prose-mint discovery walks up from each scanned file and stops at the first config it finds.
 
-Two things this is not. It is not an em-dash exemption: every other category
-still runs in those directories. And it is not a claim that hard wrapping is
-wrong elsewhere; it is scoped to the two trees that actually do it.
+Two things this is not. It is not an em-dash exemption: every other category still runs in those directories. And it is not a claim about where else hard wrapping may appear; it is scoped to the two trees that keep the convention.
 
-The root `.prose-mint.toml` only narrows `[scope]` for the `bulk` surface, so
-imported mockups (`Claude Design Screens/`), build output, and worktrees are not
-walked. Detector settings there are the shipped defaults.
+Everywhere else, prose is soft-wrapped: one source line per paragraph (and per list item), with the editor doing the wrapping. This became true on 2026-08-19, when a sweep unwrapped every hard-wrapped file outside `plans/` and `sessions/` — 23 files, including the YAML folded scalars in `content/` frontmatter, whose parsed values were verified unchanged. New docs outside the two exempt trees are written soft-wrapped from the start; the `hard-wrap` detector is what notices when one is not.
+
+The root `.prose-mint.toml` only narrows `[scope]` for the `bulk` surface, so imported mockups (`Claude Design Screens/`), build output, and worktrees are not walked. Detector settings there are the shipped defaults.
 
 ## If the gate is skipped
 
-`bin/check-prose.sh` exits 0 with a loud stderr warning when prose-mint is not
-installed, rather than failing closed. The caller treats a non-zero exit as
-"findings to fix" and re-scans until clean, so failing closed on a missing tool
-would spin forever. A skipped gate is therefore visible in the session-end
-output but not fatal. Install prose-mint (or `uv`, so `uvx` can fetch it) to
-re-arm it.
+`bin/check-prose.sh` exits 0 with a loud stderr warning when prose-mint is not installed, rather than failing closed. The caller treats a non-zero exit as "findings to fix" and re-scans until clean, so failing closed on a missing tool would spin forever. A skipped gate is therefore visible in the session-end output but not fatal. Install prose-mint (or `uv`, so `uvx` can fetch it) to re-arm it.
 
 ## Which build the gate runs
 
-`prose-mint` on `PATH` first, then `uvx prose-mint`. An explicit install wins
-because that is the operator naming a build; otherwise the gate runs the latest
-published release, fetched without installing anything.
+`prose-mint` on `PATH` first, then `uvx prose-mint`. An explicit install wins because that is the operator naming a build; otherwise the gate runs the latest published release, fetched without installing anything.
 
-There is no local-checkout fallback, and its absence is deliberate. The script
-used to try `~/Projects/prose-mint/bin/prose-mint`, which on the author's
-machine is a symlink into the claude-plugins working tree. The gate therefore
-ran whatever branch that checkout happened to be on, uncommitted edits
-included, and nothing in the output said which code had run. Two machines could
-disagree, and one machine could disagree with itself between branch switches.
+There is no local-checkout fallback, and its absence is deliberate. The script used to try `~/Projects/prose-mint/bin/prose-mint`, which on the author's machine is a symlink into the claude-plugins working tree. The gate therefore ran whatever branch that checkout happened to be on, uncommitted edits included, and nothing in the output said which code had run. Two machines could disagree, and one machine could disagree with itself between branch switches.
 
-`PROSE_MINT_VERSION` pins an exact release (`PROSE_MINT_VERSION=0.1.1`). Empty
-by default, which tracks the latest and matches what the prose-mint plugin's own
-resolver does. Set it if you want the gate reproducible over time as well as
-across machines, and accept bumping it on each release.
+`PROSE_MINT_VERSION` pins an exact release (`PROSE_MINT_VERSION=0.1.1`). Empty by default, which tracks the latest and matches what the prose-mint plugin's own resolver does. Set it if you want the gate reproducible over time as well as across machines, and accept bumping it on each release.
 
 ## Judgement still applies
 
-A finding is a prompt to look, not a verdict. An em dash in a quoted source, a
-`→` in a file-path diagram, or a bold-colon opener in a genuine definition list
-are all fine. Rewrite what reads better rewritten; keep what does not. The gate
-exists to catch the unconsidered habit, not to enforce a dialect.
+A finding is a prompt to look, not a verdict. An em dash in a quoted source, a `→` in a file-path diagram, or a bold-colon opener in a genuine definition list are all fine. Rewrite what reads better rewritten; keep what does not. The gate exists to catch the unconsidered habit, not to enforce a dialect.

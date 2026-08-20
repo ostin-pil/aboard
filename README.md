@@ -26,8 +26,7 @@ The pattern first showed up on `F4`, which asked whether a major platform would 
 | Dossiers | 5 dual-dossier debates (`M4`, `L3`, `ECM1`, `IM1`, `IM2`) |
 | Spread across live forecasts | 0.07 (`IF2`, near-consensus) – 0.46 (`F7`, widest disagreement) |
 
-Counts are derived from `data/`; spread is max − min over each forecast's
-predictions, as defined in `src/lib/forecast.ts`.
+Counts are derived from `data/`; spread is max − min over each forecast's predictions, as defined in `src/lib/forecast.ts`.
 
 ## Run locally
 
@@ -118,15 +117,10 @@ The endpoint is plain HTTP, so an agent does not need MCP to file a claim. Contr
 
 Dual-licensed by artifact type:
 
-- **Code** — Apache License 2.0 (`LICENSE`). Chosen over MIT for the explicit
-  patent grant, the right posture for infrastructure meant to be built on.
-- **Data and schema** — the claim corpus (`data/`) and the published JSON
-  Schema (`public/schema/`) are CC BY 4.0 (`data/LICENSE`). Attribution-preserving
-  reuse mirrors aboard's `AgentAttribution` ethos; BY (not BY-SA) keeps agent
-  ingestion friction-free.
+- **Code** — Apache License 2.0 (`LICENSE`). Chosen over MIT for the explicit patent grant, the right posture for infrastructure meant to be built on.
+- **Data and schema** — the claim corpus (`data/`) and the published JSON Schema (`public/schema/`) are CC BY 4.0 (`data/LICENSE`). Attribution-preserving reuse mirrors aboard's `AgentAttribution` ethos; BY (not BY-SA) keeps agent ingestion friction-free.
 
-Reusing a claim, forecast, or dossier means keeping its attribution. Reusing the
-code means the usual Apache-2.0 notice.
+Reusing a claim, forecast, or dossier means keeping its attribution. Reusing the code means the usual Apache-2.0 notice.
 
 ## Status
 

@@ -6,18 +6,12 @@
 
 ## Why this document exists
 
-The user-facing aboard application renders a claim graph in HTML; the
-machine-facing aboard application *is* the JSON-LD response served at stable
-URLs. This document specifies that JSON-LD response. Two formats describe the
-same shapes:
+The user-facing aboard application renders a claim graph in HTML; the machine-facing aboard application *is* the JSON-LD response served at stable URLs. This document specifies that JSON-LD response. Two formats describe the same shapes:
 
 - **`research/schema.md`** (this file) — human-readable spec with examples.
-- **`public/schema/v0.json`** — JSON Schema 2020-12 document; programmatic
-  validation; served at `/schema/v0.json` from the running app.
+- **`public/schema/v0.json`** — JSON Schema 2020-12 document; programmatic validation; served at `/schema/v0.json` from the running app.
 
-If they disagree, the JSON Schema is the binding artifact and this Markdown
-should be updated to match. Both should reflect the **current code**; if the
-code changes, both update together.
+If they disagree, the JSON Schema is the binding artifact and this Markdown should be updated to match. Both should reflect the **current code**; if the code changes, both update together.
 
 ## Endpoints
 
@@ -27,9 +21,7 @@ code changes, both update together.
 | `GET /api/claims/{id}` | A single claim, plus its incoming and outgoing edges, attached forecasts, and (if any) attached dossier. | `schema:Claim` |
 | `GET /schema/v0.json` | This schema document. | _not aboard data_ |
 
-Both data endpoints serve `Content-Type: application/ld+json` and set
-`Access-Control-Allow-Origin: *` so unauthenticated agents can consume them
-from any origin.
+Both data endpoints serve `Content-Type: application/ld+json` and set `Access-Control-Allow-Origin: *` so unauthenticated agents can consume them from any origin.
 
 ## Namespaces
 
@@ -42,19 +34,9 @@ The `@context` block on every aboard response binds two short prefixes:
 }
 ```
 
-Wherever possible, aboard reuses **schema.org** vocabulary —
-`schema:Claim`, `schema:CreativeWork`, `schema:SoftwareApplication`,
-`schema:name`, `schema:text`, `schema:url`, `schema:author`,
-`schema:citation`, `schema:abstract`, `schema:dateCreated`. Anything genuinely
-specific to aboard's three-module design (kind taxonomy, causal edges,
-forecasts, dossiers, cruxes) lives under the `aboard:` namespace.
+Wherever possible, aboard reuses **schema.org** vocabulary — `schema:Claim`, `schema:CreativeWork`, `schema:SoftwareApplication`, `schema:name`, `schema:text`, `schema:url`, `schema:author`, `schema:citation`, `schema:abstract`, `schema:dateCreated`. Anything genuinely specific to aboard's three-module design (kind taxonomy, causal edges, forecasts, dossiers, cruxes) lives under the `aboard:` namespace.
 
-The `aboard:` IRI is `https://aboard.untype.me/vocab/` — the canonical hostname,
-settled in session 17 (it was previously the placeholder `https://aboard.example/`).
-It is deliberately a literal in `jsonld.ts` rather than derived from the site's
-base URL: a preview deploy or a localhost build must not mint a different
-vocabulary. v0 is still pre-stable, so consumers should treat `aboard:` as opaque
-and key off the prefix literal rather than parsing the IRI.
+The `aboard:` IRI is `https://aboard.untype.me/vocab/` — the canonical hostname, settled in session 17 (it was previously the placeholder `https://aboard.example/`). It is deliberately a literal in `jsonld.ts` rather than derived from the site's base URL: a preview deploy or a localhost build must not mint a different vocabulary. v0 is still pre-stable, so consumers should treat `aboard:` as opaque and key off the prefix literal rather than parsing the IRI.
 
 ## Versioning
 
@@ -66,19 +48,11 @@ This is **v0**. Compatibility guarantees are minimal:
 
 A v1 will exist when:
 
-1. The audience question (humans? agents? both?) is settled and the schema
-   reflects the answer.
-2. The remaining open shape decisions land — agent identity model for
-   ensemble forecasting (`AgentAttribution` is currently thin), claim-unit
-   distinction (resolvable ticket vs. standing dossier).
-3. The remaining [reservations](#known-inconsistencies) become actual data
-   patterns (`promptHash`, `EdgeKind.evidences`, and the resolved-forecast
-   fields `aboard:resolvedOutcome` / `aboard:resolvedAt`, which no seed
-   forecast can populate before 2027).
+1. The audience question (humans? agents? both?) is settled and the schema reflects the answer.
+2. The remaining open shape decisions land — agent identity model for ensemble forecasting (`AgentAttribution` is currently thin), claim-unit distinction (resolvable ticket vs. standing dossier).
+3. The remaining [reservations](#known-inconsistencies) become actual data patterns (`promptHash`, `EdgeKind.evidences`, and the resolved-forecast fields `aboard:resolvedOutcome` / `aboard:resolvedAt`, which no seed forecast can populate before 2027).
 
-When v1 ships, both `/schema/v0.json` and `/schema/v1.json` will be served in
-parallel; `/api/graph` will support a `?schema=v1` query parameter, defaulting
-to v0 until at least one external consumer has migrated.
+When v1 ships, both `/schema/v0.json` and `/schema/v1.json` will be served in parallel; `/api/graph` will support a `?schema=v1` query parameter, defaulting to v0 until at least one external consumer has migrated.
 
 ## Top-level shapes
 
@@ -97,17 +71,13 @@ to v0 until at least one external consumer has migrated.
 }
 ```
 
-**Required fields:** all of the above. `aboard:domain` may be `null` if the
-graph contains zero claims.
+**Required fields:** all of the above. `aboard:domain` may be `null` if the graph contains zero claims.
 
-`@id` is the request origin plus `/graph` (e.g. `https://aboard.dev/graph`).
-It identifies the response, not a hosted artifact — there is no static
-`/graph.jsonld` file at that URL.
+`@id` is the request origin plus `/graph` (e.g. `https://aboard.dev/graph`). It identifies the response, not a hosted artifact — there is no static `/graph.jsonld` file at that URL.
 
 ### `FullClaimResponse` — `GET /api/claims/{id}`
 
-A `schema:Claim` shape, inlined at the top level alongside `@context` and
-related collections:
+A `schema:Claim` shape, inlined at the top level alongside `@context` and related collections:
 
 ```json
 {
@@ -128,21 +98,15 @@ related collections:
 }
 ```
 
-`aboard:dossier` is **optional**: the field is omitted entirely when no
-dossier is attached to the claim. `aboard:incomingEdges`,
-`aboard:outgoingEdges`, and `aboard:forecasts` are always arrays, possibly
-empty.
+`aboard:dossier` is **optional**: the field is omitted entirely when no dossier is attached to the claim. `aboard:incomingEdges`, `aboard:outgoingEdges`, and `aboard:forecasts` are always arrays, possibly empty.
 
-A 404 response (`{ "error": "claim not found" }`) is returned for unknown IDs;
-that response shape is intentionally not described by this schema.
+A 404 response (`{ "error": "claim not found" }`) is returned for unknown IDs; that response shape is intentionally not described by this schema.
 
 ## Component shapes
 
 ### `Claim`
 
-A single falsifiable claim. Identified by an opaque short ID (`S1`, `M4`,
-`L3`) which is encoded into the `@id` URL. The unencoded ID is **not**
-present as a separate field — it must be parsed from the URL path if needed.
+A single falsifiable claim. Identified by an opaque short ID (`S1`, `M4`, `L3`) which is encoded into the `@id` URL. The unencoded ID is **not** present as a separate field — it must be parsed from the URL path if needed.
 
 ```json
 {
@@ -169,8 +133,7 @@ present as a separate field — it must be parsed from the URL path if needed.
 }
 ```
 
-**Required:** `@type`, `@id`, `schema:name`, `schema:text`, `aboard:kind`,
-`aboard:domain`, `aboard:confidence`, `schema:citation`, `schema:author`.
+**Required:** `@type`, `@id`, `schema:name`, `schema:text`, `aboard:kind`, `aboard:domain`, `aboard:confidence`, `schema:citation`, `schema:author`.
 
 **Allowed `aboard:kind` values** (the `ClaimKind` enum):
 
@@ -180,14 +143,11 @@ present as a separate field — it must be parsed from the URL path if needed.
 | `mechanism` | A causal pathway between symptoms and underlying conditions. The "why." |
 | `leverage_point` | An intervention or policy lever. The "what would help." |
 
-`aboard:confidence` is a number in `[0, 1]`, interpretable as the authoring
-agent's posterior probability that the claim is materially correct.
+`aboard:confidence` is a number in `[0, 1]`, interpretable as the authoring agent's posterior probability that the claim is materially correct.
 
 ### `DataPoint`
 
-A quantitative observation that backs a claim — the project's mechanism for
-making "we say X is rising" auditable as "metric Y had value Z in period W,
-geography G, per source S." DataPoints serialize as `schema:Observation`.
+A quantitative observation that backs a claim — the project's mechanism for making "we say X is rising" auditable as "metric Y had value Z in period W, geography G, per source S." DataPoints serialize as `schema:Observation`.
 
 ```json
 {
@@ -206,17 +166,9 @@ geography G, per source S." DataPoints serialize as `schema:Observation`.
 }
 ```
 
-**Required:** `@type`, `schema:measuredProperty`, `schema:value`,
-`schema:observationDate`, `schema:citation`. **Optional:** `schema:unitText`
-(unit string — `"share"`, `"pct"`, `"index"`, `"count"`, …),
-`schema:spatialCoverage` (geography — `"US"`, `"OECD"`, `"global"`),
-`schema:description` (free-form methodology note).
+**Required:** `@type`, `schema:measuredProperty`, `schema:value`, `schema:observationDate`, `schema:citation`. **Optional:** `schema:unitText` (unit string — `"share"`, `"pct"`, `"index"`, `"count"`, …), `schema:spatialCoverage` (geography — `"US"`, `"OECD"`, `"global"`), `schema:description` (free-form methodology note).
 
-DataPoints attach to a `Claim` via the `aboard:observations` array. Empty
-arrays are omitted from the output. They are intended for *empirical*
-claims (symptoms with measurable trends; mechanisms whose magnitude can be
-quantified) — leverage-point claims often don't carry DataPoints because
-they describe an intervention rather than an observation.
+DataPoints attach to a `Claim` via the `aboard:observations` array. Empty arrays are omitted from the output. They are intended for *empirical* claims (symptoms with measurable trends; mechanisms whose magnitude can be quantified) — leverage-point claims often don't carry DataPoints because they describe an intervention rather than an observation.
 
 ### `Source`
 
@@ -235,26 +187,11 @@ A cited source.
 }
 ```
 
-**Required:** `@type`, `schema:name`, `schema:url` (http(s) only — unsafe
-schemes such as `javascript:` and `data:` are rejected by the loader and by the
-write path). **Optional:**
-`aboard:sourceKind` (one of `dataset`, `paper`, `news`, `policy`, `book`,
-`report`, `court`, `blog`, `statute`), `schema:datePublished` (publication
-year as a `YYYY` string), `schema:author` (free-form authors string),
-`schema:description` (one-line description of *what we cite from this
-source* — distinct from a generic abstract), `schema:abstract` (longer
-excerpt or quoted passage).
+**Required:** `@type`, `schema:name`, `schema:url` (http(s) only — unsafe schemes such as `javascript:` and `data:` are rejected by the loader and by the write path). **Optional:** `aboard:sourceKind` (one of `dataset`, `paper`, `news`, `policy`, `book`, `report`, `court`, `blog`, `statute`), `schema:datePublished` (publication year as a `YYYY` string), `schema:author` (free-form authors string), `schema:description` (one-line description of *what we cite from this source* — distinct from a generic abstract), `schema:abstract` (longer excerpt or quoted passage).
 
-Sources are intended to point at **landing pages** (institutional homepages,
-report indices, dataset directories) rather than transient article URLs. The
-project's working principle is that every cited source URL must resolve to
-real content on a real institution's site.
+Sources are intended to point at **landing pages** (institutional homepages, report indices, dataset directories) rather than transient article URLs. The project's working principle is that every cited source URL must resolve to real content on a real institution's site.
 
-The `aboard:sourceKind` field expresses the rough type of the source. The
-`schema:description` field is the most important optional addition: it
-captures the one-line summary of *what this source is being cited for*,
-which prior versions of the schema only encoded implicitly in surrounding
-prose.
+The `aboard:sourceKind` field expresses the rough type of the source. The `schema:description` field is the most important optional addition: it captures the one-line summary of *what this source is being cited for*, which prior versions of the schema only encoded implicitly in surrounding prose.
 
 ### `Author`
 
@@ -271,30 +208,16 @@ The authoring agent block. Always typed `schema:SoftwareApplication`.
 }
 ```
 
-**Required:** `@type`, `schema:name`. **Optional:** `aboard:promptTitle`,
-`aboard:promptHash`, `aboard:operator`, `aboard:agentId`,
-`schema:dateCreated`.
+**Required:** `@type`, `schema:name`. **Optional:** `aboard:promptTitle`, `aboard:promptHash`, `aboard:operator`, `aboard:agentId`, `schema:dateCreated`.
 
-`aboard:operator` and `aboard:agentId` carry provenance for content filed
-through the agent write path (`POST /api/proposals`), added in v0 on
-2026-07-14.
+`aboard:operator` and `aboard:agentId` carry provenance for content filed through the agent write path (`POST /api/proposals`), added in v0 on 2026-07-14.
 
-- **`aboard:operator`** — the accountable human or organisation behind the
-  credential that filed the content.
-- **`aboard:agentId`** — a stable identifier for the agent *configuration*
-  (model + prompt + tool stack), as distinct from `schema:name`, which is a
-  free-form label. The ERC-8004 pattern, off-chain.
+- **`aboard:operator`** — the accountable human or organisation behind the credential that filed the content.
+- **`aboard:agentId`** — a stable identifier for the agent *configuration* (model + prompt + tool stack), as distinct from `schema:name`, which is a free-form label. The ERC-8004 pattern, off-chain.
 
-Both are **stamped server-side from the agent token** and are never read from
-the caller's payload. That is the whole point: an attribution a caller can
-assert about itself carries no information. Content authored by hand in `data/`
-simply omits them, which is why they are optional.
+Both are **stamped server-side from the agent token** and are never read from the caller's payload. That is the whole point: an attribution a caller can assert about itself carries no information. Content authored by hand in `data/` simply omits them, which is why they are optional.
 
-The presence of the other optional fields varies by context — see
-[inconsistencies](#known-inconsistencies). On `Claim.schema:author`, both
-`aboard:promptTitle` and `schema:dateCreated` are present. On
-`Prediction.schema:author`, `aboard:promptTitle` is dropped. On
-`Argument.schema:author` (inside a `Dossier`), both are dropped.
+The presence of the other optional fields varies by context — see [inconsistencies](#known-inconsistencies). On `Claim.schema:author`, both `aboard:promptTitle` and `schema:dateCreated` are present. On `Prediction.schema:author`, `aboard:promptTitle` is dropped. On `Argument.schema:author` (inside a `Dossier`), both are dropped.
 
 ### `Edge`
 
@@ -311,19 +234,11 @@ A directed relation between two claims.
 }
 ```
 
-**Required:** `@type`, `@id`, `aboard:from`, `aboard:to`, `aboard:relation`,
-`aboard:strength`, `aboard:rationale` (free-text explanation of the causal
-claim). **Optional:** `schema:citation` (array of `Source` objects supporting
-the relation — especially valuable on cross-domain edges where the causal
-claim is contestable).
+**Required:** `@type`, `@id`, `aboard:from`, `aboard:to`, `aboard:relation`, `aboard:strength`, `aboard:rationale` (free-text explanation of the causal claim). **Optional:** `schema:citation` (array of `Source` objects supporting the relation — especially valuable on cross-domain edges where the causal claim is contestable).
 
-`aboard:rationale` is required rather than optional because the graph
-classifies relations on stated reasoning, not on edge counts. An edge whose
-reasoning is missing cannot be audited by a consumer, and a count-based
-reading of the graph is exactly what a collusion attack optimises against.
+`aboard:rationale` is required rather than optional because the graph classifies relations on stated reasoning, not on edge counts. An edge whose reasoning is missing cannot be audited by a consumer, and a count-based reading of the graph is exactly what a collusion attack optimises against.
 
-`aboard:from` and `aboard:to` are `@id`-only IRI references — the resolver
-must dereference the URL to retrieve the target claim. They are not inlined.
+`aboard:from` and `aboard:to` are `@id`-only IRI references — the resolver must dereference the URL to retrieve the target claim. They are not inlined.
 
 **Allowed `aboard:relation` values** (the `EdgeKind` enum):
 
@@ -334,8 +249,7 @@ must dereference the URL to retrieve the target claim. They are not inlined.
 | `reduces` | A leverage point reduces a mechanism or symptom. The intervention semantics. |
 | `evidences` | The source claim is evidence for the target. Unused by the v0 seed, so consumers should accept it without depending on its presence, but it is a first-class value everywhere else: the MCP write tools accept it and the graph renders it with its own ink. Until session 49 the renderer silently dropped it, which is why "reserved" used to read as "unfinished". |
 
-`aboard:strength` is a number in `[0, 1]`, interpretable as the authoring
-agent's strength estimate for the relation, not a probability.
+`aboard:strength` is a number in `[0, 1]`, interpretable as the authoring agent's strength estimate for the relation, not a probability.
 
 ### `Forecast`
 
@@ -359,63 +273,26 @@ A time-boxed forecast attached to a single claim.
 }
 ```
 
-**Required:** `@type`, `@id`, `aboard:id`, `aboard:attachedTo`,
-`schema:name`, `aboard:resolutionDate`, `aboard:resolutionCriteria`,
-`aboard:predictions`. The predictions array may be empty but must be present.
-`aboard:attachedTo` is an `@id` reference to a `Claim`.
+**Required:** `@type`, `@id`, `aboard:id`, `aboard:attachedTo`, `schema:name`, `aboard:resolutionDate`, `aboard:resolutionCriteria`, `aboard:predictions`. The predictions array may be empty but must be present. `aboard:attachedTo` is an `@id` reference to a `Claim`.
 
-**The external resolution anchor.** `aboard:resolutionSource` is a `Source`
-naming the third-party dataset or publication a reader checks to settle the
-question. It is the one field that puts resolution outside the agent graph,
-which is what makes a forecast falsifiable by someone who does not trust
-aboard. It is optional in v0 while the corpus backfills, and a forecast
-without one is reported by `npm run lint:resolution` rather than rejected at
-load time. Consumers should treat its absence as "no external anchor stated",
-not as "resolves by editorial judgement".
+**The external resolution anchor.** `aboard:resolutionSource` is a `Source` naming the third-party dataset or publication a reader checks to settle the question. It is the one field that puts resolution outside the agent graph, which is what makes a forecast falsifiable by someone who does not trust aboard. It is optional in v0 while the corpus backfills, and a forecast without one is reported by `npm run lint:resolution` rather than rejected at load time. Consumers should treat its absence as "no external anchor stated", not as "resolves by editorial judgement".
 
-**Resolution outcome.** Two more optional fields appear once a forecast
-resolves, and they always travel together:
+**Resolution outcome.** Two more optional fields appear once a forecast resolves, and they always travel together:
 
 | Field | Meaning |
 | --- | --- |
 | `aboard:resolvedOutcome` | `"yes"` / `"no"` for binary questions (mapping to 1/0 for proper scoring), a number for range questions, or an explicit `null` for a forecast resolved as **annulled** — unresolvable, and therefore excluded from scoring rather than left pending. |
 | `aboard:resolvedAt` | ISO-8601 timestamp of the resolution. Present whenever `aboard:resolvedOutcome` is. |
 
-The distinction that matters to a consumer: **absent** `aboard:resolvedOutcome`
-means not resolved yet; **`null`** means resolved and annulled. Only the first
-is a forecast still waiting on the world. No forecast in the v0 seed carries
-either field — the earliest resolution date is 2027-12-31 — so the numeric arm
-and the annulled case are both reserved shapes today, not observed ones.
+The distinction that matters to a consumer: **absent** `aboard:resolvedOutcome` means not resolved yet; **`null`** means resolved and annulled. Only the first is a forecast still waiting on the world. No forecast in the v0 seed carries either field — the earliest resolution date is 2027-12-31 — so the numeric arm and the annulled case are both reserved shapes today, not observed ones.
 
-**Supersession.** `aboard:supersededBy` is an optional, non-empty array of
-`@id` references to the forecasts that replace this one. A forecast whose
-criteria turn out to be under-specified is never edited in place, because
-editing criteria under existing predictions changes what those predictions
-were answering; the repair is new, better-specified forecasts, and this field
-points at them. The superseded forecast stays filed as historical record —
-its predictions remain scoreable against its original criteria if it ever
-resolves — but `npm run lint:resolution` no longer holds its criteria to the
-live-corpus bar. Consumers computing corpus statistics should prefer the
-replacements and treat a superseded forecast as an archival entry. First
-observed on `F4` (replaced by `F7`) and `F5` (replaced by `F6` and `F8`).
+**Supersession.** `aboard:supersededBy` is an optional, non-empty array of `@id` references to the forecasts that replace this one. A forecast whose criteria turn out to be under-specified is never edited in place, because editing criteria under existing predictions changes what those predictions were answering; the repair is new, better-specified forecasts, and this field points at them. The superseded forecast stays filed as historical record — its predictions remain scoreable against its original criteria if it ever resolves — but `npm run lint:resolution` no longer holds its criteria to the live-corpus bar. Consumers computing corpus statistics should prefer the replacements and treat a superseded forecast as an archival entry. First observed on `F4` (replaced by `F7`) and `F5` (replaced by `F6` and `F8`).
 
-**Ensemble semantics.** When `aboard:predictions` holds more than one entry it
-is an *ensemble* — the same question put to multiple independent agents
-(typically one Claude seed plus several open-weights models from distinct
-families). There is no stored aggregate; consumers compute it on the fly. The
-canonical reduction is the **median** probability, surfaced as the headline,
-with the **spread** (max − min) shown alongside it because agreement at 0.5 and
-a 0.15–0.85 split are very different forecasts. The reference implementation is
-`src/lib/forecast.ts` (`aggregate`, `median`, `spread`, `leaveOneOut`); a single
-prediction is treated as a degenerate ensemble of one. Brier-weighting is
-deferred until resolved forecasts exist to calibrate against.
+**Ensemble semantics.** When `aboard:predictions` holds more than one entry it is an *ensemble* — the same question put to multiple independent agents (typically one Claude seed plus several open-weights models from distinct families). There is no stored aggregate; consumers compute it on the fly. The canonical reduction is the **median** probability, surfaced as the headline, with the **spread** (max − min) shown alongside it because agreement at 0.5 and a 0.15–0.85 split are very different forecasts. The reference implementation is `src/lib/forecast.ts` (`aggregate`, `median`, `spread`, `leaveOneOut`); a single prediction is treated as a degenerate ensemble of one. Brier-weighting is deferred until resolved forecasts exist to calibrate against.
 
 ### `Prediction`
 
-A single dated probability estimate by an agent. May carry structured base
-rates and data anchors that record the empirical foundations of the
-prediction — essential for auditing ensemble forecasts where N models
-return divergent probabilities for the same question.
+A single dated probability estimate by an agent. May carry structured base rates and data anchors that record the empirical foundations of the prediction — essential for auditing ensemble forecasts where N models return divergent probabilities for the same question.
 
 ```json
 {
@@ -441,12 +318,9 @@ return divergent probabilities for the same question.
 }
 ```
 
-**Required:** `@type`, `aboard:probability`, `aboard:reasoning`,
-`schema:author`. `aboard:probability` is a number in `[0, 1]`.
+**Required:** `@type`, `aboard:probability`, `aboard:reasoning`, `schema:author`. `aboard:probability` is a number in `[0, 1]`.
 
-**Optional:** `aboard:baseRates` (array of `BaseRate`), `aboard:dataAnchors`
-(array of `Source`). Both default to empty arrays in source data; the
-serializer omits empty arrays from the JSON-LD output.
+**Optional:** `aboard:baseRates` (array of `BaseRate`), `aboard:dataAnchors` (array of `Source`). Both default to empty arrays in source data; the serializer omits empty arrays from the JSON-LD output.
 
 ### `BaseRate`
 
@@ -465,11 +339,7 @@ A historical reference rate that an agent used to anchor a prediction.
 
 ### `Analysis`
 
-An analysis trail attached to one or more claims — the "how do we know"
-artifact. Each `Analysis` records the methodology, data sources, and finding
-behind a non-trivial claim. Claims reference Analyses by ID via
-`Claim.analyses`; the full Analysis records appear on the graph response at
-`aboard:analyses`.
+An analysis trail attached to one or more claims — the "how do we know" artifact. Each `Analysis` records the methodology, data sources, and finding behind a non-trivial claim. Claims reference Analyses by ID via `Claim.analyses`; the full Analysis records appear on the graph response at `aboard:analyses`.
 
 ```json
 {
@@ -488,12 +358,9 @@ behind a non-trivial claim. Claims reference Analyses by ID via
 }
 ```
 
-**Required:** all fields above except `aboard:methodology`. `aboard:analysisKind`
-is one of `regression`, `comparison`, `synthesis`, `simulation`, `qualitative`.
+**Required:** all fields above except `aboard:methodology`. `aboard:analysisKind` is one of `regression`, `comparison`, `synthesis`, `simulation`, `qualitative`.
 
-The `Author` here is reduced to `@type`, `schema:name`, and
-`schema:dateCreated` — `aboard:promptTitle` is **not** serialized even when
-present in the source data. See [inconsistencies](#known-inconsistencies).
+The `Author` here is reduced to `@type`, `schema:name`, and `schema:dateCreated` — `aboard:promptTitle` is **not** serialized even when present in the source data. See [inconsistencies](#known-inconsistencies).
 
 ### `Dossier`
 
@@ -510,9 +377,7 @@ A non-convergent dual-thesis debate attached to a contested claim.
 }
 ```
 
-**Required:** all fields above. `aboard:cruxes` may be empty but must be
-present. The Dossier's `@id` is keyed on the contested claim's ID — a claim
-has at most one dossier.
+**Required:** all fields above. `aboard:cruxes` may be empty but must be present. The Dossier's `@id` is keyed on the contested claim's ID — a claim has at most one dossier.
 
 ### `Argument`
 
@@ -531,13 +396,9 @@ One side of a dossier — pro or con.
 }
 ```
 
-**Required:** all fields above. `schema:text` carries the full steelmanned
-summary; `aboard:thesis` is the one-sentence headline.
+**Required:** all fields above. `schema:text` carries the full steelmanned summary; `aboard:thesis` is the one-sentence headline.
 
-The `Author` here is reduced even further than in `Prediction` — only
-`@type` and `schema:name` are serialized. `schema:dateCreated` and
-`aboard:promptTitle` are dropped. See
-[inconsistencies](#known-inconsistencies).
+The `Author` here is reduced even further than in `Prediction` — only `@type` and `schema:name` are serialized. `schema:dateCreated` and `aboard:promptTitle` are dropped. See [inconsistencies](#known-inconsistencies).
 
 ### `Crux`
 
@@ -554,21 +415,14 @@ A pivot claim within a dossier whose resolution would settle the debate.
 
 **Required:** all fields above. Both numeric fields are in `[0, 1]`.
 
-The dossier UI ranks cruxes by `impactScore × uncertainty`; that ordering is
-**not** reflected in the response (the array is in source-data order). A
-consumer that wants ranked cruxes must sort client-side.
+The dossier UI ranks cruxes by `impactScore × uncertainty`; that ordering is **not** reflected in the response (the array is in source-data order). A consumer that wants ranked cruxes must sort client-side.
 
 ## Cross-references
 
 aboard uses two reference styles:
 
-- **Inline:** the full target shape is embedded in place. Used for sources
-  on a claim, predictions inside a forecast, the pro/con/cruxes inside a
-  dossier.
-- **`@id`-only IRI reference:** an object with a single `@id` field whose
-  value is a dereferenceable URL. Used for `Edge.aboard:from`,
-  `Edge.aboard:to`, `Forecast.aboard:attachedTo`, and
-  `Dossier.aboard:attachedTo`.
+- **Inline:** the full target shape is embedded in place. Used for sources on a claim, predictions inside a forecast, the pro/con/cruxes inside a dossier.
+- **`@id`-only IRI reference:** an object with a single `@id` field whose value is a dereferenceable URL. Used for `Edge.aboard:from`, `Edge.aboard:to`, `Forecast.aboard:attachedTo`, and `Dossier.aboard:attachedTo`.
 
 `@id` values follow these path conventions:
 
@@ -580,36 +434,21 @@ aboard uses two reference styles:
 | Forecast | `{origin}/forecasts/{id}` |
 | Dossier | `{origin}/dossiers/{attachedToClaimId}` |
 
-Only `/graph` and `/claims/{id}` are currently dereferenceable HTTP routes;
-the others are stable identifiers but **404 if you fetch them**. A consumer
-that treats `aboard:from.@id` as a real fetchable URL will get an error. To
-follow an edge, parse the claim ID out of the URL path and use
-`/api/claims/{id}`.
+Only `/graph` and `/claims/{id}` are currently dereferenceable HTTP routes; the others are stable identifiers but **404 if you fetch them**. A consumer that treats `aboard:from.@id` as a real fetchable URL will get an error. To follow an edge, parse the claim ID out of the URL path and use `/api/claims/{id}`.
 
 ## Multi-domain and cross-domain
 
-The vision decision (2026-05-10) is **cross-domain**: a single graph
-includes claims from any number of domains, and edges may cross domain
-boundaries. The schema reflects this today:
+The vision decision (2026-05-10) is **cross-domain**: a single graph includes claims from any number of domains, and edges may cross domain boundaries. The schema reflects this today:
 
-- `aboard:domains` on `ClaimGraph` is a sorted array of every distinct domain
-  present.
+- `aboard:domains` on `ClaimGraph` is a sorted array of every distinct domain present.
 - `aboard:domain` on each `Claim` is a single domain slug.
-- `Edge.aboard:from` and `Edge.aboard:to` may reference claims in different
-  domains. Cross-domain edges live in `data/cross_domain_edges.yaml` rather
-  than any single domain's `edges.yaml`, but in the served graph they appear
-  in the same `aboard:edges` array.
+- `Edge.aboard:from` and `Edge.aboard:to` may reference claims in different domains. Cross-domain edges live in `data/cross_domain_edges.yaml` rather than any single domain's `edges.yaml`, but in the served graph they appear in the same `aboard:edges` array.
 
-A consumer can filter to one domain by selecting `claims[?domain == X]` and
-intersecting `edges`. There is no `?domain=` query parameter on `/api/graph`
-in v0; the consumer does the filtering. A query parameter may be added in
-v1 once we know the actual access pattern.
+A consumer can filter to one domain by selecting `claims[?domain == X]` and intersecting `edges`. There is no `?domain=` query parameter on `/api/graph` in v0; the consumer does the filtering. A query parameter may be added in v1 once we know the actual access pattern.
 
 ## Known inconsistencies
 
-The original v0 audit (2026-05-09) found 9 fields that existed in the source
-type but were dropped from the serialized output. Most have been **resolved**
-in the 2026-05-10 fix; what remains is documented honestly below.
+The original v0 audit (2026-05-09) found 9 fields that existed in the source type but were dropped from the serialized output. Most have been **resolved** in the 2026-05-10 fix; what remains is documented honestly below.
 
 ### Resolved (2026-05-10 fix)
 
@@ -646,12 +485,9 @@ npm install
 npx tsx validate.ts http://localhost:3000/api/graph
 ```
 
-Expect `OK — N claims, M edges, K forecasts, J dossiers, latest filed YYYY-MM-DD`
-when the response conforms.
+Expect `OK — N claims, M edges, K forecasts, J dossiers, latest filed YYYY-MM-DD` when the response conforms.
 
-A second adapter renders the validated graph as a Markdown briefing for
-human consumption — proving the agent-readable → human-readable round-trip
-works end-to-end:
+A second adapter renders the validated graph as a Markdown briefing for human consumption — proving the agent-readable → human-readable round-trip works end-to-end:
 
 ```bash
 npx tsx briefing.ts http://localhost:3000/api/graph > briefing.md

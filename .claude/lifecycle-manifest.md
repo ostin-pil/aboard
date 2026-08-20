@@ -1,9 +1,6 @@
 # Lifecycle manifest
 
-Project config for the `lifecycle-kit` and `knowledge-kit` plugins. Their skills
-read this file at runtime; it is the only place aboard's per-project values live.
-See the kits' `lifecycle-manifest.template.md` and `manifest-keys.md` for the full
-key reference.
+Project config for the `lifecycle-kit` and `knowledge-kit` plugins. Their skills read this file at runtime; it is the only place aboard's per-project values live. See the kits' `lifecycle-manifest.template.md` and `manifest-keys.md` for the full key reference.
 
 ```yaml
 # product

@@ -1,13 +1,8 @@
 # aboard / mcp-server
 
-A [Model Context Protocol](https://modelcontextprotocol.io) server over
-stdio for the [aboard](../) claim graph. Independent of the Next.js app —
-has its own `package.json` and dependencies, like [`clients/`](../clients).
+A [Model Context Protocol](https://modelcontextprotocol.io) server over stdio for the [aboard](../) claim graph. Independent of the Next.js app — has its own `package.json` and dependencies, like [`clients/`](../clients).
 
-It consumes the published JSON-LD API (`/api/graph`, `/api/claims/{id}`)
-exactly the way the `clients/` reference adapters do. It does **not** read
-`data/` or share code with the app, so it runs from any machine that can
-reach an aboard instance.
+It consumes the published JSON-LD API (`/api/graph`, `/api/claims/{id}`) exactly the way the `clients/` reference adapters do. It does **not** read `data/` or share code with the app, so it runs from any machine that can reach an aboard instance.
 
 ## Tools
 
@@ -30,14 +25,9 @@ reach an aboard instance.
 | `propose_forecast_prediction` | **Wired.** Opens a real pull request. |
 | `propose_dossier` | **Wired.** Opens a real pull request (a complete dual-dossier). |
 
-`propose_claim` POSTs to the deployed `/api/proposals` endpoint, which validates
-the payload against aboard's canonical Zod schemas, stamps provenance from your
-agent token, commits the claim file, and opens a pull request. **It never
-merges** — a human is the admission gate and CI must pass.
+`propose_claim` POSTs to the deployed `/api/proposals` endpoint, which validates the payload against aboard's canonical Zod schemas, stamps provenance from your agent token, commits the claim file, and opens a pull request. **It never merges** — a human is the admission gate and CI must pass.
 
-The claim's `id`, `createdAt`, and `authoredBy` are stamped **server-side**. Do
-not send them; an attribution a caller asserts about itself carries no
-information. At least one real source is required.
+The claim's `id`, `createdAt`, and `authoredBy` are stamped **server-side**. Do not send them; an attribution a caller asserts about itself carries no information. At least one real source is required.
 
 Set two environment variables:
 
@@ -46,15 +36,9 @@ ABOARD_API_BASE_URL=https://aboard.untype.me
 ABOARD_AGENT_TOKEN=<token issued by the aboard operator>
 ```
 
-Without a token the tool declines rather than guessing. This server holds no
-GitHub credential and never touches `data/` — it is a thin client of the HTTP
-endpoint, which any agent can call directly, MCP or not. See
-[`worker/README.md`](../worker/README.md) for the endpoint contract, including
-the structured `422` rejection path that names the exact fields that failed.
+Without a token the tool declines rather than guessing. This server holds no GitHub credential and never touches `data/` — it is a thin client of the HTTP endpoint, which any agent can call directly, MCP or not. See [`worker/README.md`](../worker/README.md) for the endpoint contract, including the structured `422` rejection path that names the exact fields that failed.
 
-The other three tools are serialization variants of the same pipeline and land
-next; each returns a message directing the caller to the PR-pack flow in
-[`CONTRIBUTING.md`](../CONTRIBUTING.md).
+The other three tools are serialization variants of the same pipeline and land next; each returns a message directing the caller to the PR-pack flow in [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
 ## Install
 
@@ -63,10 +47,7 @@ cd mcp-server
 npm install
 ```
 
-Dependencies (`@modelcontextprotocol/sdk`, `zod`, plus `tsx` /
-`typescript` / `@types/node` for dev) install into
-`mcp-server/node_modules`. The main app's `package.json` and
-`node_modules` are untouched.
+Dependencies (`@modelcontextprotocol/sdk`, `zod`, plus `tsx` / `typescript` / `@types/node` for dev) install into `mcp-server/node_modules`. The main app's `package.json` and `node_modules` are untouched.
 
 ## Configuration
 
@@ -76,9 +57,7 @@ Dependencies (`@modelcontextprotocol/sdk`, `zod`, plus `tsx` /
 
 ## Run (stdio)
 
-The server speaks MCP over stdio: it reads JSON-RPC frames on stdin and
-writes them on stdout. **stdout is reserved for the protocol** — all
-diagnostics go to stderr.
+The server speaks MCP over stdio: it reads JSON-RPC frames on stdin and writes them on stdout. **stdout is reserved for the protocol** — all diagnostics go to stderr.
 
 ```bash
 # default — reads from the deployed site, https://aboard.untype.me
@@ -88,14 +67,11 @@ npx tsx src/index.ts
 ABOARD_API_BASE_URL=http://localhost:3000 npx tsx src/index.ts
 ```
 
-The base URL must be reachable for the read tools to return data. The MCP
-server itself starts even if aboard is down; read calls then return a
-clear "could not reach aboard API" error.
+The base URL must be reachable for the read tools to return data. The MCP server itself starts even if aboard is down; read calls then return a clear "could not reach aboard API" error.
 
 ### MCP client config
 
-Most MCP clients (Claude Desktop, Claude Code, etc.) launch servers from a
-JSON config. Example entry:
+Most MCP clients (Claude Desktop, Claude Code, etc.) launch servers from a JSON config. Example entry:
 
 ```json
 {
@@ -118,8 +94,7 @@ cd mcp-server
 npx tsc --noEmit      # clean
 ```
 
-Manual stdio handshake — initialize, then list tools — without an MCP
-client. Pipe three JSON-RPC lines into the server and inspect stdout:
+Manual stdio handshake — initialize, then list tools — without an MCP client. Pipe three JSON-RPC lines into the server and inspect stdout:
 
 ```bash
 printf '%s\n' \
@@ -129,30 +104,15 @@ printf '%s\n' \
   | npx tsx src/index.ts
 ```
 
-You should see two JSON-RPC responses on stdout: the `initialize` result
-(`serverInfo.name` = `aboard-mcp-server`) and a `tools/list` result naming
-all nine tools. The `ready on stdio` line appears on stderr, not stdout.
-With aboard running, a follow-up `tools/call` for `list_claims` returns the
-claim summaries.
+You should see two JSON-RPC responses on stdout: the `initialize` result (`serverInfo.name` = `aboard-mcp-server`) and a `tools/list` result naming all nine tools. The `ready on stdio` line appears on stderr, not stdout. With aboard running, a follow-up `tools/call` for `list_claims` returns the claim summaries.
 
 ## Why this is its own package
 
-Same rationale as `clients/`: the main app is a Next.js service whose
-dependency tree (React, Tailwind, Next types) is irrelevant to an MCP
-server. Splitting it out keeps the agent-facing surface small, models how
-an external integrator would actually consume the API, and lets the server
-run anywhere that can reach the JSON-LD endpoints.
+Same rationale as `clients/`: the main app is a Next.js service whose dependency tree (React, Tailwind, Next types) is irrelevant to an MCP server. Splitting it out keeps the agent-facing surface small, models how an external integrator would actually consume the API, and lets the server run anywhere that can reach the JSON-LD endpoints.
 
 ## Known limitations
 
-- Local only, by design. This package speaks stdio, so it serves an IDE or a
-  local agent session. The remote endpoint any client can connect to is
-  `POST https://aboard.untype.me/mcp`, served by the Worker (`worker/mcp.ts`);
-  it exposes the same nine tools. Neither is a stub: all four write tools have
-  been live since session 20.
-- No caching — every tool call hits the API fresh (matches `clients/`
-  simplicity; the graph is small).
-- `get_forecast` resolves a forecast id by scanning `/api/graph`, since
-  the aboard API exposes no per-forecast endpoint. A claim id is the
-  faster path (direct `/api/claims/{id}`).
+- Local only, by design. This package speaks stdio, so it serves an IDE or a local agent session. The remote endpoint any client can connect to is `POST https://aboard.untype.me/mcp`, served by the Worker (`worker/mcp.ts`); it exposes the same nine tools. Neither is a stub: all four write tools have been live since session 20.
+- No caching — every tool call hits the API fresh (matches `clients/` simplicity; the graph is small).
+- `get_forecast` resolves a forecast id by scanning `/api/graph`, since the aboard API exposes no per-forecast endpoint. A claim id is the faster path (direct `/api/claims/{id}`).
 - No retry/timeout on the HTTP fetch, consistent with `clients/`.

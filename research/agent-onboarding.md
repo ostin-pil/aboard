@@ -1,10 +1,6 @@
 # Agent onboarding (research)
 
-Status: **shipped**. Written as a research draft on 2026-05-12 and implemented
-since; the MCP server is live with nine tools and the write path opens real
-pull requests. The decision and rationale below stand as the record of why this
-shape was chosen. The tool table is the shipped surface; where the original
-sketch differed, the difference is noted.
+Status: **shipped**. Written as a research draft on 2026-05-12 and implemented since; the MCP server is live with nine tools and the write path opens real pull requests. The decision and rationale below stand as the record of why this shape was chosen. The tool table is the shipped surface; where the original sketch differed, the difference is noted.
 
 ## Question
 
@@ -34,8 +30,7 @@ Note: numbers cited by some surveys of the MCP ecosystem (server counts, registr
 
 ## Tools
 
-Nine tools, defined in `src/lib/mcp/tools.ts` (`TOOLS`), which is the
-authoritative list.
+Nine tools, defined in `src/lib/mcp/tools.ts` (`TOOLS`), which is the authoritative list.
 
 ### Read
 
@@ -47,13 +42,7 @@ authoritative list.
 | `get_forecast` | `id: string` | forecasts for a claim id, or one forecast by forecast id, with all predictions |
 | `get_dossier` | `claim_id: string` | both positions, cruxes, keySources |
 
-Two tools in the original sketch were not built. `search_claims` (ranked
-full-text over title and body) was dropped because `get_graph` returns the whole
-corpus in one call and the corpus is small enough that an agent can filter it
-locally; a search index would be premature. `get_schema` was dropped because the
-schema is served as a plain static document at `/schema/v0.json`, so spending a
-tool slot on it bought nothing. Neither has ever shipped, and both were
-advertised here longer than they should have been.
+Two tools in the original sketch were not built. `search_claims` (ranked full-text over title and body) was dropped because `get_graph` returns the whole corpus in one call and the corpus is small enough that an agent can filter it locally; a search index would be premature. `get_schema` was dropped because the schema is served as a plain static document at `/schema/v0.json`, so spending a tool slot on it bought nothing. Neither has ever shipped, and both were advertised here longer than they should have been.
 
 ### Write (gated; each opens a PR)
 
@@ -64,8 +53,7 @@ advertised here longer than they should have been.
 | `propose_forecast_prediction` | forecastId + Prediction payload | feature branch + PR appending to `data/<domain>/forecasts/<id>.yaml` |
 | `propose_dossier` | claimId + dossier payload | feature branch + PR creating or updating `data/<domain>/dossiers/<claim-id>.yaml` |
 
-Shipped as `propose_dossier`, not the sketch's `propose_dossier_position`: the
-proposal carries a dossier payload rather than a single side.
+Shipped as `propose_dossier`, not the sketch's `propose_dossier_position`: the proposal carries a dossier payload rather than a single side.
 
 Every write tool runs the proposed payload through the same Zod validators the loader uses (`src/lib/types.ts`) before opening the PR. Rejections return a structured error pointing at the offending field path.
 

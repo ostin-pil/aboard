@@ -1,10 +1,6 @@
 # Workflow rules
 
-The lifecycle invariants the kit's skills assume. This doc ships with the kit,
-so a project adopting it needs no companion file; the manifest's `workflow_rule`
-points here by default. Override it by pointing the key at your own copy if you
-maintain one. Commands below use the kit's `<key>` placeholders (`<integration_ref>`,
-`<local_main>`, `<branch_pattern>`); resolve them from `.claude/lifecycle-manifest.md`.
+The lifecycle invariants the kit's skills assume. This doc ships with the kit, so a project adopting it needs no companion file; the manifest's `workflow_rule` points here by default. Override it by pointing the key at your own copy if you maintain one. Commands below use the kit's `<key>` placeholders (`<integration_ref>`, `<local_main>`, `<branch_pattern>`); resolve them from `.claude/lifecycle-manifest.md`.
 
 ## Commit discipline
 
@@ -17,9 +13,7 @@ maintain one. Commands below use the kit's `<key>` placeholders (`<integration_r
 
 ## Session lifecycle: one PR per session
 
-The invariant everything else follows from: the session log is committed to an
-open branch before that branch's PR merges. It never lands on the integration
-branch directly and never on a branch whose PR has already merged.
+The invariant everything else follows from: the session log is committed to an open branch before that branch's PR merges. It never lands on the integration branch directly and never on a branch whose PR has already merged.
 
 - **Branch birth.** A session's branch (or worktree) is created from a freshly fetched integration ref, never from the current working tree: `git fetch <remote>` then `git switch -c <branch_pattern> <integration_ref>` (or the `git worktree add ... <integration_ref>` form). This removes the stale-base gotcha at its source.
 - **One PR per session.** All of a session's work and its log live on that one branch. The branch is not merged until the log has been committed onto it. A session produces exactly one PR; the log rides it. Do not merge a session's work PR mid-session.
@@ -32,13 +26,7 @@ Two exceptions, and only these two. Both preserve the invariant (the log is stil
 
 ## Concurrent sessions: one worktree each
 
-The one-PR-per-session model assumes a session owns its working tree. When two or
-more agent sessions touch the repo at the same time, they must not share the
-primary checkout. Two sessions in one checkout take turns moving a single HEAD,
-so one session's `git switch`, merge, or rebase silently moves the working tree
-under the other. That is a working-tree collision, distinct from a file conflict,
-and after-the-fact guards detect it but do not prevent it. This is a documented
-failure mode, not a hypothetical.
+The one-PR-per-session model assumes a session owns its working tree. When two or more agent sessions touch the repo at the same time, they must not share the primary checkout. Two sessions in one checkout take turns moving a single HEAD, so one session's `git switch`, merge, or rebase silently moves the working tree under the other. That is a working-tree collision, distinct from a file conflict, and after-the-fact guards detect it but do not prevent it. This is a documented failure mode, not a hypothetical.
 
 - **Each concurrent session runs in its own worktree**, created off the freshly fetched integration ref, never in the primary checkout:
   ```bash
