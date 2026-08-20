@@ -245,4 +245,4 @@ Recovery was checked and exhausted on 2026-08-18: the login keychain has exactly
 
 **The general trap.** A secret store is verified by reading the value back, never by the store command exiting 0 — and a deletion never rides in the same paste as the store it depends on. `add-generic-password` stores whatever the prompt receives, silently.
 
-Status: open until the rotation playbook is executed; the DNS edit is the one operator step.
+Status: resolved 2026-08-20 — the playbook ran end to end: fresh key in the keychain, new TXT record at the apex (whose DNS turned out to live at Cloudflare, not the registrar's panel; step 5 now checks instead of assuming), `login` succeeded, and the publish step returned the expected duplicate-version 400 with the card version unchanged. Keychain, record and registry entry verified in agreement before the temporary PEM was deleted.

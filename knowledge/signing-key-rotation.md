@@ -70,7 +70,7 @@ First find where the zone actually lives; the registrar is not the DNS host, and
 dig +short NS untype.me
 ```
 
-Today that prints `*.ns.cloudflare.com`, so the edit happens in the Cloudflare dashboard, in the `untype.me` zone (the same account that runs the aboard Worker). Replace the content of the existing apex TXT record that begins `v=MCPv1` with the line step 3 printed. Leave the SPF TXT record alone. The record's TTL is 300 seconds. Then confirm the world sees it, authoritative servers first:
+Today that prints `*.ns.cloudflare.com`, so the edit happens in the Cloudflare dashboard: the `untype.me` zone (the same account that runs the aboard Worker), then DNS, then the apex TXT record that begins `v=MCPv1`. Replace its content with the line step 3 printed. Leave the SPF TXT record alone; and if an edit was saved at the registrar's panel by mistake, there is nothing to undo — it changed a zone nobody queries. The record's TTL is 300 seconds, so give the edit about five minutes, then re-run the check below until the `p=` value it prints is the new one, authoritative servers first:
 
 ```bash
 for ns in $(dig +short NS untype.me); do dig +short TXT untype.me @"$ns" | tr -d '"' | grep '^v=MCPv1'; done
@@ -97,7 +97,7 @@ Preconditions, both from the steps above: "keychain readback ok" was printed, an
 scripts/publish-registry.sh
 ```
 
-The script shape-checks the keychain entry, reconstructs its public point, compares it against the TXT record, logs in with `--algorithm ecdsap384`, republishes the card, and verifies the entry is live. `login` succeeding is the proof the rotation worked. One caveat: if the card version has not changed since the last publish, the registry may reject the republish as a duplicate — that arrives after login, so it does not undermine the proof; the next real publish bumps the version anyway. `scripts/publish-registry.sh --verify` remains the read-only check that the entry is intact.
+The script shape-checks the keychain entry, reconstructs its public point, compares it against the TXT record, logs in with `--algorithm ecdsap384`, republishes the card, and verifies the entry is live. `login` succeeding is the proof the rotation worked. One caveat, observed when this playbook first ran to completion (2026-08-20): with the card version unchanged since the last publish, the registry accepted the login and then rejected the publish with `400 "invalid version: cannot publish duplicate version"`. That is the expected terminal state of a pure rotation — the login already proved the key, and the next real publish bumps the version anyway. `scripts/publish-registry.sh --verify` remains the read-only check that the entry is intact.
 
 ## Machines without a keychain
 
