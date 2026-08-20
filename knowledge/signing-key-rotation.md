@@ -11,7 +11,7 @@ Two rules the steps encode:
 
 ## Prerequisites
 
-`openssl` (LibreSSL is fine; P-384 is the codepath precisely because LibreSSL's Ed25519 `genpkey` fails), `node`, `mcp-publisher` on PATH (`brew install mcp-publisher`), and access to the Spaceship DNS panel for `untype.me`.
+`openssl` (LibreSSL is fine; P-384 is the codepath precisely because LibreSSL's Ed25519 `genpkey` fails), `node`, `mcp-publisher` on PATH (`brew install mcp-publisher`), and access to wherever `untype.me`'s DNS is actually hosted — which is the Cloudflare dashboard today, and step 5 shows how to check rather than assume.
 
 ## Step 1 — generate the new key, outside the repo
 
@@ -62,9 +62,20 @@ security add-generic-password -U -s mcp-publisher-untype -a untype.me -w "$scala
 
 `-U` updates in place — a plain add fails against an existing entry, which is how the placeholder survived a retry last time. The readback line is the step the original loss skipped: it proves the stored value is the scalar, not whatever an interactive prompt happened to receive.
 
-## Step 5 — the DNS edit (operator, Spaceship panel)
+## Step 5 — the DNS edit (operator)
 
-Replace the value of the existing TXT record at the `untype.me` apex that begins `v=MCPv1` with the line step 3 printed. Leave the SPF TXT record alone. Then wait out the TTL and confirm the world sees it:
+First find where the zone actually lives; the registrar is not the DNS host, and the first run of this playbook lost a day to that assumption (Spaceship registers the domain and its email forwarding owns the SPF record, but the nameservers are Cloudflare's, so a Spaceship-panel edit changes a zone nobody queries):
+
+```bash
+dig +short NS untype.me
+```
+
+Today that prints `*.ns.cloudflare.com`, so the edit happens in the Cloudflare dashboard, in the `untype.me` zone (the same account that runs the aboard Worker). Replace the content of the existing apex TXT record that begins `v=MCPv1` with the line step 3 printed. Leave the SPF TXT record alone. The record's TTL is 300 seconds. Then confirm the world sees it, authoritative servers first:
+
+```bash
+for ns in $(dig +short NS untype.me); do dig +short TXT untype.me @"$ns" | tr -d '"' | grep '^v=MCPv1'; done
+dig +short TXT untype.me | tr -d '"' | grep '^v=MCPv1'
+```
 
 ```bash
 dig +short TXT untype.me | tr -d '"' | grep '^v=MCPv1'
