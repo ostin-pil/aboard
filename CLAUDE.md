@@ -26,7 +26,7 @@ shellcheck $(git ls-files '*.sh')   # shell scripts; session-end and CI both gat
 
 The repo's two shell scripts are `bin/check-prose.sh`, which is the prose gate itself, and `scripts/publish-registry.sh`, which handles a signing key and writes to a public registry. Both are executable behaviour that no Node command here can reach, so `shellcheck` runs in `build_commands` and as the first step in CI. That is also why `"*.sh"` is in `code_globs`: the classification only means something because a shell-aware command sits behind it.
 
-The same rule governs `"*.js"` and `"*.mjs"`. `tsconfig.json`'s `include` covers `**/*.ts`, `**/*.tsx` and `**/*.mts` but neither `*.js` nor `*.mjs`, and vitest reads only `src/**/*.test.ts`, so `eslint` is the sole command in the gate that reads them. `scripts/check-built-urls.mjs` is real code that CI runs, and until session 46 a syntax error in it passed the whole session-end gate. `npm run lint` is now in `build_commands`, matching the hard gate CI already had.
+The same rule governs `"*.js"` and `"*.mjs"`. `tsconfig.json`'s `include` covers `**/*.ts`, `**/*.tsx` and `**/*.mts` but neither `*.js` nor `*.mjs`, and vitest reads only `*.test.ts` files (under `src/`, `worker/` and `mcp-server/` since session 64), so `eslint` is the sole command in the gate that reads them. `scripts/check-built-urls.mjs` is real code that CI runs, and until session 46 a syntax error in it passed the whole session-end gate. `npm run lint` is now in `build_commands`, matching the hard gate CI already had.
 
 `tsconfig.json` excludes `clients` and `mcp-server`, so `npx tsc --noEmit` covers `src/`, `scripts/` and `worker/` and nothing else. Both sub-packages have their own tsconfig, and until session 48 the session gate ran neither: a type error planted in each passed all six commands. `npm run typecheck:mcp` and `npm run typecheck:clients` are now in `build_commands`. Each provisions its own `node_modules` before running, so a fresh clone gets a real check rather than a silent skip.
 
@@ -198,7 +198,9 @@ After any change under `bin/` or `scripts/*.sh`, run `shellcheck` on it. Nothing
 
 After any change to a `.js` or `.mjs` file, run `npm run lint`. `tsc` does not read either extension, so eslint is the only automated check that will.
 
-After any change under `clients/` or `mcp-server/`, run `npm run typecheck:clients` or `npm run typecheck:mcp`. The root `tsc` excludes both directories, and `tsx` runs them without type-checking, so nothing else reads them.
+After any change under `clients/` or `mcp-server/`, run `npm run typecheck:clients` or `npm run typecheck:mcp`. The root `tsc` excludes both directories, and `tsx` runs them without type-checking, so nothing else reads them. A change to `mcp-server/src/tools/` also wants `npm test`: the parity project pins that surface (names, argument fields, required sets, the mirrored `HttpUrl`) to the remote catalogue in `src/lib/mcp/tools.ts`, and it is the only check that will notice the two servers drifting apart.
+
+After any change under `worker/`, run `npm test`. Since session 64 the worker project drives `route()` and `handleMcp` with faked bindings and a stubbed GitHub: the write path's check order, the size cap, the failure-path branch cleanup, markdown negotiation and the telemetry points are all pinned there, and every one of them is a seam `tsc` and the build accept broken. The suite runs in plain node, so anything workerd-only (there is none today; the marker would be `caches.default`) needs the harness decision in `vitest.config.ts` revisited first.
 
 After deleting a call site, run `npm run check:exports`. Removing the last importer of something is what turns a live export into a dead one, and that is the moment no other command in the gate will say so. The same check reads `knip.jsonc`, so run it after editing that too.
 

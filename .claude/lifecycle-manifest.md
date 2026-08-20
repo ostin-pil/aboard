@@ -43,8 +43,9 @@ log_presence_regex: '^sessions/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_session.*\.md$'
 #   *.yml       check:config                     (ci.yml, session 53)
 #   *.jsonc     check:config                     (wrangler.jsonc, session 53)
 # tsconfig's include covers *.ts/*.tsx/*.mts but not *.js or *.mjs, and vitest
-# only reads src/**/*.test.ts, so eslint is the one command in this gate that
-# reads them. It was already a hard gate in CI and was missing here.
+# only reads *.test.ts files (src/, worker/ and mcp-server/ since session 64),
+# so eslint is the one command in this gate that reads them. It was already a
+# hard gate in CI and was missing here.
 #
 # The root tsconfig also *excludes* clients and mcp-server, so "*.ts" only ever
 # half-covered its own glob: a type error in either package passed all six
@@ -87,7 +88,7 @@ log_presence_regex: '^sessions/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}_session.*\.md$'
 # which the session gate would never have run.
 code_globs: ["*.ts", "*.tsx", "*.js", "*.mjs", "*.sh", "*.yaml", "*.yml", "*.jsonc"]
 build_commands: ["shellcheck $(git ls-files '*.sh')", "npm run check:config", "npx tsc --noEmit", "npm run lint", "npm run check:exports", "npm run typecheck:mcp", "npm run typecheck:clients", "npm run lint:resolution -- --strict", "npm run build", "npm run check:built-urls"]
-test_commands: ["npm test"]          # vitest, unit tests over the pure lib modules
+test_commands: ["npm test"]          # vitest: pure lib modules, the Worker shell, MCP parity
 # none, because the two sub-package commands provision themselves: each is
 # `test -d node_modules || npm ci` before its typecheck, so it fails closed on a
 # real error instead of skipping quietly on a fresh clone. A guard here would

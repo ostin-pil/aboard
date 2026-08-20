@@ -79,7 +79,7 @@ import {
   type AnalyticsDataset,
 } from "../src/lib/telemetry";
 
-interface Env {
+export interface Env {
   /** Static assets binding — the built `out/` directory. */
   ASSETS: { fetch: (request: Request) => Promise<Response> };
   /** JSON: { "<secret-token>": { tokenId, operator, agent, agentId }, ... } */
@@ -416,6 +416,16 @@ type ProposalSubmission = {
 };
 
 /**
+ * Best-effort removal of a branch whose proposal never became a PR. A failure
+ * here is swallowed: the caller is already reporting the original failure, and
+ * an orphaned ref is clutter, never a correctness problem — this exists so the
+ * repo does not accumulate `agent/…` branches that point at nothing (E13).
+ */
+async function deleteBranch(ctx: GitHubContext, branch: string): Promise<void> {
+  await gh(ctx, `/git/refs/heads/${branch}`, { method: "DELETE" }).catch(() => undefined);
+}
+
+/**
  * Branch → commit the file → open a PR. Never merges: a human is the admission
  * gate, and CI (build + referential integrity + tests) runs on the PR, so a
  * proposal that would break the graph cannot be merged even by mistake.
@@ -470,6 +480,7 @@ async function submitProposalPR(
     }),
   });
   if (!committed.ok) {
+    await deleteBranch(ctx, branch);
     return {
       ok: false,
       failure: {
@@ -490,6 +501,7 @@ async function submitProposalPR(
     body: JSON.stringify({ title: s.prTitle, head: branch, base: ctx.base, body: s.prBody }),
   });
   if (!pr.ok) {
+    await deleteBranch(ctx, branch);
     return {
       ok: false,
       failure: {
@@ -843,6 +855,17 @@ async function proposalResponse(
   // the credential's stable handle (a token id, or an OAuth subject), so one
   // leaked or runaway credential cannot open an unbounded burst of PRs. Fails
   // open (see withinRateLimit).
+  //
+  // The check order on this path is deliberate (E14), and the worker test
+  // suite pins it. Auth precedes the limiter, so the 401 path is unthrottled:
+  // the limiter is keyed per credential and an unauthenticated caller has
+  // none, static tokens are high-entropy enough that guessing is bounded by
+  // the platform's own protections, and throttling rejections would let one
+  // flooder exhaust a shared anonymous bucket for everyone. The limiter in
+  // turn precedes payload validation, so a caller burns its own 10/min on
+  // 422s while debugging: GitHub is what the brake protects, and a validation
+  // loop that spends the caller's budget rather than our upstream quota is
+  // the right default.
   if (!(await withinRateLimit(env.PROPOSAL_LIMITER, rateLimitKey))) {
     const body = {
       error: {
@@ -996,7 +1019,10 @@ const siteHandler = {
   },
 };
 
-async function route(request: Request, env: Env): Promise<Response> {
+/** Exported as the worker test suite's seam: everything aboard-owned happens
+ *  here, while the deployed entry point below adds only the third-party OAuth
+ *  provider wrapper, which is not ours to test. */
+export async function route(request: Request, env: Env): Promise<Response> {
   const { pathname } = new URL(request.url);
 
   // Resolved at most once per request, and only if something asks.

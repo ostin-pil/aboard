@@ -3,11 +3,15 @@
  * used by `clients/validate.ts` and `clients/briefing.ts`: no local `data/`
  * access, no shared code with the Next.js app — just the published API.
  *
- * Base URL is configurable via the `ABOARD_API_BASE_URL` env var and
- * defaults to `http://localhost:3000`, matching the `clients/` default.
+ * Base URL is configurable via the `ABOARD_API_BASE_URL` env var and defaults
+ * to the production origin. It used to default to `http://localhost:3000`,
+ * matching `clients/` — but `next dev` serves no `/api/proposals` (the write
+ * path is Worker-only), so the default config's writes failed with a
+ * misleading 404. The production origin is the one base URL where every tool
+ * works; local development sets the env var, which it had to anyway.
  */
 
-const DEFAULT_BASE_URL = "http://localhost:3000";
+const DEFAULT_BASE_URL = "https://aboard.untype.me";
 
 export function baseUrl(): string {
   const raw = process.env.ABOARD_API_BASE_URL?.trim();
