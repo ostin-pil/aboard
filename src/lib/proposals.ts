@@ -10,6 +10,7 @@ import {
   Source,
   type AgentAttribution,
 } from "@/lib/types";
+import { nextSequentialId } from "@/lib/ids";
 
 /**
  * The agent write path: what a caller may send, and how it becomes graph data.
@@ -329,27 +330,6 @@ export function inferDomainPrefix(existingIdsInDomain: readonly string[]): strin
 
   if (prefixes.size !== 1) return null; // no claims, or a domain with mixed prefixes
   return [...prefixes][0];
-}
-
-/**
- * Next unused `<stem><n>` id, given every id already in use.
- *
- * Takes the max sequence already used for the stem and adds one, rather than
- * counting: ids are never reused, so a deleted `S3` does not come back and
- * collide with the `S3` some consumer already cached. The stem is anchored, so
- * stem `E` does not swallow `IE7` or `CE1`.
- */
-export function nextSequentialId(
-  stem: string,
-  existingIds: readonly string[],
-): string {
-  const pattern = new RegExp(`^${stem}(\\d+)$`);
-  let max = 0;
-  for (const id of existingIds) {
-    const m = pattern.exec(id);
-    if (m) max = Math.max(max, Number(m[1]));
-  }
-  return `${stem}${max + 1}`;
 }
 
 /** Next free id for a claim of this kind in this domain. */

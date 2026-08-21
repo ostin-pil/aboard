@@ -10,7 +10,6 @@ import {
   DossierPayload,
   ProposalEnvelope,
   inferDomainPrefix,
-  nextSequentialId,
   mintClaimId,
   buildClaim,
   buildEdge,
@@ -469,23 +468,6 @@ const validEdge = {
 // takes it separately and stores it on the edge.
 const EDGE_RATIONALE = "r > g compounds wealth stocks faster than the wage bill grows.";
 
-describe("nextSequentialId", () => {
-  it("takes the max for the stem and adds one", () => {
-    expect(nextSequentialId("E", ["E1", "E12", "E3"])).toBe("E13");
-  });
-
-  it("starts at 1 for an unused stem", () => {
-    expect(nextSequentialId("CE", [])).toBe("CE1");
-  });
-
-  // Anchoring matters: stem "E" must not swallow "IE7" or "CE1", or the
-  // democratic_backsliding edge sequence would leap past ids it does not own.
-  it("anchors the stem so one prefix does not consume another's ids", () => {
-    expect(nextSequentialId("E", ["E1", "IE7", "ECE2", "CE3"])).toBe("E2");
-    expect(nextSequentialId("CE", ["ECE2", "CE3"])).toBe("CE4");
-  });
-});
-
 describe("EdgePayload", () => {
   it("accepts a well-formed edge", () => {
     expect(EdgePayload.safeParse(validEdge).success).toBe(true);
@@ -647,6 +629,57 @@ describe("appendEdgeToYaml", () => {
       expect(list).toHaveLength(1);
       expect(list[0].id).toBe("IE8");
     }
+  });
+
+  // E15. The guard was `trimmed === "[]"`, true of one spelling of an empty
+  // file and false of every other. Each case below took the append branch and
+  // produced a flow sequence followed by a block sequence, which is not YAML —
+  // `YAML.parse` throws, so the assertion is that it parses at all.
+  it("starts a fresh list from an empty file however it is spelled", () => {
+    if (!built.ok) throw new Error("fixture");
+    const spellings = [
+      "[] # reserved for cross-domain edges",
+      "# reserved for cross-domain edges\n[]",
+      "# no edges in this domain yet",
+      "[]\n",
+      "\n\n[]  \n\n",
+    ];
+    for (const empty of spellings) {
+      const merged = appendEdgeToYaml(empty, built.edge);
+      const list = YAML.parse(merged);
+      expect(Array.isArray(list), `not a list for ${JSON.stringify(empty)}`).toBe(true);
+      expect(list).toHaveLength(1);
+      expect(list[0].id).toBe("IE8");
+      expect(Edge.safeParse(list[0]).success).toBe(true);
+    }
+  });
+
+  it("keeps the note an empty file carried when the first edge lands", () => {
+    if (!built.ok) throw new Error("fixture");
+    // The comment is the author's record of what the file is for. Rewriting the
+    // file to hold the first edge is not a reason to drop it, and a silent drop
+    // is one a PR reviewer would have to catch from memory.
+    for (const empty of [
+      "[] # reserved for cross-domain edges",
+      "# reserved for cross-domain edges\n[]",
+    ]) {
+      const merged = appendEdgeToYaml(empty, built.edge);
+      expect(merged).toContain("reserved for cross-domain edges");
+      expect(YAML.parse(merged)).toHaveLength(1);
+    }
+  });
+
+  it("appends to a populated file that also carries comments", () => {
+    if (!built.ok) throw new Error("fixture");
+    // The append branch is verbatim-preserving, so a comment anywhere in a
+    // non-empty file rides along untouched.
+    const commented = `# edges for inequality\n${existing}`;
+    const merged = appendEdgeToYaml(commented, built.edge);
+    expect(merged).toContain("# edges for inequality");
+    const list = YAML.parse(merged);
+    expect(list).toHaveLength(2);
+    expect(list[0].id).toBe("IE1");
+    expect(list[1].id).toBe("IE8");
   });
 
   it("omits an empty sources line for a rationale-only edge", () => {

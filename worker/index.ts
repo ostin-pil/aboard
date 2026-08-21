@@ -1028,6 +1028,15 @@ export async function route(request: Request, env: Env): Promise<Response> {
   // Resolved at most once per request, and only if something asks.
   const credential = credentialOnce(env, request);
 
+  // No OPTIONS branch and no CORS headers, deliberately. Every other endpoint
+  // here is a read that a browser page might legitimately want cross-origin,
+  // and each sets `Access-Control-Allow-Origin: *` for that reason. This one is
+  // a write behind a Bearer token, so the only caller that could benefit from a
+  // preflight is a browser page holding a write credential — and a write
+  // credential in a page is a credential already lost. Agents call it from
+  // servers, where CORS does not apply. Adding the preflight would widen the
+  // reachable set for no caller that exists; if one ever does, the decision to
+  // revisit is this comment.
   if (pathname === "/api/proposals") {
     return handleProposal(request, env, credential);
   }
