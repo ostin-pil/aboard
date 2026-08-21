@@ -26,6 +26,8 @@ import {
   claimToMarkdown,
   claimPath,
   appendEdgeToYaml,
+  edgeIndex,
+  relationKey,
   appendPredictionToForecast,
   dossierToYaml,
   dossierPath,
@@ -432,6 +434,10 @@ const CLAIM_IDS_BY_DOMAIN = new Map<string, readonly string[]>([
   ["epistack_cases", ["ECS1", "ECM1", "ECL1"]],
 ]);
 const ALL_EDGE_IDS = ["E1", "E12", "IE1", "IE7", "ECE1", "ECE2", "CE1", "CE3"];
+// relationKey → the edge already asserting it. Empty for the cases that are
+// about something else, so an unrelated assertion never trips the duplicate
+// refusal; the refusal has its own block below.
+const NO_RELATIONS = new Map<string, string>();
 
 const validEdge = {
   from: "IM1",
@@ -471,6 +477,7 @@ describe("buildEdge", () => {
     claimDomains: CLAIM_DOMAINS,
     claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
     allEdgeIds: ALL_EDGE_IDS,
+    existingRelations: NO_RELATIONS,
   };
 
   it("mints an intra-domain id on the domain's prefix and targets its edges.yaml", () => {
@@ -565,6 +572,134 @@ describe("buildEdge", () => {
   });
 });
 
+describe("buildEdge: duplicate-relation refusal", () => {
+  const relationsHolding = (from: string, kind: string, to: string, id: string) =>
+    new Map([[relationKey(from, kind, to), id]]);
+
+  it("refuses a relation the graph already asserts, naming the edge that holds it", () => {
+    const built = buildEdge({
+      payload: EdgePayload.parse(validEdge),
+      rationale: EDGE_RATIONALE,
+      claimDomains: CLAIM_DOMAINS,
+      claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
+      allEdgeIds: ALL_EDGE_IDS,
+      existingRelations: relationsHolding(validEdge.from, validEdge.kind, validEdge.to, "IE4"),
+    });
+    expect(built.ok).toBe(false);
+    if (built.ok) throw new Error("expected a refusal");
+    expect(built.duplicateOf?.existingId).toBe("IE4");
+    expect(built.error).toContain("IE4");
+  });
+
+  // Direction is part of the relation. `A causes B` and `B causes A` are
+  // different claims and the second is a contradiction, which belongs in front
+  // of a reviewer rather than swallowed by the API.
+  it("allows the reverse direction", () => {
+    const built = buildEdge({
+      payload: EdgePayload.parse({ ...validEdge, from: validEdge.to, to: validEdge.from }),
+      rationale: EDGE_RATIONALE,
+      claimDomains: CLAIM_DOMAINS,
+      claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
+      allEdgeIds: ALL_EDGE_IDS,
+      existingRelations: relationsHolding(validEdge.from, validEdge.kind, validEdge.to, "IE4"),
+    });
+    expect(built.ok).toBe(true);
+  });
+
+  it("allows the same endpoints under a different kind", () => {
+    const built = buildEdge({
+      payload: EdgePayload.parse({ ...validEdge, kind: "moderates" }),
+      rationale: EDGE_RATIONALE,
+      claimDomains: CLAIM_DOMAINS,
+      claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
+      allEdgeIds: ALL_EDGE_IDS,
+      existingRelations: relationsHolding(validEdge.from, "causes", validEdge.to, "IE4"),
+    });
+    expect(built.ok).toBe(true);
+  });
+
+  // The refusal comes before minting. `nextSequentialId` takes the max and adds
+  // one, so an id handed to a proposal that is then refused is an id nothing
+  // reuses — the sequence grows a hole for every duplicate someone retries.
+  it("does not burn an id on a proposal it refuses", () => {
+    const relations = relationsHolding(validEdge.from, validEdge.kind, validEdge.to, "IE4");
+    const refused = buildEdge({
+      payload: EdgePayload.parse(validEdge),
+      rationale: EDGE_RATIONALE,
+      claimDomains: CLAIM_DOMAINS,
+      claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
+      allEdgeIds: ALL_EDGE_IDS,
+      existingRelations: relations,
+    });
+    expect(refused.ok).toBe(false);
+
+    const next = buildEdge({
+      payload: EdgePayload.parse({ ...validEdge, kind: "moderates" }),
+      rationale: EDGE_RATIONALE,
+      claimDomains: CLAIM_DOMAINS,
+      claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
+      allEdgeIds: ALL_EDGE_IDS,
+      existingRelations: relations,
+    });
+    if (!next.ok) throw new Error("fixture");
+    expect(next.edge.id).toBe("IE8");
+  });
+});
+
+describe("edgeIndex", () => {
+  const file = [
+    "- id: IE1",
+    "  fromId: IM1",
+    "  toId: IS1",
+    "  kind: causes",
+    "  strength: 0.7",
+    "  rationale: An existing edge.",
+    "- id: IE2",
+    "  fromId: IM1",
+    "  toId: IS1",
+    "  kind: moderates",
+    "  strength: 0.4",
+    "  rationale: A different relation over the same pair.",
+  ].join("\n");
+
+  it("collects every id in the file", () => {
+    expect([...edgeIndex(file).ids]).toEqual(["IE1", "IE2"]);
+  });
+
+  it("keys relations on direction and kind together", () => {
+    const { relations } = edgeIndex(file);
+    expect(relations.get(relationKey("IM1", "causes", "IS1"))).toBe("IE1");
+    expect(relations.get(relationKey("IM1", "moderates", "IS1"))).toBe("IE2");
+    expect(relations.get(relationKey("IS1", "causes", "IM1"))).toBeUndefined();
+  });
+
+  it("reads an empty file as an empty index, however it is spelled", () => {
+    for (const empty of ["", "[]", "[] # reserved", "# nothing yet"]) {
+      const idx = edgeIndex(empty);
+      expect(idx.ids.size).toBe(0);
+      expect(idx.relations.size).toBe(0);
+    }
+  });
+
+  // Tolerant on purpose: the caller is about to append to this file, and the
+  // loader rejects it either way with an error that names the file. Throwing a
+  // YAML error out of the proposal would replace a legible downstream failure
+  // with an illegible upstream one.
+  it("reads an unparseable or non-list file as an empty index rather than throwing", () => {
+    for (const junk of ["- id: [unclosed", "kind: not-a-list", "42"]) {
+      expect(() => edgeIndex(junk)).not.toThrow();
+      expect(edgeIndex(junk).ids.size).toBe(0);
+    }
+  });
+
+  it("skips entries missing the fields a relation needs, keeping their ids", () => {
+    const partial = ["- id: IE9", "  fromId: IM1", "  kind: causes"].join("\n");
+    const idx = edgeIndex(partial);
+    expect(idx.ids.has("IE9")).toBe(true);
+    expect(idx.relations.size).toBe(0);
+  });
+});
+
 describe("appendEdgeToYaml", () => {
   const built = buildEdge({
     payload: EdgePayload.parse(validEdge),
@@ -572,6 +707,7 @@ describe("appendEdgeToYaml", () => {
     claimDomains: CLAIM_DOMAINS,
     claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
     allEdgeIds: ALL_EDGE_IDS,
+    existingRelations: NO_RELATIONS,
   });
 
   const existing = [
@@ -674,6 +810,7 @@ describe("appendEdgeToYaml", () => {
       claimDomains: CLAIM_DOMAINS,
       claimIdsByDomain: CLAIM_IDS_BY_DOMAIN,
       allEdgeIds: ALL_EDGE_IDS,
+      existingRelations: NO_RELATIONS,
     });
     if (!withSrc.ok) throw new Error("fixture");
     const list = YAML.parse(appendEdgeToYaml("", withSrc.edge));

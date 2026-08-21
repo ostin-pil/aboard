@@ -126,6 +126,79 @@ function edgeYamlListItem(edge: Edge): string {
 }
 
 /**
+ * The key a relation is identified by: its two endpoints and its kind.
+ *
+ * An edge's *id* is bookkeeping; its *relation* is the claim it makes. Two
+ * edges with different ids and the same `(fromId, kind, toId)` say the same
+ * thing twice, which is the duplicate the write path refuses.
+ *
+ * Direction is part of the key. `A causes B` and `B causes A` are different
+ * claims, and the second is not a duplicate of the first — it is a
+ * contradiction, and one a reviewer should see rather than one the API should
+ * swallow.
+ */
+export function relationKey(fromId: string, kind: string, toId: string): string {
+  return `${fromId}\u0000${kind}\u0000${toId}`;
+}
+
+/** What an `edges.yaml` already holds, for the checks the write path runs. */
+export type EdgeIndex = {
+  /** Every edge id in the file. */
+  ids: ReadonlySet<string>;
+  /** relationKey → the id of the edge already asserting it. */
+  relations: ReadonlyMap<string, string>;
+};
+
+/**
+ * Read an edges file into the two things the write path needs to check.
+ *
+ * Read from the file at the base ref rather than from `/api/graph`, and that is
+ * the whole point. The Worker mints ids against the *deployed* graph, which
+ * lags `main` by a Cloudflare Workers Builds cycle; inside that window the
+ * graph says `E12` is free while `edges.yaml` on the base branch already holds
+ * it. Session 51 closed exactly this window for claims and dossiers, where the
+ * collision surfaces as a GitHub 422 on a create. An edge appends to a file
+ * that already exists, so it never reaches the create path and never got the
+ * treatment — the duplicate id rode into the PR and failed CI's integrity
+ * check, on the reviewer's time rather than the caller's.
+ *
+ * Tolerant by design: a file it cannot parse, or one holding something other
+ * than a list, yields an empty index rather than throwing. The caller is about
+ * to append to that file and the loader will reject it either way; failing the
+ * proposal with a YAML error the caller cannot act on would trade a legible
+ * downstream failure for an illegible upstream one.
+ */
+export function edgeIndex(existing: string): EdgeIndex {
+  const ids = new Set<string>();
+  const relations = new Map<string, string>();
+
+  let parsed: unknown;
+  try {
+    parsed = YAML.parse(existing);
+  } catch {
+    return { ids, relations };
+  }
+  if (!Array.isArray(parsed)) return { ids, relations };
+
+  for (const entry of parsed) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const e = entry as Record<string, unknown>;
+    const id = typeof e.id === "string" ? e.id : null;
+    if (id) ids.add(id);
+    const { fromId, toId, kind } = e;
+    if (typeof fromId !== "string" || typeof toId !== "string" || typeof kind !== "string") {
+      continue;
+    }
+    const key = relationKey(fromId, kind, toId);
+    // First writer wins, so the id reported to the caller is the one that has
+    // been there longest rather than whichever happened to be last in the file.
+    if (!relations.has(key)) relations.set(key, id ?? "(unnamed edge)");
+  }
+
+  return { ids, relations };
+}
+
+/**
  * Append a prediction to an existing forecast file's `predictions` list,
  * returning the new content.
  *
