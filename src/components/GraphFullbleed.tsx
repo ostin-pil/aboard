@@ -308,7 +308,13 @@ export function GraphFullbleed({ data }: Props) {
               close
             </button>
           </div>
-          <pre tabIndex={0}>{jsonldText}</pre>
+          {/* Focusable on purpose: a scrollable box that keyboard users cannot
+              reach is WCAG 2.1.1, and the export is long enough to scroll.
+              `role="region"` with a name is what makes the tab stop legible
+              rather than a bare focusable div. */}
+          <pre tabIndex={0} role="region" aria-label="JSON-LD export">
+            {jsonldText}
+          </pre>
           <div className="foot">
             <button className="btn-mono" onClick={copy}>
               {copyState === "copied"

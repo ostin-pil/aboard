@@ -79,6 +79,11 @@ export function ModalDialog({
   return (
     <div
       className={backdropClassName}
+      // Presentational, and truthfully so: the backdrop carries no content and
+      // no state. Click-outside-to-close is a pointer affordance on top of the
+      // keyboard one, which is Escape, handled in the effect above — so this is
+      // not a control missing its keyboard equivalent.
+      role="presentation"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}

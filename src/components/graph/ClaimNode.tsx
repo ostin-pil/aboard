@@ -46,6 +46,12 @@ function ClaimNodeImpl({ id, data, selected }: NodeProps<ClaimNodeT>) {
   const onMouseLeave = () => ctx.setFocusId(null);
 
   return (
+    // The two rules below are right, and the fix is a feature rather than an
+    // edit: a node is reachable today only by pointer. React Flow already makes
+    // its own node *wrapper* focusable, so the handler would have to move there
+    // or this div would add a second tab stop per node — thirty-odd extra stops
+    // across the canvas. Tracked in knowledge/issues.md (2026-08-21).
+    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
       ref={ref}
       className={classes}

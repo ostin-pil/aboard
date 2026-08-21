@@ -184,6 +184,10 @@ export function NodeEditorModal({
         {domainChoice === NEW_DOMAIN && (
           <label className="ag-field">
             <span>new domain</span>
+            {/* eslint-disable jsx-a11y/no-autofocus -- this input does not exist
+                until the user asks for it, so focusing it answers the request
+                rather than stealing focus on arrival, which is the thing the
+                rule is about. */}
             <input
               type="text"
               value={newDomain}
@@ -191,6 +195,7 @@ export function NodeEditorModal({
               placeholder="e.g. climate"
               autoFocus
             />
+            {/* eslint-enable jsx-a11y/no-autofocus */}
           </label>
         )}
       </div>
