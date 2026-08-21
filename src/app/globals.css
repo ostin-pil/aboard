@@ -64,67 +64,130 @@
   color-scheme: light;
 }
 
+/* ------------------------------------------------------------
+   The dark palette, defined once.
+
+   Dark has to be selected two ways: `[data-theme="dark"]` for an explicit
+   choice, and the media query for the default "system" mode, which sets no
+   attribute (see `themeBootstrap` in layout.tsx — it writes the attribute only
+   for an explicit light or dark, so a visitor with JS off still gets their
+   system preference). CSS cannot put a selector and a media condition in one
+   rule, so both blocks are structural and neither can be removed.
+
+   What was removable is each block carrying its own copy of the values: 33
+   tokens written out twice, in two different formats, which is what made
+   reading them against each other hopeless. They now alias the source below
+   and hold no value of their own. `tokens.test.ts` asserts the two alias
+   lists are identical, so a dropped line is caught as well as a changed one.
+   ------------------------------------------------------------ */
+:root {
+  --dark-bg: #171614;
+  --dark-fg: #f5f5f4;
+  --dark-muted: #a8a29e;
+  --dark-muted-2: #78716c;
+  --dark-line: #292524;
+  --dark-line-2: #44403c;
+  --dark-hair: #1c1b18;
+  --dark-paper: #1c1b18;
+  --dark-paper-2: #201f1c;
+  --dark-sym-fg: #fca5a5;
+  --dark-sym-bg: #2a1414;
+  --dark-sym-bd: #7f1d1d;
+  --dark-mech-fg: #fcd34d;
+  --dark-mech-bg: #2a1f0a;
+  --dark-mech-bd: #78350f;
+  --dark-lev-fg: #6ee7b7;
+  --dark-lev-bg: #0d2018;
+  --dark-lev-bd: #064e3b;
+  --dark-pro-fg: #6ee7b7;
+  --dark-pro-bg: #0d2018;
+  --dark-pro-bd: #047857;
+  --dark-con-fg: #fca5a5;
+  --dark-con-bg: #2a1414;
+  --dark-con-bd: #b91c1c;
+  --dark-edge-causes: #fcd34d;
+  --dark-edge-moderates: #fcd34d;
+  --dark-edge-reduces: #6ee7b7;
+  --dark-edge-evidences: #a5b4fc;
+  --dark-dossier-bw: 1px;
+  --dark-grid-dot: #292524;
+  --dark-grid-dot-alpha: .55;
+  --dark-shadow-pop: 0 6px 18px -6px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.03);
+  --dark-shadow-card: 0 10px 24px -10px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.03);
+}
+
 :root[data-theme="dark"] {
-  --bg: #171614;
-  --fg: #f5f5f4;
-  --muted: #a8a29e;
-  --muted-2: #78716c;
-  --line: #292524;
-  --line-2: #44403c;
-  --hair: #1c1b18;
-  --paper: #1c1b18;
-  --paper-2: #201f1c;
-
-  --sym-fg: #fca5a5;
-  --sym-bg: #2a1414;
-  --sym-bd: #7f1d1d;
-  --mech-fg: #fcd34d;
-  --mech-bg: #2a1f0a;
-  --mech-bd: #78350f;
-  --lev-fg:  #6ee7b7;
-  --lev-bg:  #0d2018;
-  --lev-bd:  #064e3b;
-
-  --pro-fg: #6ee7b7;
-  --pro-bg: #0d2018;
-  --pro-bd: #047857;
-  --con-fg: #fca5a5;
-  --con-bg: #2a1414;
-  --con-bd: #b91c1c;
-
-  --edge-causes:    #fcd34d;
-  --edge-moderates: #fcd34d;
-  --edge-reduces:   #6ee7b7;
-  --edge-evidences: #a5b4fc;
-
-  --dossier-bw: 1px;
-
-  --grid-dot: #292524;
-  --grid-dot-alpha: .55;
-
-  --shadow-pop: 0 6px 18px -6px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.03);
-  --shadow-card: 0 10px 24px -10px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.03);
-
+  --bg: var(--dark-bg);
+  --fg: var(--dark-fg);
+  --muted: var(--dark-muted);
+  --muted-2: var(--dark-muted-2);
+  --line: var(--dark-line);
+  --line-2: var(--dark-line-2);
+  --hair: var(--dark-hair);
+  --paper: var(--dark-paper);
+  --paper-2: var(--dark-paper-2);
+  --sym-fg: var(--dark-sym-fg);
+  --sym-bg: var(--dark-sym-bg);
+  --sym-bd: var(--dark-sym-bd);
+  --mech-fg: var(--dark-mech-fg);
+  --mech-bg: var(--dark-mech-bg);
+  --mech-bd: var(--dark-mech-bd);
+  --lev-fg: var(--dark-lev-fg);
+  --lev-bg: var(--dark-lev-bg);
+  --lev-bd: var(--dark-lev-bd);
+  --pro-fg: var(--dark-pro-fg);
+  --pro-bg: var(--dark-pro-bg);
+  --pro-bd: var(--dark-pro-bd);
+  --con-fg: var(--dark-con-fg);
+  --con-bg: var(--dark-con-bg);
+  --con-bd: var(--dark-con-bd);
+  --edge-causes: var(--dark-edge-causes);
+  --edge-moderates: var(--dark-edge-moderates);
+  --edge-reduces: var(--dark-edge-reduces);
+  --edge-evidences: var(--dark-edge-evidences);
+  --dossier-bw: var(--dark-dossier-bw);
+  --grid-dot: var(--dark-grid-dot);
+  --grid-dot-alpha: var(--dark-grid-dot-alpha);
+  --shadow-pop: var(--dark-shadow-pop);
+  --shadow-card: var(--dark-shadow-card);
   color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="dark"]) {
-    --bg: #171614; --fg: #f5f5f4;
-    --muted: #a8a29e; --muted-2: #78716c;
-    --line: #292524; --line-2: #44403c;
-    --hair: #1c1b18; --paper: #1c1b18; --paper-2: #201f1c;
-    --sym-fg: #fca5a5; --sym-bg: #2a1414; --sym-bd: #7f1d1d;
-    --mech-fg: #fcd34d; --mech-bg: #2a1f0a; --mech-bd: #78350f;
-    --lev-fg: #6ee7b7;  --lev-bg: #0d2018;  --lev-bd: #064e3b;
-    --pro-fg: #6ee7b7; --pro-bg: #0d2018; --pro-bd: #047857;
-    --con-fg: #fca5a5; --con-bg: #2a1414; --con-bd: #b91c1c;
-    --edge-causes: #fcd34d; --edge-moderates: #fcd34d; --edge-reduces: #6ee7b7;
-    --edge-evidences: #a5b4fc;
-    --dossier-bw: 1px;
-    --grid-dot: #292524; --grid-dot-alpha: .55;
-    --shadow-pop: 0 6px 18px -6px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.03);
-    --shadow-card: 0 10px 24px -10px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.03);
+    --bg: var(--dark-bg);
+    --fg: var(--dark-fg);
+    --muted: var(--dark-muted);
+    --muted-2: var(--dark-muted-2);
+    --line: var(--dark-line);
+    --line-2: var(--dark-line-2);
+    --hair: var(--dark-hair);
+    --paper: var(--dark-paper);
+    --paper-2: var(--dark-paper-2);
+    --sym-fg: var(--dark-sym-fg);
+    --sym-bg: var(--dark-sym-bg);
+    --sym-bd: var(--dark-sym-bd);
+    --mech-fg: var(--dark-mech-fg);
+    --mech-bg: var(--dark-mech-bg);
+    --mech-bd: var(--dark-mech-bd);
+    --lev-fg: var(--dark-lev-fg);
+    --lev-bg: var(--dark-lev-bg);
+    --lev-bd: var(--dark-lev-bd);
+    --pro-fg: var(--dark-pro-fg);
+    --pro-bg: var(--dark-pro-bg);
+    --pro-bd: var(--dark-pro-bd);
+    --con-fg: var(--dark-con-fg);
+    --con-bg: var(--dark-con-bg);
+    --con-bd: var(--dark-con-bd);
+    --edge-causes: var(--dark-edge-causes);
+    --edge-moderates: var(--dark-edge-moderates);
+    --edge-reduces: var(--dark-edge-reduces);
+    --edge-evidences: var(--dark-edge-evidences);
+    --dossier-bw: var(--dark-dossier-bw);
+    --grid-dot: var(--dark-grid-dot);
+    --grid-dot-alpha: var(--dark-grid-dot-alpha);
+    --shadow-pop: var(--dark-shadow-pop);
+    --shadow-card: var(--dark-shadow-card);
     color-scheme: dark;
   }
 }

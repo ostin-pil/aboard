@@ -20,16 +20,8 @@ const css = readFileSync(
   "utf8"
 );
 
-/**
- * Declarations from one rule, by selector. The token blocks contain no nested
- * braces, so the first `}` after the selector ends the rule — enough of a
- * parser for this job, and it fails loudly (empty map) rather than quietly if
- * that stops being true.
- */
-function declarations(selector: string): Map<string, string> {
-  const start = css.indexOf(`${selector} {`);
-  expect(start, `selector ${selector} not found in globals.css`).toBeGreaterThan(-1);
-  const body = css.slice(start + selector.length + 2, css.indexOf("}", start));
+/** Custom-property declarations in source order, from one rule body. */
+function parse(body: string): Map<string, string> {
   const out = new Map<string, string>();
   for (const line of body.split("\n")) {
     const m = /^\s*(--[\w-]+)\s*:\s*([^;]+);/.exec(line);
@@ -38,8 +30,50 @@ function declarations(selector: string): Map<string, string> {
   return out;
 }
 
-const light = declarations(":root");
-const dark = declarations(':root[data-theme="dark"]');
+/** The body of the `nth` rule opened by `opener`, brace-matched so a nested
+ *  at-rule cannot truncate it. */
+function ruleBody(opener: string, nth = 0): string {
+  let from = 0;
+  for (let i = 0; i <= nth; i++) {
+    const at = css.indexOf(opener, from);
+    expect(at, `rule ${nth} of \`${opener}\` not found in globals.css`).toBeGreaterThan(-1);
+    from = at + opener.length;
+    if (i < nth) continue;
+    let depth = 1;
+    for (let j = from; j < css.length; j++) {
+      if (css[j] === "{") depth++;
+      else if (css[j] === "}" && --depth === 0) return css.slice(from, j);
+    }
+  }
+  throw new Error(`unterminated rule: ${opener}`);
+}
+
+// Three `:root` blocks now: the light palette, then the dark palette's source
+// values, then whatever comes after. The order is load-bearing here and is what
+// the dark-palette suite below pins.
+const light = parse(ruleBody(":root {", 0));
+const darkSource = parse(ruleBody(":root {", 1));
+const darkAlias = parse(ruleBody(':root[data-theme="dark"] {'));
+
+/** The system-mode block: the one `prefers-color-scheme` at-rule that carries the palette. */
+const systemAlias = (() => {
+  for (let n = 0; n < 8; n++) {
+    const body = ruleBody("@media (prefers-color-scheme: dark) {", n);
+    if (body.includes("--bg:")) return parse(body);
+  }
+  throw new Error("no prefers-color-scheme block carries the palette");
+})();
+
+/** Resolve one level of `var(--dark-x)` against the source block. */
+function resolved(aliases: Map<string, string>, prop: string): string | undefined {
+  const v = aliases.get(prop);
+  const m = v && /^var\((--[\w-]+)\)$/.exec(v);
+  return m ? darkSource.get(m[1]) : v;
+}
+
+const dark = new Map(
+  [...darkAlias.keys()].map((k) => [k, resolved(darkAlias, k) ?? ""] as const)
+);
 
 describe("tokens mirror globals.css", () => {
   it("parses a palette out of globals.css at all", () => {
@@ -108,5 +142,56 @@ describe("the OG cards carry no colour of their own", () => {
   ])("%s has no hex literal", (rel) => {
     const src = readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
     expect(src.match(/#[0-9a-fA-F]{3,8}\b/g)).toBeNull();
+  });
+});
+
+describe("the two dark blocks stay in step", () => {
+  /**
+   * Dark is selected two ways — the `data-theme` attribute and the system media
+   * query — and CSS cannot express both in one rule, so there will always be two
+   * blocks. Until this session they each carried their own copy of all 33
+   * values, in two different formats; they now alias a single source. These
+   * cases are what stops the aliasing from rotting back into duplication.
+   */
+  it("declares a palette in every block it parsed", () => {
+    // Vacuous-pass guard: an empty map would make every case below trivially true.
+    expect(darkSource.size).toBe(33);
+    expect(darkAlias.size).toBe(33);
+    expect(systemAlias.size).toBe(33);
+  });
+
+  it("the attribute block and the system block alias identically", () => {
+    // The whole point. A value changed in one and not the other used to be
+    // invisible; a line dropped from one is caught here too, because this
+    // compares the full declaration list rather than the values it can see.
+    expect([...systemAlias]).toEqual([...darkAlias]);
+  });
+
+  it("neither block holds a value of its own", () => {
+    for (const [prop, value] of darkAlias) {
+      expect(value, `${prop} should alias the source, not restate it`).toMatch(
+        /^var\(--dark-[\w-]+\)$/
+      );
+    }
+  });
+
+  it("every alias resolves to a source token that exists", () => {
+    for (const prop of darkAlias.keys()) {
+      expect(resolved(darkAlias, prop), `${prop} resolves to nothing`).toBeDefined();
+    }
+  });
+
+  it("every source token is aliased, so none is dead", () => {
+    for (const src of darkSource.keys()) {
+      expect(darkAlias.has(`--${src.slice("--dark-".length)}`), `${src} is aliased by nobody`).toBe(true);
+    }
+  });
+
+  it("dark overrides nothing light does not define", () => {
+    // A dark-only token would be unreachable in light mode and is almost always
+    // a typo in the token name rather than an intention.
+    for (const prop of darkAlias.keys()) {
+      expect(light.has(prop), `${prop} is set in dark but never in light`).toBe(true);
+    }
   });
 });
