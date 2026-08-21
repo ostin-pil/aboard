@@ -10,6 +10,7 @@ import {
 } from "@xyflow/react";
 import { EDGE_ARROWHEAD } from "./EdgeMarkers";
 import { useGraphContext } from "./GraphContext";
+import { edgeHasPopover } from "./types";
 import type { ClaimEdge as ClaimEdgeT } from "./types";
 
 const connectingSelector = (c: { inProgress: boolean }) => c.inProgress;
@@ -47,7 +48,7 @@ function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
   } = props;
   const ctx = useGraphContext();
   const isConnecting = useConnection(connectingSelector);
-  const labelRef = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLButtonElement>(null);
   const hitRef = useRef<SVGPathElement>(null);
 
   const [edgePath, labelX, labelY] = getBezierPath({
@@ -60,7 +61,7 @@ function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
   });
 
   const kind = data?.kind ?? "causes";
-  const hasPopover = !!(data?.rationale || (data?.sources && data.sources.length > 0));
+  const hasPopover = edgeHasPopover(props);
   const showLabel = ctx.mode === "fullbleed";
   const isNeighborhood =
     ctx.focusId !== null && (ctx.isNeighbor(source) && ctx.isNeighbor(target));
@@ -155,13 +156,17 @@ function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
       )}
       {showLabel && (
         <EdgeLabelRenderer>
-          {/* Same gap as ClaimNode, and the same reason it is not fixed here:
-              the edge label is pointer-only, and giving it a tab stop of its own
-              multiplies stops across the canvas rather than solving keyboard
-              navigation. Tracked in knowledge/issues.md (2026-08-21). */}
-          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
-          <div
+          {/* A real button, so the element that takes a click says so, and out
+              of the tab order, because the edge's own wrapper is already a tab
+              stop and a second one per edge would double the canvas's stops for
+              nothing. Keyboard reaches this same action through Enter on the
+              edge; `data-edge-id` is how the canvas's listeners find the label
+              again, since EdgeLabelRenderer portals it out of the edge's <g>. */}
+          <button
+            type="button"
+            tabIndex={-1}
             ref={labelRef}
+            data-edge-id={id}
             className={`ag-edge-label ag-${kind}${data?.crossDomain ? " ag-cross-domain" : ""}${
               hasPopover ? " has-rationale" : ""
             }${outOfDomain ? " ag-out-of-domain" : ""}${isDimmed ? " is-dimmed" : ""}`}
@@ -175,7 +180,7 @@ function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
             onClick={onClick}
           >
             {kind}
-          </div>
+          </button>
         </EdgeLabelRenderer>
       )}
     </>

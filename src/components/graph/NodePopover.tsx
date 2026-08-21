@@ -9,9 +9,19 @@ type Props = {
   anchor: HTMLElement;
   containerRef: React.RefObject<HTMLDivElement | null>;
   onClose: () => void;
+  /**
+   * Set when the popover was opened by pressing Enter on the node. The panel
+   * then takes focus, because it renders after every node in the DOM: left
+   * where it is, its "open detail" link sits thirty tab stops away from the
+   * node that opened it. The canvas returns focus to that node on Escape.
+   * A pointer-opened popover leaves focus alone. Named `takeFocus` rather than
+   * `autoFocus` because it is not the DOM attribute: focus moves when the panel
+   * opens on a keypress, never when it opens on arrival.
+   */
+  takeFocus?: boolean;
 };
 
-export function NodePopover({ node, anchor, containerRef, onClose }: Props) {
+export function NodePopover({ node, anchor, containerRef, onClose, takeFocus }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
@@ -31,6 +41,10 @@ export function NodePopover({ node, anchor, containerRef, onClose }: Props) {
   }, [anchor, containerRef]);
 
   useEffect(() => {
+    if (takeFocus) ref.current?.focus();
+  }, [takeFocus]);
+
+  useEffect(() => {
     function handler(e: MouseEvent) {
       if (!ref.current) return;
       const target = e.target as Node | null;
@@ -47,6 +61,12 @@ export function NodePopover({ node, anchor, containerRef, onClose }: Props) {
     <div
       ref={ref}
       className="ag-popover"
+      // A non-modal dialog: it takes focus when opened from the keyboard and
+      // Escape closes it, but Tab leaves it rather than being trapped. The
+      // name is the claim id, which is what the node announced a moment ago.
+      role="dialog"
+      aria-label={`${id} details`}
+      tabIndex={-1}
       style={{
         position: "absolute",
         left: pos?.left ?? -9999,

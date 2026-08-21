@@ -24,7 +24,18 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  canvasAriaLabels,
+  withEdgeAriaLabels,
+  withNodeAriaLabels,
+} from "./aria-labels";
 import { BulkActionsToolbar } from "./BulkActionsToolbar";
+import {
+  edgeAnchorElement,
+  focusLeft,
+  isNativeActivationTarget,
+  resolveCanvasTarget,
+} from "./canvas-keys";
 import { ClaimEdge as ClaimEdgeComp } from "./ClaimEdge";
 import { ClaimNode as ClaimNodeComp } from "./ClaimNode";
 import { DomainGroupNode as DomainGroupNodeComp } from "./DomainGroupNode";
@@ -61,6 +72,7 @@ import { useBulkActions } from "./use-bulk-actions";
 import { useGraphEditing } from "./use-graph-editing";
 import { useGraphHistory } from "./use-graph-history";
 import {
+  edgeHasPopover,
   isClaimNode,
   isGroupNode,
   type ClaimEdge,
@@ -123,11 +135,19 @@ function ClaimGraphRFInner({
   const [nodes, setNodes, onNodesChange] = useNodesState<GraphNode>(initial.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<ClaimEdge>(initial.edges);
   const [focusId, setFocusId] = useState<string | null>(null);
-  const [popoverNode, setPopoverNode] = useState<{ node: ClaimNode; anchor: HTMLElement } | null>(null);
+  // `viaKeyboard` and `origin` exist for the same reason: a popover opened from
+  // the keyboard has to hand focus back to what opened it, and for an edge that
+  // is the edge's own wrapper rather than the label the panel is anchored to.
+  const [popoverNode, setPopoverNode] = useState<{
+    node: ClaimNode;
+    anchor: HTMLElement;
+    viaKeyboard: boolean;
+  } | null>(null);
   const [popoverEdge, setPopoverEdge] = useState<
     | {
         edge: ClaimEdge;
         anchor: HTMLElement | SVGElement;
+        origin?: HTMLElement | SVGElement;
         cursor?: { clientX: number; clientY: number };
       }
     | null
@@ -402,6 +422,59 @@ function ClaimGraphRFInner({
     setEdges((es) => applyEdgeDomainFlags(es, inDomain));
   }, [activeDomain, setNodes, setEdges]);
 
+  // Opening a claim's detail popover, from either input. The anchor is React
+  // Flow's node wrapper rather than the div `ClaimNode` renders: the wrapper is
+  // what holds the tab stop and therefore what focus must return to, and the
+  // two boxes are the same rectangle anyway.
+  const openNodePopoverAt = useCallback(
+    (id: string, anchor: HTMLElement, viaKeyboard: boolean) => {
+      const live = nodesRef.current.find((n) => n.id === id);
+      if (live && isClaimNode(live)) setPopoverNode({ node: live, anchor, viaKeyboard });
+    },
+    []
+  );
+
+  // Closing them, with the focus bookkeeping Escape needs. Returns true when it
+  // moved focus, so the caller does not then move it somewhere else.
+  const dismissPopovers = useCallback(
+    (restoreFocus: boolean): boolean => {
+      const origin = popoverNode?.viaKeyboard
+        ? popoverNode.anchor
+        : popoverEdge?.origin;
+      setPopoverNode(null);
+      setPopoverEdge(null);
+      if (!restoreFocus || !origin || !origin.isConnected) return false;
+      origin.focus();
+      return true;
+    },
+    [popoverNode, popoverEdge]
+  );
+
+  // A modifier click is React Flow's multi-select gesture. Let it through
+  // untouched rather than opening a popover over the selection being built —
+  // and without preventDefault or stopPropagation, which swallow the event
+  // before selection runs. This prop must also stay present whatever it does:
+  // @xyflow/react v12 only wires React's click event for nodes when it is
+  // given, and without it clicks on interactive children inside a custom node
+  // (the DomainGroupNode header button, even with `nodrag nopan`) are silently
+  // dropped. Removing it re-introduces the regression bisected on 2026-05-20.
+  const onNodeClick = useCallback(
+    (e: React.MouseEvent, node: GraphNode) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+      if (!isClaimNode(node)) return;
+      openNodePopoverAt(node.id, e.currentTarget as HTMLElement, false);
+    },
+    [openNodePopoverAt]
+  );
+
+  // The neighbourhood highlight. Group nodes are excluded because no edge ever
+  // names one, so `isNeighbor` answers false for every claim and hovering a
+  // group would dim the whole canvas.
+  const onNodeMouseEnter = useCallback((_e: React.MouseEvent, node: GraphNode) => {
+    if (isClaimNode(node)) setFocusId(node.id);
+  }, []);
+  const onNodeMouseLeave = useCallback(() => setFocusId(null), []);
+
   // onZoom — track viewport zoom changes.
   const onMoveEnd = useCallback(
     () => {
@@ -476,11 +549,6 @@ function ClaimGraphRFInner({
       editable,
       mode,
       focusId,
-      setFocusId,
-      openNodePopover: (id, anchor) => {
-        const live = nodesRef.current.find((n) => n.id === id);
-        if (live && isClaimNode(live)) setPopoverNode({ node: live, anchor });
-      },
       openEdgePopover: (e, anchor, ev) =>
         setPopoverEdge({ edge: e, anchor, cursor: ev }),
       scheduleCloseEdgePopover,
@@ -530,6 +598,115 @@ function ClaimGraphRFInner({
     };
   }, [rf, mode]);
 
+  /**
+   * Keyboard and focus navigation for the canvas: one listener on the root
+   * rather than handlers on the node and edge components.
+   *
+   * React Flow's own wrappers are the focusable elements, and a keydown does
+   * not reach a child from a focused parent, so a handler beside the old click
+   * handler in `ClaimNode` would never have fired. Its wrapper also already
+   * carries React Flow's `onKeyDown` (Enter and Space select, arrows move a
+   * selected node, Escape unselects), and `node.domAttributes` is spread after
+   * the built-ins, so supplying one there replaces that handler and takes
+   * arrow-key movement with it. Listening on an ancestor runs after React
+   * Flow's and adds to it. See knowledge/issues.md (2026-08-21).
+   *
+   * Native listeners rather than JSX props because this div is not itself an
+   * interactive element and should not claim to be; the events it handles
+   * belong to the nodes and edges inside it.
+   */
+  useEffect(() => {
+    const root = wrapperRef.current;
+    if (!root) return;
+
+    // Focus mirrors hover: on a node it lights the neighbourhood, on an edge it
+    // opens the rationale. That parity is the whole model, and it is why
+    // neither is bound in the components any more.
+    const onFocusIn = (e: FocusEvent) => {
+      if (editorOpenRef.current) return;
+      const t = resolveCanvasTarget(e.target);
+      if (!t) return;
+      if (t.kind === "node") {
+        const node = nodesRef.current.find((n) => n.id === t.id);
+        if (node && isClaimNode(node)) setFocusId(t.id);
+        return;
+      }
+      const edge = edgesRef.current.find((x) => x.id === t.id);
+      if (!edge || !edgeHasPopover(edge)) return;
+      cancelCloseEdgePopover();
+      setPopoverEdge({
+        edge,
+        anchor: edgeAnchorElement(root, t.id, t.el),
+        origin: t.el as HTMLElement | SVGElement,
+      });
+    };
+
+    const onFocusOut = (e: FocusEvent) => {
+      const t = resolveCanvasTarget(e.target);
+      if (!t || !focusLeft(t.el, e.relatedTarget)) return;
+      if (t.kind === "node") setFocusId(null);
+      else scheduleCloseEdgePopover();
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      // An open editor owns the keyboard, Escape included.
+      if (editorOpenRef.current) return;
+
+      if (e.key === "Escape") {
+        // Escape from inside a popover returns focus to what opened it. From
+        // the node or edge itself focus never moved, so there is nothing to
+        // restore and React Flow's own Escape (unselect) still applies.
+        dismissPopovers(resolveCanvasTarget(e.target) === null);
+        return;
+      }
+      if (e.key !== "Enter") return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      // The browser is about to activate a button or a link of its own.
+      if (isNativeActivationTarget(e.target)) return;
+
+      const t = resolveCanvasTarget(e.target);
+      if (!t) return;
+      if (t.kind === "node") {
+        e.preventDefault();
+        openNodePopoverAt(t.id, t.el, true);
+        return;
+      }
+      const edge = edgesRef.current.find((x) => x.id === t.id);
+      if (!edge) return;
+      e.preventDefault();
+      if (editableRef.current) {
+        openEdgeEditor(edge);
+        return;
+      }
+      // Read-only: the popover is already open from the focus, and Enter is
+      // what moves into it. Its source links are otherwise unreachable, since
+      // it renders after every node and edge on the canvas.
+      root.querySelector<HTMLElement>(".ag-edge-popover")?.focus();
+    };
+
+    root.addEventListener("focusin", onFocusIn);
+    root.addEventListener("focusout", onFocusOut);
+    root.addEventListener("keydown", onKeyDown);
+    return () => {
+      root.removeEventListener("focusin", onFocusIn);
+      root.removeEventListener("focusout", onFocusOut);
+      root.removeEventListener("keydown", onKeyDown);
+    };
+  }, [
+    cancelCloseEdgePopover,
+    scheduleCloseEdgePopover,
+    dismissPopovers,
+    openNodePopoverAt,
+    openEdgeEditor,
+  ]);
+
+  // Names for the two focusable wrappers, applied on the way into React Flow
+  // rather than baked into the state: `nodesRef` is what the exporter and the
+  // persisted sandbox read, and neither wants a label in it.
+  const a11yNodes = useMemo(() => withNodeAriaLabels(nodes), [nodes]);
+  const a11yEdges = useMemo(() => withEdgeAriaLabels(edges), [edges]);
+  const ariaLabelConfig = useMemo(() => canvasAriaLabels(editable), [editable]);
+
   const isInline = mode === "inline";
 
   return (
@@ -538,8 +715,9 @@ function ClaimGraphRFInner({
 
       <GraphContext.Provider value={ctx}>
         <ReactFlow<GraphNode, ClaimEdge>
-          nodes={nodes}
-          edges={edges}
+          nodes={a11yNodes}
+          edges={a11yEdges}
+          ariaLabelConfig={ariaLabelConfig}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={editable ? onConnect : undefined}
@@ -547,15 +725,9 @@ function ClaimGraphRFInner({
           onNodesDelete={editable ? onNodesDelete : undefined}
           onEdgesDelete={editable ? onEdgesDelete : undefined}
           onMoveEnd={onMoveEnd}
-          // Load-bearing: @xyflow/react v12 only wires up React's click
-          // event for nodes when an onNodeClick prop is present. Without
-          // it, clicks on interactive children inside a custom node
-          // (e.g. the DomainGroupNode header button, even with `nodrag
-          // nopan`) are silently dropped — the inner onClick never
-          // fires. A no-op is sufficient; we have no node-click semantics
-          // of our own. Removing this re-introduces the regression
-          // bisected on 2026-05-20.
-          onNodeClick={() => { /* noop — see above */ }}
+          onNodeClick={onNodeClick}
+          onNodeMouseEnter={onNodeMouseEnter}
+          onNodeMouseLeave={onNodeMouseLeave}
           deleteKeyCode={editable ? ["Backspace", "Delete"] : null}
           multiSelectionKeyCode={["Meta", "Control"]}
           selectionKeyCode="Shift"
@@ -585,6 +757,7 @@ function ClaimGraphRFInner({
             <Panel position="bottom-right" className="ag-rf-key-hints">
               <span><kbd>⇧</kbd>+drag box-select</span>
               <span><kbd>⌘</kbd>+click add</span>
+              <span><kbd>⇥</kbd> then <kbd>↵</kbd> open</span>
               <span><kbd>⌫</kbd> delete</span>
             </Panel>
           )}
@@ -609,6 +782,7 @@ function ClaimGraphRFInner({
             node={popoverNode.node}
             anchor={popoverNode.anchor}
             containerRef={wrapperRef}
+            takeFocus={popoverNode.viaKeyboard}
             onClose={() => {
               setPopoverNode(null);
               setFocusId(null);
