@@ -104,7 +104,7 @@ src/
     claims/[id]/opengraph-image.tsx     per-claim OG
     dossiers/[claimId]/opengraph-image.tsx  per-dossier OG
     layout.tsx                          header, footer, fonts
-    globals.css                         Tailwind v4 + design tokens
+    globals.css                         design tokens; Tailwind for preflight only (E20)
   components/
     ClaimGraphCanvas.tsx                mounts ClaimGraphRF; inline/fullbleed modes
     GraphFullbleed.tsx                  fullbleed page chrome + toolbar
@@ -129,6 +129,7 @@ src/
     graph.ts                            accessor layer
     types.ts                            Zod schemas + TS types
     jsonld.ts                           JSON-LD serializers
+    tokens.ts                           the light palette as data, for the OG cards
     vocab.ts                            published IRIs: context, schema URL, version
     site.ts                             deploy-following display origin (SITE_URL)
     engine-adapter.ts                   ClaimGraph → engine data shape
@@ -209,6 +210,10 @@ After any change to `.github/workflows/ci.yml` or `wrangler.jsonc`, run `npm run
 After any change under `data/`, run `npm run build`. The build is the data gate (the Zod loader plus the referential-integrity checks), and `*.yaml` was outside `code_globs` until session 53, so a forecast-only session classified as docs and skipped the one command that validates what it changed.
 
 After any change to `src/lib/jsonld.ts` or `src/lib/types.ts`, run `npm test`. `src/lib/jsonld.test.ts` validates serializer output against `public/schema/v0.json`, which is the only automated check that will: the serializers declare no return types, so dropping a schema-required field just narrows the inferred type and `tsc` exits 0. Verified by planting exactly that fault. Remember the schema is the spec, so a deliberate shape change means editing `public/schema/v0.json` and `research/schema.md` in the same commit, and that test is what holds the three in agreement.
+
+After any change to `src/app/globals.css` or `src/lib/tokens.ts`, run `npm test`. The palette exists in two languages, because Satori resolves no cascade and the OG cards therefore need JavaScript literals. `src/lib/tokens.test.ts` is the only thing relating them: it parses the custom properties out of `globals.css` and asserts each token still equals the property it mirrors, that no hex literal has crept back into the three card files, and that the two dark blocks (the `data-theme` selector and the system media query, which CSS cannot express as one rule) alias an identical list. A hex string is well-typed however wrong it is, so nothing else in the gate can see any of this.
+
+After any change to a modal or dialog under `src/components/graph/`, run `npm test` for `a11y.test.ts` as well as eslint. The two look at different things: jsx-a11y reads the source, axe reads the rendered tree, and the faults that live in the gap are the ones only rendering exposes — an `aria-labelledby` whose id never reaches the DOM, a control whose label sits outside its `<label>`. Both were planted and caught. Since session 66 jsx-a11y runs its recommended set (31 rules) at error level rather than eslint-config-next's six warnings, so a new a11y finding fails `npm run lint` instead of adding to the warning count the `--max-warnings 0` ratchet is aimed at.
 
 After any change under `src/components/graph/`, run `npm test`. Since session 55 the graph's arithmetic lives in pure modules with their own suites (`graph-ops`, `history`, `seed`, the collapse and expand pair in `engine-to-rf`), and a slot column, a coordinate conversion or a dropped undo step is a defect `tsc` and the build both accept. What no suite reaches is the canvas wiring, so a change to `ClaimGraphRF.tsx` or a `use-*.ts` hook still wants a browser pass against `npm run build` output rather than `npm run dev`.
 

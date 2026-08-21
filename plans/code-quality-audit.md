@@ -113,8 +113,8 @@ deleted.
 | E16 | `loader.ts` sorts only `listDomains()`; claims, forecasts and dossiers load in `readdirSync` order |
 | E17 | `ensemble-predict --update` still writes without `Forecast.parse` and re-stringifies the whole file |
 | ~~E18~~ | Closed in session 64: the stdio default is the production origin |
-| E19 | The dark token set is still duplicated between `[data-theme="dark"]` and `prefers-color-scheme` |
-| E20 | Tailwind is imported and **zero** utility classes are used anywhere. Adopt or drop |
+| ~~E19~~ | Closed in session 66: the dark values live in one source block, both selectors alias it, and `tokens.test.ts` pins the two alias lists as equal |
+| ~~E20~~ | Decided in session 66: **keep**. Zero utilities is true; "therefore droppable" is not — preflight is the site's reset |
 | E21 | Robots and sitemap halves closed; `alternates.canonical` and `/graph` metadata still open |
 | C | `--max-warnings 0` (13 warnings, blocked on the `Claude Design Screens/` decision), `noUncheckedIndexedAccess` (48 errors, probed), coverage thresholds, dependency gate |
 
@@ -335,9 +335,10 @@ dry-run, mcp-server typecheck, **served-output Ajv validation against
   actually holds), the "empty in v0" `cross_domain_edges.yaml` line (it carries
   CE1–CE3), the `next.config.ts` SITE_URL comment that contradicted `site.ts`,
   and the `mcp-server/src/index.ts` header claiming write tools are stubbed.
-  The one description this did not touch is `globals.css` as "Tailwind v4 +
-  design tokens", which is true today and becomes wrong only if E20 is decided
-  in favour of dropping the dependency.
+  The one description this did not touch was `globals.css` as "Tailwind v4 +
+  design tokens", left standing until E20 was decided. Session 66 decided it
+  (keep) and rewrote the line anyway: "Tailwind v4" was true and read as though
+  utilities were in use, when what the dependency supplies is preflight.
 - **De-duplicate the MCP schemas** (`mcp-server` re-declares payload shapes in
   Zod 3 while the app is Zod 4) — import from `src/lib` or add the sync test;
   a Zod-3→4 migration is a prerequisite for sharing.
@@ -379,8 +380,8 @@ over ground the seven v1 agents didn't cover.
 | E16 | LOW | `loader.ts:81,96,103,114` | Only `listDomains()` sorts; claims/forecasts/dossiers load in raw `readdirSync` order — `/api/graph` arrays aren't reproducible across filesystems (noisy diffs, unstable first-ref-wins attribution). Fix: sort every listing. |
 | E17 | LOW | `scripts/forecasters/ensemble-predict.ts:265-267` | `--update` writes the forecast file with **no schema validation and a whole-file re-stringify** — a model-fabricated non-URL source lands in `data/` and only explodes at the next build; the rewrite clobbers the diff-preserving folding the Worker path carefully implements in `serialize.ts`. Fix: `Forecast.parse` before write; reuse `appendPredictionToForecast`. |
 | E18 | ~~LOW~~ **CLOSED s64** | `mcp-server/src/http.ts:10` | Default `ABOARD_API_BASE_URL` is `http://localhost:3000`, where `next dev` serves **no** `/api/proposals` (it's Worker-only) — default-config writes fail with a misleading 404. Fixed: the default is the production origin, where every tool works; local reads set the env var. |
-| E19 | LOW | `src/app/globals.css:66-131,232-239,353-360` | The full dark-token set is duplicated verbatim between `:root[data-theme="dark"]` and the `prefers-color-scheme` block (same for the toggle glyph and RF colorMode rules) — the same duplication-drift class as the enum/hex findings, CSS-side: edit one block, silently fork the palette between toggle-dark and system-dark users. Fix: shared indirection layer, or a diff-match check. |
-| E20 | LOW | `globals.css:1,129-142,163-168` | Tailwind is imported but **zero utility classes are used anywhere** — all styling is hand-rolled `ag-*`/semantic classes; the `@theme inline` alias block and `header.top.fixed` are dead. Either adopt utilities or drop the dependency (and fix CLAUDE.md's "Tailwind v4 + design tokens" description). |
+| E19 | ~~LOW~~ **CLOSED s66** | `src/app/globals.css:66-131,232-239,353-360` | The full dark-token set is duplicated verbatim between `:root[data-theme="dark"]` and the `prefers-color-scheme` block (same for the toggle glyph and RF colorMode rules) — the same duplication-drift class as the enum/hex findings, CSS-side: edit one block, silently fork the palette between toggle-dark and system-dark users. Fixed with both: the 33 values move to one `--dark-*` source block that the two selectors alias, holding no value of their own, and `src/lib/tokens.test.ts` asserts the two alias lists are identical (so a dropped line fails too) and that neither block restates a literal. Three drift faults planted and caught; both blocks verified to resolve to main's 33 values. The toggle-glyph and React Flow colorMode rule pairs are behaviour, not tokens, and were left alone. |
+| E20 | ~~LOW~~ **DECIDED s66: keep** | `globals.css:1,129-142,163-168` | The premise checks out and the conclusion does not. Measured by building both ways: Tailwind contributes 13,699 bytes and **not one utility class**, because none is used. All of it is preflight plus the unused `@theme` variables. But preflight is the site's reset, and the built pages carry unclassed prose from the Markdown renderer: 144 `<a>`, 116 `<li>`, 35 `<p>`, 6 `<h2>`, 4 `<ol>`, 3 `<ul>`, a `<table>` and 12 `<summary>` across 36 pages. Dropping it turns unclassed links browser-blue, returns bullets and heading sizes, and un-collapses the table. The project's own components do not depend on it (`.btn-mono` sets `appearance: none`, its own background and border; `list-style` is set in nine places), so replacing preflight with an owned reset is a real option — but it is a visual change, and this repo's browser pass is the awkward one. Kept, with that as the follow-up. |
 | E21 | LOW | `src/app/**` | **Half closed, verified session 58.** Closed: robots and sitemap both shipped — `public/robots.txt` is a deliberate static file carrying the allow stance and Content Signals (its header explains why static: Cloudflare's managed robots.txt is disabled for the zone so nothing overrides it), and `src/app/sitemap.ts` exists. Still open: no `alternates.canonical` anywhere (`claims/[id]/page.tsx:42` uses `alternates` but only for `types`, pointing at the JSON-LD and Markdown twins), and `/graph` still exports no metadata at all. `CANONICAL_ORIGIN` already exists — wire it into canonicals. (Positive: all three OG generators correctly export `alt`/`size`/`contentType` + `force-static`, with `generateStaticParams`.) |
 
 ### Verified-fine (so nobody re-audits them)
