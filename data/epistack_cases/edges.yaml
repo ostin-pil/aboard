@@ -10,3 +10,27 @@
   kind: reduces
   strength: 0.5
   rationale: Confounder-controlled, pre-registered designs (individual-participant reanalysis with harmonized covariates, or an RCT on hard endpoints) shrink the residual-confounding uncertainty that keeps the egg–CVD claim contested, moving it toward resolution.
+- id: ECE3
+  fromId: ECM2
+  toId: ECL1
+  kind: evidences
+  strength: 0.65
+  rationale: >-
+    Validated against recovery biomarkers, the instruments these cohorts run on
+    correlate with true intake at roughly 0.21 for energy and 0.29 for protein,
+    and under-report energy by about 28 percent in a way BMI predicts. An
+    exposure measured that badly attenuates the association toward the null and
+    leaves its magnitude at the mercy of the adjustment set, so more cohorts
+    built on the same questionnaires accumulate precision around a moving
+    estimate rather than converging on one. That is the reason to believe
+    ECL1's central claim, and the relation is evidential rather than causal:
+    measurement error does not make better-identified designs work, it is what
+    makes the alternative fail. Scoped to that limb — ECL1 also recommends
+    randomized trials on hard endpoints, which this evidence does not reach.
+  sources:
+    - label: Freedman et al. — Pooled Results From 5 Validation Studies of Dietary Self-Report Instruments Using Recovery Biomarkers for Energy and Protein Intake (American Journal of Epidemiology)
+      url: https://academic.oup.com/aje/article/180/2/172/2739148
+      kind: paper
+      year: 2014
+      authors: Freedman, Commins, Moler, et al.
+      finding: Pooling five US validation studies (1999-2009), correlations between self-report and biomarker-measured truth were 0.21 (energy) and 0.29 (protein) for FFQs, and 0.26 and 0.40 for a single 24-hour recall. Average under-reporting of energy was 28 percent with an FFQ and 15 percent with a single recall, with BMI a strong predictor of systematic under-reporting.

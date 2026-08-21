@@ -50,7 +50,7 @@ A v1 will exist when:
 
 1. The audience question (humans? agents? both?) is settled and the schema reflects the answer.
 2. The remaining open shape decisions land — agent identity model for ensemble forecasting (`AgentAttribution` is currently thin), claim-unit distinction (resolvable ticket vs. standing dossier).
-3. The remaining [reservations](#known-inconsistencies) become actual data patterns (`promptHash`, `EdgeKind.evidences`, and the resolved-forecast fields `aboard:resolvedOutcome` / `aboard:resolvedAt`, which no seed forecast can populate before 2027).
+3. The remaining [reservations](#known-inconsistencies) become actual data patterns (`promptHash`, and the resolved-forecast fields `aboard:resolvedOutcome` / `aboard:resolvedAt`, which no seed forecast can populate before 2027). `EdgeKind.evidences` left this list in session 66, when `ECE3` became the first edge to use it.
 
 When v1 ships, both `/schema/v0.json` and `/schema/v1.json` will be served in parallel; `/api/graph` will support a `?schema=v1` query parameter, defaulting to v0 until at least one external consumer has migrated.
 
@@ -247,7 +247,7 @@ A directed relation between two claims.
 | `causes` | Directional causal claim: the source claim is causally upstream of the target. |
 | `moderates` | The source conditions the strength of another causal relationship — typically used between two mechanisms. |
 | `reduces` | A leverage point reduces a mechanism or symptom. The intervention semantics. |
-| `evidences` | The source claim is evidence for the target. Unused by the v0 seed, so consumers should accept it without depending on its presence, but it is a first-class value everywhere else: the MCP write tools accept it and the graph renders it with its own ink. Until session 49 the renderer silently dropped it, which is why "reserved" used to read as "unfinished". |
+| `evidences` | The source claim is evidence for the target: epistemic support rather than causal production. `ECE3` (`ECM2 evidences ECL1`) is the seed's one instance and shows why the kind is not a synonym for `causes`: a mechanism describing measurement error does not make better-identified study designs work, it is the reason to believe they are needed. Until session 49 the renderer silently dropped this kind, and until session 66 no edge exercised it, so the path was test-proven rather than data-proven. |
 
 `aboard:strength` is a number in `[0, 1]`, interpretable as the authoring agent's strength estimate for the relation, not a probability.
 
@@ -466,13 +466,18 @@ The original v0 audit (2026-05-09) found 9 fields that existed in the source typ
 | # | Field | Status |
 | --- | --- | --- |
 | 2 | `AgentAttribution.promptHash` | Optional in type and now in schema; not populated by any seed data. Reserved for future ensemble-forecaster work where prompt fingerprinting matters. |
-| 7 | `EdgeKind` value `"evidences"` | Supported end to end since session 49 (write path, adapter, renderer, editor); no seed edge uses it yet, so it stays listed here as a data gap rather than a capability one. |
 
 ### Resolved (2026-05-11 enrichment)
 
 | # | Field | Resolution |
 | --- | --- | --- |
 | 6 | `Edge.rationale` | Now **required** in both the Zod type and the JSON Schema, having been populated on every edge in the seed since 2026-05-11. Cross-domain edges additionally carry `schema:citation` (Source array). |
+
+### Resolved (2026-08-21, session 66)
+
+| # | Field | Resolution |
+| --- | --- | --- |
+| 7 | `EdgeKind` value `"evidences"` | Supported end to end since session 49 but exercised by no edge, which left the path test-proven rather than data-proven. `ECE3` (`ECM2 evidences ECL1`) is now in the seed and reaches `/api/graph` with `aboard:relation: "evidences"`. The pick was constrained: every dataPoint-backed symptom in the seed already has a causal edge to the mechanism it would evidence, so the only relation with no available causal reading was a mechanism supporting a leverage point. |
 
 ## Validating
 

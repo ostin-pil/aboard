@@ -140,7 +140,7 @@
     "EdgeKind": {
       "type": "string",
       "enum": ["causes", "moderates", "reduces", "evidences"],
-      "description": "Relation between two claims. 'causes' and 'reduces' are directional; 'moderates' conditions another edge's strength; 'evidences' is reserved."
+      "description": "Relation between two claims. 'causes' and 'reduces' are directional; 'moderates' conditions another edge's strength; 'evidences' is epistemic rather than causal, asserting that the source claim is support for the target."
     },
     "Edge": {
       "type": "object",
