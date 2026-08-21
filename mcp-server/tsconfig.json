@@ -1,14 +1,31 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
+
+    // NodeNext rather than Bundler since session 67: this config now emits the
+    // JS that `bin` points at, so resolution has to be the one Node itself
+    // performs at runtime. Nothing in `src/` had to change for it — every
+    // relative import already carried an explicit `.js`, which NodeNext
+    // requires and Bundler merely tolerated.
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
     "strict": true,
-    "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "lib": ["ES2022"]
+
+    // `noEmit` is deliberately absent. `npm run typecheck` passes `--noEmit` on
+    // the command line, so the check is unchanged; `npm run build` uses this
+    // config as written and produces the published artifact. Keeping the flag
+    // here would mean the thing being type-checked and the thing being shipped
+    // were configured differently, which is the drift the package can least
+    // afford: a resolution error would surface only for whoever ran `npx`.
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": false,
+    "sourceMap": false
   },
   "include": ["src/**/*.ts"]
 }

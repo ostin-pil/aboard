@@ -1,4 +1,4 @@
-#!/usr/bin/env -S npx tsx
+#!/usr/bin/env node
 /**
  * aboard MCP server — stdio transport.
  *
@@ -9,13 +9,21 @@
  * endpoint is Worker-only, so `ABOARD_API_BASE_URL` must point at a deploy that
  * serves it; `next dev` does not (see `http.ts`).
  *
- * Run over stdio:
+ * Run over stdio, from the published package:
  *
- *   npx tsx src/index.ts
+ *   npx aboard-mcp-server
+ *
+ * Or from a checkout of this repo, without building:
+ *
+ *   npm start
  *
  * Point at a non-default aboard instance:
  *
- *   ABOARD_API_BASE_URL=https://aboard.example.com npx tsx src/index.ts
+ *   ABOARD_API_BASE_URL=https://aboard.example.com npx aboard-mcp-server
+ *
+ * The shebang names `node`, not `tsx`, because `bin` points at the compiled
+ * `dist/index.js`. `npm start` runs this file through tsx directly, where the
+ * shebang is never consulted, so the two paths do not need the same one.
  *
  * stdout is reserved for the MCP protocol. All diagnostics go to stderr.
  */

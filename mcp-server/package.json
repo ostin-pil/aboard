@@ -1,15 +1,46 @@
 {
   "name": "aboard-mcp-server",
   "version": "0.1.0",
-  "private": true,
   "description": "Model Context Protocol server over stdio for the aboard claim graph. Consumes the JSON-LD API; independent of the Next.js app.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "modelcontextprotocol",
+    "claim-graph",
+    "forecasting",
+    "json-ld",
+    "aboard"
+  ],
+  "homepage": "https://aboard.untype.me/about",
+  "bugs": {
+    "url": "https://github.com/ostin-pil/aboard/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ostin-pil/aboard.git",
+    "directory": "mcp-server"
+  },
+  "license": "Apache-2.0",
+  "author": "ostin-pil",
   "type": "module",
   "bin": {
-    "aboard-mcp-server": "src/index.ts"
+    "aboard-mcp-server": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "start": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prepack": "npm run build && cp ../LICENSE ./LICENSE"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

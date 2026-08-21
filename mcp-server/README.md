@@ -42,6 +42,16 @@ The other three tools are serialization variants of the same pipeline and land n
 
 ## Install
 
+Published to npm as [`aboard-mcp-server`](https://www.npmjs.com/package/aboard-mcp-server). Nothing to install ahead of time — `npx` fetches and runs it:
+
+```bash
+npx aboard-mcp-server
+```
+
+`bin` points at compiled JavaScript (`dist/index.js`) with a `#!/usr/bin/env node` shebang, so the published package needs Node 20 or newer and nothing else. It used to point at `src/index.ts` behind an `npx tsx` shebang, which made the package installable but not runnable for anyone who was not already inside this repo.
+
+To work on the server instead of consuming it, install from a checkout:
+
 ```bash
 cd mcp-server
 npm install
@@ -61,10 +71,16 @@ The server speaks MCP over stdio: it reads JSON-RPC frames on stdin and writes t
 
 ```bash
 # default — reads from the deployed site, https://aboard.untype.me
-npx tsx src/index.ts
+npx aboard-mcp-server
 
 # point at a local dev server (read tools only; writes need the Worker)
-ABOARD_API_BASE_URL=http://localhost:3000 npx tsx src/index.ts
+ABOARD_API_BASE_URL=http://localhost:3000 npx aboard-mcp-server
+```
+
+From a checkout, `npm start` runs the TypeScript through tsx without building, so an edit takes effect on the next launch:
+
+```bash
+npm start
 ```
 
 The base URL must be reachable for the read tools to return data. The MCP server itself starts even if aboard is down; read calls then return a clear "could not reach aboard API" error.
@@ -78,8 +94,22 @@ Most MCP clients (Claude Desktop, Claude Code, etc.) launch servers from a JSON 
   "mcpServers": {
     "aboard": {
       "command": "npx",
-      "args": ["tsx", "src/index.ts"],
-      "cwd": "/absolute/path/to/aboard/mcp-server"
+      "args": ["-y", "aboard-mcp-server"]
+    }
+  }
+}
+```
+
+No `cwd`, because there is no checkout to point at. `-y` suppresses the install prompt npx would otherwise raise the first time, which a client launching the server over stdio has no way to answer.
+
+Against a checkout instead, name the built entry point directly rather than reintroducing the tsx path — a client that launches `tsx` pays a compile on every start:
+
+```json
+{
+  "mcpServers": {
+    "aboard": {
+      "command": "node",
+      "args": ["/absolute/path/to/aboard/mcp-server/dist/index.js"]
     }
   }
 }
@@ -87,12 +117,15 @@ Most MCP clients (Claude Desktop, Claude Code, etc.) launch servers from a JSON 
 
 ## Smoke note
 
-Type-check (the only build gate):
+Type-check, then build:
 
 ```bash
 cd mcp-server
-npx tsc --noEmit      # clean
+npm run typecheck     # tsc --noEmit; also reachable as `npm run typecheck:mcp` from the repo root
+npm run build         # tsc, emitting dist/
 ```
+
+`tsconfig.json` no longer sets `noEmit`; the typecheck passes the flag on the command line instead. That way the configuration being checked is the one that produces the artifact, rather than a second one that happens to agree with it. `prepack` runs the build, so `npm pack` and `npm publish` cannot ship a stale `dist/`.
 
 Manual stdio handshake — initialize, then list tools — without an MCP client. Pipe three JSON-RPC lines into the server and inspect stdout:
 
@@ -101,7 +134,7 @@ printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}' \
   '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
-  | npx tsx src/index.ts
+  | npx aboard-mcp-server
 ```
 
 You should see two JSON-RPC responses on stdout: the `initialize` result (`serverInfo.name` = `aboard-mcp-server`) and a `tools/list` result naming all nine tools. The `ready on stdio` line appears on stderr, not stdout. With aboard running, a follow-up `tools/call` for `list_claims` returns the claim summaries.
