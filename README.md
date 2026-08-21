@@ -88,7 +88,8 @@ src/
     jsonld.ts                           JSON-LD serializers
     engine-adapter.ts                   ClaimGraph → engine data shape
 
-clients/                                independent TS package — validate + briefing
+clients/                                independent TS package (not published) — validate + briefing
+mcp-server/                             published to npm as aboard-mcp-server
 scripts/forecasters/                    ensemble forecaster (OpenAI-compat, Ollama, Anthropic adapters)
 research/                               landscape, vision, schema, agent-onboarding
 sessions/                               per-session work logs
