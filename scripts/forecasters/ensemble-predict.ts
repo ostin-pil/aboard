@@ -33,6 +33,8 @@ import { fileURLToPath } from "url";
 import YAML from "yaml";
 import matter from "gray-matter";
 
+import { Forecast, Prediction } from "../../src/lib/types";
+import { appendPredictionToForecast } from "../../src/lib/data/serialize";
 import type { Provider, ProviderConfig } from "./providers/types";
 import { openAICompat } from "./providers/openai-compatible";
 import { ollamaNative } from "./providers/ollama-native";
@@ -284,10 +286,56 @@ async function main() {
   const yamlBlock = YAML.stringify(successes);
 
   if (args.update) {
-    forecastRaw.predictions = [...(forecastRaw.predictions ?? []), ...successes];
-    writeFileSync(forecastPath, YAML.stringify(forecastRaw));
+    // E17. This used to be `forecastRaw.predictions.push(...)` followed by a
+    // whole-file `YAML.stringify`, which got two things wrong at once.
+    //
+    // Nothing validated. A model that invented a URL, a probability outside
+    // [0,1] or a malformed timestamp had it written into `data/` unchallenged,
+    // and the first thing to notice was `npm run build` — possibly several
+    // commits later, with the provider run long gone and no way to tell which
+    // of four models produced the bad field. Both schemas run here instead:
+    // each prediction on its own (so the message names the provider), then the
+    // whole file (so a forecast this append somehow invalidates is caught
+    // before it is on disk rather than after).
+    //
+    // And the re-stringify reformatted the entire file, unfolding every long
+    // string in it, so a one-prediction append arrived as a diff touching every
+    // line. `appendPredictionToForecast` is the diff-preserving writer the
+    // Worker's write path already uses; sharing it means the two doors into
+    // `data/` produce the same shape rather than two conventions.
+    let updated = readFileSync(forecastPath, "utf8");
+    for (let i = 0; i < successes.length; i++) {
+      const result = successes[i];
+      const checked = Prediction.safeParse(result);
+      if (!checked.success) {
+        console.error(
+          `refusing to write: ${result.agent.agent} produced a prediction that fails the schema`,
+        );
+        for (const issue of checked.error.issues) {
+          console.error(`  ${issue.path.join(".") || "(root)"}: ${issue.message}`);
+        }
+        process.exit(1);
+      }
+      // The original, not `checked.data`. `baseRates` and `dataAnchors` carry
+      // `.default([])`, so the parsed value has both keys always — writing that
+      // would add `baseRates: []` and `dataAnchors: []` to every appended
+      // prediction, which no hand-authored one in `data/` carries. The parse is
+      // the gate; the file keeps what the run actually produced.
+      updated = appendPredictionToForecast(updated, result as Prediction);
+    }
+
+    const whole = Forecast.safeParse(YAML.parse(updated));
+    if (!whole.success) {
+      console.error(`refusing to write: ${forecastPath} would not parse as a Forecast`);
+      for (const issue of whole.error.issues) {
+        console.error(`  ${issue.path.join(".") || "(root)"}: ${issue.message}`);
+      }
+      process.exit(1);
+    }
+
+    writeFileSync(forecastPath, updated);
     console.error(
-      `Appended ${successes.length} prediction(s) to ${forecastPath}. Forecast now has ${forecastRaw.predictions.length} total.`
+      `Appended ${successes.length} prediction(s) to ${forecastPath}. Forecast now has ${whole.data.predictions.length} total.`
     );
   } else {
     process.stdout.write(yamlBlock);

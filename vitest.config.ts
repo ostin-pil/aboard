@@ -12,7 +12,12 @@ const alias = {
  *
  * - `unit`: the pure modules under src/. Anything that reaches the filesystem
  *   loader would pull in `server-only` and the Next runtime; the build already
- *   covers that path end to end.
+ *   covers that path end to end. One exception, argued in
+ *   `src/lib/data/loader.test.ts`: listing *order* is the one loader property
+ *   the build cannot check, because it reads `data/` once on one filesystem and
+ *   validates whatever order it gets. That file mocks `server-only` away and
+ *   reverses `readdirSync`, and it is the only test here that touches the
+ *   loader at all.
  * - `worker`: the Worker's HTTP shell (worker/*.test.ts), driven through
  *   `route()` with faked bindings. Plain node rather than
  *   `@cloudflare/vitest-pool-workers` — the probe (session 64) found the pool

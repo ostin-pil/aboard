@@ -136,6 +136,11 @@ export function engineToRF(
       sources: e.sources ?? [],
       crossDomain: !!e.crossDomain,
       outOfDomain: false,
+      // Left undefined rather than defaulted: undefined is what tells the
+      // exporter this edge needs an id minted, so a default here would make
+      // every sandbox edge claim an identity it does not have.
+      ...(e.canonicalId !== undefined ? { canonicalId: e.canonicalId } : {}),
+      ...(e.strength !== undefined ? { strength: e.strength } : {}),
     },
   }));
 
@@ -179,6 +184,8 @@ export function rfToEngine(
     if (e.data?.rationale) out.rationale = e.data.rationale;
     if (e.data?.sources && e.data.sources.length > 0) out.sources = e.data.sources;
     if (e.data?.crossDomain) out.crossDomain = true;
+    if (e.data?.canonicalId !== undefined) out.canonicalId = e.data.canonicalId;
+    if (e.data?.strength !== undefined) out.strength = e.data.strength;
     return out;
   });
   return { domain, domains, nodes: engineNodes, edges: engineEdges };

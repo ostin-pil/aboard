@@ -79,6 +79,13 @@ export function toEngineData(graph: ClaimGraph, opts?: { domain?: string }): Eng
         from: e.fromId,
         to: e.toId,
         kind: e.kind,
+        // Identity and strength ride along so the PR-pack exporter can write
+        // this edge back as itself. Without them the exporter re-mints from
+        // `E1` and writes the placeholder strength, which for an existing
+        // domain means the exported `edges.yaml` collides with every live edge
+        // and drops every tuned number (E12).
+        canonicalId: e.id,
+        strength: e.strength,
       };
       if (e.rationale) edge.rationale = e.rationale;
       if (e.sources && e.sources.length > 0) {

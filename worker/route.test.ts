@@ -91,7 +91,7 @@ function makeEnv(overrides: EnvOverrides = {}) {
  * records the sequence so tests can assert what was (and was not) asked of
  * GitHub.
  */
-type GhOverrides = Partial<Record<"baseRef" | "createRef" | "commit" | "pr", Response>>;
+type GhOverrides = Partial<Record<"baseRef" | "createRef" | "commit" | "pr" | "getFile", Response>>;
 
 function stubGitHub(overrides: GhOverrides = {}) {
   const calls: { method: string; path: string; body?: unknown }[] = [];
@@ -106,6 +106,12 @@ function stubGitHub(overrides: GhOverrides = {}) {
     });
     if (method === "GET" && path.startsWith("/git/ref/heads/")) {
       return overrides.baseRef ?? Response.json({ object: { sha: "basesha" } });
+    }
+    if (method === "GET" && path.startsWith("/contents/")) {
+      // The edge and prediction paths read their target file at the base ref
+      // before appending. 404 (the file does not exist) is the default, which
+      // is what an untouched fixture repo looks like.
+      return overrides.getFile ?? Response.json({ message: "Not Found" }, { status: 404 });
     }
     if (method === "POST" && path === "/git/refs") {
       return overrides.createRef ?? Response.json({}, { status: 201 });
@@ -306,6 +312,141 @@ describe("a valid claim proposal", () => {
     expect(res.status).toBe(422);
     expect(body.error.code).toBe("unknown_domain");
     expect(body.error.knownDomains).toEqual(["democratic_backsliding", "inequality"]);
+  });
+});
+
+describe("edge collisions against the base ref (chunk 5)", () => {
+  const EDGE_ENVELOPE = {
+    kind: "edge",
+    payload: { from: "M4", to: "S1", kind: "causes", strength: 0.6, sources: [] },
+    rationale: "Because the suite needs a valid edge proposal.",
+  };
+
+  /** A `GET /contents/…` answer carrying this YAML as the file at the base ref. */
+  function fileHolding(yaml: string): Response {
+    return Response.json({
+      sha: "filesha",
+      content: Buffer.from(yaml, "utf8").toString("base64"),
+    });
+  }
+
+  const EXISTING_RELATION = [
+    "- id: E4",
+    "  fromId: M4",
+    "  toId: S1",
+    "  kind: causes",
+    "  strength: 0.55",
+    "  rationale: The relation the graph already asserts.",
+  ].join("\n");
+
+  it("files an edge when the base-ref file holds neither the id nor the relation", async () => {
+    const { calls } = stubGitHub({
+      getFile: fileHolding(
+        ["- id: E1", "  fromId: S1", "  toId: M4", "  kind: moderates", "  strength: 0.3", "  rationale: Unrelated."].join("\n"),
+      ),
+    });
+    const { env } = makeEnv();
+
+    const res = await route(proposal(EDGE_ENVELOPE, AUTH), env);
+    const body = (await res.json()) as { status: string; id: string };
+
+    expect(res.status).toBe(201);
+    expect(body.status).toBe("proposed");
+    // The graph fixture holds E1, so the mint continues past it.
+    expect(body.id).toBe("E2");
+    expect(calls.some((c) => c.method === "POST" && c.path === "/pulls")).toBe(true);
+  });
+
+  // The deploy-lag window, which for edges used to close only at CI on the PR.
+  // `/api/graph` still shows E1 as the highest id, so the Worker mints E2 —
+  // while `edges.yaml` on the base branch already holds an E2 that has not
+  // deployed yet.
+  it("refuses a stale minted id as 409 id_collision, before cutting a branch", async () => {
+    const { calls } = stubGitHub({
+      getFile: fileHolding(
+        ["- id: E2", "  fromId: S1", "  toId: IS1", "  kind: causes", "  strength: 0.3", "  rationale: Landed but not deployed."].join("\n"),
+      ),
+    });
+    const { env } = makeEnv();
+
+    const res = await route(proposal(EDGE_ENVELOPE, AUTH), env);
+    const body = (await res.json()) as {
+      error: { code: string; retryable: boolean; remediation: string; path: string };
+    };
+
+    expect(res.status).toBe(409);
+    expect(body.error.code).toBe("id_collision");
+    expect(body.error.retryable).toBe(true);
+    expect(body.error.remediation).toContain("Re-read /api/graph");
+    expect(body.error.path).toBe("data/democratic_backsliding/edges.yaml");
+    // Nothing was created, so nothing needs cleaning up.
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+  });
+
+  it("refuses a relation the base-ref file already asserts, naming the edge holding it", async () => {
+    const { calls } = stubGitHub({ getFile: fileHolding(EXISTING_RELATION) });
+    const { env } = makeEnv();
+
+    const res = await route(proposal(EDGE_ENVELOPE, AUTH), env);
+    const body = (await res.json()) as {
+      error: { code: string; existingId: string; retryable: boolean };
+    };
+
+    expect(res.status).toBe(409);
+    expect(body.error.code).toBe("duplicate_relation");
+    expect(body.error.existingId).toBe("E4");
+    // Not retryable: filing it again under a fresh id would be a second edge
+    // asserting the same thing, which no integrity check rejects.
+    expect(body.error.retryable).toBe(false);
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+  });
+
+  it("refuses a duplicate the deployed graph already shows, without reading the file", async () => {
+    const { calls } = stubGitHub();
+    const { env } = makeEnv({
+      ASSETS: {
+        fetch: async (request: Request) => {
+          if (new URL(request.url).pathname === "/api/graph") {
+            return Response.json({
+              ...GRAPH_FIXTURE,
+              "aboard:edges": [
+                {
+                  "aboard:id": "E1",
+                  "aboard:from": { "@id": `${ORIGIN}/claims/M4` },
+                  "aboard:to": { "@id": `${ORIGIN}/claims/S1` },
+                  "aboard:relation": "causes",
+                },
+              ],
+            });
+          }
+          return new Response("<html>static</html>", {
+            headers: { "content-type": "text/html" },
+          });
+        },
+      } as Env["ASSETS"],
+    });
+
+    const res = await route(proposal(EDGE_ENVELOPE, AUTH), env);
+    const body = (await res.json()) as { error: { code: string; existingId: string } };
+
+    expect(res.status).toBe(409);
+    expect(body.error.code).toBe("duplicate_relation");
+    expect(body.error.existingId).toBe("E1");
+    // The graph answered it, so GitHub was never asked anything at all.
+    expect(calls).toEqual([]);
+  });
+
+  it("allows the reverse direction over the same pair", async () => {
+    stubGitHub({ getFile: fileHolding(EXISTING_RELATION) });
+    const { env } = makeEnv();
+    const reversed = {
+      ...EDGE_ENVELOPE,
+      payload: { ...EDGE_ENVELOPE.payload, from: "S1", to: "M4" },
+    };
+
+    const res = await route(proposal(reversed, AUTH), env);
+
+    expect(res.status).toBe(201);
   });
 });
 

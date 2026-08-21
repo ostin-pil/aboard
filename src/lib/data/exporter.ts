@@ -10,7 +10,12 @@
  * body/confidence/author. The schema's richer fields (Source.kind/year/
  * finding, DataPoint, Analysis, Forecast, Dossier) are not collected by the
  * sandbox UI. The PR reviewer adds those fields before merging. Skeletal
- * files still validate because the new fields are all optional.
+ * files still validate because the new fields are all optional — with one
+ * exception the schema makes on purpose: an edge's `rationale` is required, so
+ * a drawn edge is emitted carrying `EDGE_RATIONALE_PLACEHOLDER` rather than a
+ * commented-out key. `exporter.test.ts` parses every emitted file back through
+ * the canonical Zod schemas, which is what keeps that promise checkable
+ * instead of asserted.
  *
  * No imports from server-only code — this module runs in the browser so the
  * /graph editor can produce downloadable packs without a round-trip.
@@ -22,6 +27,9 @@
 // translation boundary, instead of silently emitting a kind the loader rejects.
 // Type-only import: this module runs in the browser and pulls in no Zod.
 import type { ClaimKind } from "../types";
+// Runtime imports, and deliberately from `ids.ts` rather than `proposals.ts`:
+// same helpers, same convention, no Zod. See the header of `src/lib/ids.ts`.
+import { nextSequentialId, idStem, inferDomainPrefix } from "../ids";
 
 const KIND_MAP: Record<EngineNode["kind"], ClaimKind> = {
   symptom: "symptom",
@@ -81,18 +89,20 @@ export function engineToPRPack(
     }
   }
 
-  let edgeSeq = 1;
   for (const [domain, edges] of edgesByDomain.entries()) {
+    const claimIdsInDomain = state.nodes
+      .filter((n) => (n.domain ?? defaultDomain) === domain)
+      .map((n) => n.id);
     files.push({
       path: `data/${domain}/edges.yaml`,
-      body: edgesYaml(edges, () => `E${edgeSeq++}`),
+      body: edgesYaml(assignEdgeIds(edges, edgeStem(edges, claimIdsInDomain))),
     });
   }
 
   if (crossDomainEdges.length > 0) {
     files.push({
       path: `data/cross_domain_edges.yaml`,
-      body: edgesYaml(crossDomainEdges, () => `CE${edgeSeq++}`),
+      body: edgesYaml(assignEdgeIds(crossDomainEdges, edgeStem(crossDomainEdges, [], "CE"))),
     });
   }
 
@@ -124,16 +134,130 @@ function claimMarkdown(node: EngineNode, domain: string, now: string): string {
   return lines.join("\n");
 }
 
-function edgesYaml(edges: EngineEdge[], nextId: () => string): string {
-  const lines: string[] = [];
+/**
+ * What a sandbox-drawn edge carries where its rationale will go.
+ *
+ * Exported so the tests assert against the same string the emitter writes, and
+ * so a reviewer grepping `data/` for un-filled placeholders has one term.
+ */
+export const EDGE_RATIONALE_PLACEHOLDER =
+  "PR REVIEWER: state the reasoning for this relation before merging.";
+
+/** An edge paired with the id it will be written under. */
+type IdentifiedEdge = { edge: EngineEdge; id: string; minted: boolean };
+
+/**
+ * The id stem this file's edges are numbered on.
+ *
+ * Read off the edges themselves first: an edge that came from `data/` carries
+ * its id, and the stem of those ids is the answer by definition. Falling back
+ * to the domain's claim ids covers the case with no seeded edges at all (a new
+ * domain, or one whose only edges are sandbox-drawn), and uses the same
+ * `inferDomainPrefix` rule the Worker's write path uses, so the sandbox and
+ * the API mint under one convention rather than two copies of it.
+ *
+ * `E` last, because the fallback of a fallback should be the majority spelling
+ * rather than a throw the export cannot recover from.
+ */
+function edgeStem(
+  edges: EngineEdge[],
+  claimIdsInDomain: readonly string[],
+  fallback = "E",
+): string {
+  const stems = new Set<string>();
   for (const e of edges) {
-    lines.push(`- id: ${nextId()}`);
+    if (!e.canonicalId) continue;
+    const stem = idStem(e.canonicalId);
+    if (stem) stems.add(stem);
+  }
+  if (stems.size === 1) return [...stems][0];
+
+  const prefix = inferDomainPrefix(claimIdsInDomain);
+  if (prefix !== null) return `${prefix}E`;
+
+  return fallback;
+}
+
+/**
+ * Give every edge in one file an id: its own where it has one, a fresh one
+ * continuing past the file's maximum where it does not.
+ *
+ * This is E12. The exporter used to number every edge from `E1` regardless of
+ * what `data/` already held, and the PR-pack README told the contributor to
+ * drop the files in — so for any domain with existing edges, the export both
+ * collided with live ids and, being a whole-file replacement, deleted every
+ * edge the sandbox had not been shown. Integrity passed afterwards, because
+ * the evidence of what was lost went with it.
+ *
+ * Minting from `taken` rather than from a counter is what makes the ids safe:
+ * a sandbox edge drawn between two seeded ones lands after the file's maximum,
+ * not on top of `E2`.
+ */
+function assignEdgeIds(edges: EngineEdge[], stem: string): IdentifiedEdge[] {
+  const taken: string[] = [];
+  for (const e of edges) if (e.canonicalId) taken.push(e.canonicalId);
+
+  return edges.map((edge) => {
+    if (edge.canonicalId) return { edge, id: edge.canonicalId, minted: false };
+    const id = nextSequentialId(stem, taken);
+    taken.push(id);
+    return { edge, id, minted: true };
+  });
+}
+
+/**
+ * The whole edge set for one file, as YAML.
+ *
+ * The merged set, not a fragment: the sandbox is an editor over the real graph,
+ * so a contributor can move, retarget or delete a seeded edge, and only a
+ * whole-file emit can express a deletion. That makes fidelity on the edges it
+ * did not touch the load-bearing property — an edge written back with a
+ * placeholder strength or a dropped rationale is a silent edit to `data/`
+ * hiding inside a PR that claims to add one relation.
+ *
+ * So a seeded edge round-trips: its id, its calibrated strength, its rationale
+ * and its sources. Only an edge the sandbox authored gets the reviewer
+ * placeholders, and those are the lines a reviewer is meant to stop on.
+ */
+function edgesYaml(identified: IdentifiedEdge[]): string {
+  const lines: string[] = [];
+  for (const { edge: e, id, minted } of identified) {
+    lines.push(`- id: ${id}`);
     lines.push(`  fromId: ${e.from}`);
     lines.push(`  toId: ${e.to}`);
     lines.push(`  kind: ${e.kind}`);
-    lines.push(`  strength: 0.5  # PR reviewer: tune strength`);
-    lines.push(`  # rationale: PR reviewer to populate`);
-    lines.push(`  # sources: []   # PR reviewer to add evidence for the relation`);
+    if (e.strength === undefined) {
+      lines.push(`  strength: 0.5  # PR reviewer: tune strength`);
+    } else {
+      lines.push(`  strength: ${e.strength}`);
+    }
+    if (e.rationale) {
+      lines.push(`  rationale: ${yamlQuote(e.rationale)}`);
+    } else if (minted) {
+      // A placeholder value, not a commented-out key. `Edge.rationale` is
+      // required — the schema's comment says why: the graph classifies
+      // relations on stated reasoning rather than on edge counts, so the
+      // reasoning has to always be there to read. A commented-out key made
+      // every pack containing a sandbox-drawn edge fail the loader on the
+      // field, which contradicted this module's own promise that skeletal
+      // files validate, and it failed at `npm run build` after the drop-in
+      // rather than at the validator step the README sends you to.
+      //
+      // The text is deliberately unmissable in a diff: a reviewer who lands it
+      // unchanged has published the placeholder, and it reads as one.
+      lines.push(`  rationale: ${yamlQuote(EDGE_RATIONALE_PLACEHOLDER)}`);
+    }
+    if (e.sources && e.sources.length > 0) {
+      lines.push(`  sources:`);
+      for (const src of e.sources) {
+        lines.push(`    - label: ${yamlQuote(src.label)}`);
+        lines.push(`      url: ${yamlQuote(src.url)}`);
+        if (src.kind) lines.push(`      kind: ${yamlQuote(src.kind)}`);
+        if (src.finding) lines.push(`      finding: ${yamlQuote(src.finding)}`);
+      }
+    } else if (minted) {
+      lines.push(`  # sources: []   # PR reviewer to add evidence for the relation`);
+    }
   }
   return lines.join("\n") + "\n";
 }
@@ -165,7 +289,13 @@ function prPackReadme(state: EngineGraphData, defaultDomain: string): string {
     "",
     "1. Clone the aboard repo and check out a working branch.",
     "2. Drop the files in this zip into `data/` at the indicated paths,",
-    "   preserving the directory structure.",
+    "   preserving the directory structure. Each `edges.yaml` is the *whole*",
+    "   edge set for that file, not an addition to it: edges that came from",
+    "   `data/` keep their ids, strengths, rationales and sources, and edges",
+    "   drawn in the sandbox are numbered after the highest id already there.",
+    "   Read the diff before committing — a relation you moved or deleted in",
+    "   the sandbox shows up here as a change to a live edge, which is a",
+    "   heavier claim than adding one.",
     "3. Open each new `.md` and `.yaml` file and add the fields the PR reviewer",
     "   needs: real Source citations (label + URL + kind + finding),",
     "   DataPoints where the claim is empirical, edge rationales, Source",

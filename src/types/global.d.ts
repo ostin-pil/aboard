@@ -58,6 +58,25 @@ declare global {
     rationale?: string;
     crossDomain?: boolean;
     sources?: EngineEdgeSource[];
+    /**
+     * The edge's id in `data/`, for an edge that came from there.
+     *
+     * Absent means sandbox-authored: an edge the user drew, which has no id
+     * until the exporter mints one. Named `canonicalId` rather than `id`
+     * because React Flow gives every edge an `id` of its own
+     * (`<from>-><to>#<kind>#<i>`, synthesized for rendering), and the two are
+     * not interchangeable — writing the React Flow id into `edges.yaml` is
+     * the same class of defect as re-minting from `E1`.
+     */
+    canonicalId?: string;
+    /**
+     * The edge's calibrated strength in `data/`, likewise absent for a
+     * sandbox-authored edge. Carried through the engine shape for one reason:
+     * the exporter emits the merged edge set, so an edge it does not know the
+     * strength of is an edge it would write back at the placeholder value,
+     * silently overwriting a number a reviewer tuned by hand.
+     */
+    strength?: number;
   }
 
   interface EngineGraphData {
