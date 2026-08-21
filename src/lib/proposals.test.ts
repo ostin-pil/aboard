@@ -9,7 +9,6 @@ import {
   PredictionPayload,
   DossierPayload,
   ProposalEnvelope,
-  inferDomainPrefix,
   mintClaimId,
   buildClaim,
   buildEdge,
@@ -255,29 +254,6 @@ describe("ProposalEnvelope", () => {
     expect(
       ProposalEnvelope.safeParse({ kind: "nonsense", payload: {}, rationale: "x" }).success,
     ).toBe(false);
-  });
-});
-
-describe("inferDomainPrefix", () => {
-  it("reads the prefix off each real domain in data/", () => {
-    expect(inferDomainPrefix(DB_IDS)).toBe("");
-    expect(inferDomainPrefix(INEQ_IDS)).toBe("I");
-    expect(inferDomainPrefix(EC_IDS)).toBe("EC");
-  });
-
-  // Refusals, not guesses. Minting under a wrong prefix would silently fork a
-  // domain's namespace, and nothing downstream would notice.
-  it("refuses when the domain has no claims yet", () => {
-    expect(inferDomainPrefix([])).toBeNull();
-  });
-
-  it("refuses when a domain's ids disagree on a prefix", () => {
-    expect(inferDomainPrefix(["S1", "IM2"])).toBeNull();
-  });
-
-  it("refuses ids that do not follow the convention", () => {
-    expect(inferDomainPrefix(["not-an-id"])).toBeNull();
-    expect(inferDomainPrefix(["X1"])).toBeNull(); // X is not a kind letter
   });
 });
 

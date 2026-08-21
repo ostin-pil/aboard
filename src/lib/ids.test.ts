@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { nextSequentialId, idStem } from "@/lib/ids";
+import { nextSequentialId, idStem, inferDomainPrefix } from "@/lib/ids";
+
+// The three real domains' claim ids, as `data/` holds them. Duplicated from
+// proposals.test.ts rather than shared: both files assert against what is on
+// disk, and a shared fixture module would let one of them drift from `data/`
+// while still agreeing with the other.
+const DB_IDS = ["S1", "S2", "S3", "M1", "M2", "M3", "M4", "M5", "L1", "L2", "L3", "L4"];
+const INEQ_IDS = ["IS1", "IS2", "IM1", "IM2", "IM3", "IL1", "IL2", "IL3"];
+const EC_IDS = ["ECS1", "ECM1", "ECL1"];
 
 describe("nextSequentialId", () => {
   it("takes the max for the stem and adds one", () => {
@@ -43,5 +51,28 @@ describe("idStem", () => {
   it("refuses an id that does not end in digits", () => {
     expect(idStem("E")).toBeNull();
     expect(idStem("not-an-id")).toBeNull();
+  });
+});
+
+describe("inferDomainPrefix", () => {
+  it("reads the prefix off each real domain in data/", () => {
+    expect(inferDomainPrefix(DB_IDS)).toBe("");
+    expect(inferDomainPrefix(INEQ_IDS)).toBe("I");
+    expect(inferDomainPrefix(EC_IDS)).toBe("EC");
+  });
+
+  // Refusals, not guesses. Minting under a wrong prefix would silently fork a
+  // domain's namespace, and nothing downstream would notice.
+  it("refuses when the domain has no claims yet", () => {
+    expect(inferDomainPrefix([])).toBeNull();
+  });
+
+  it("refuses when a domain's ids disagree on a prefix", () => {
+    expect(inferDomainPrefix(["S1", "IM2"])).toBeNull();
+  });
+
+  it("refuses ids that do not follow the convention", () => {
+    expect(inferDomainPrefix(["not-an-id"])).toBeNull();
+    expect(inferDomainPrefix(["X1"])).toBeNull(); // X is not a kind letter
   });
 });

@@ -10,7 +10,7 @@ import {
   Source,
   type AgentAttribution,
 } from "@/lib/types";
-import { nextSequentialId } from "@/lib/ids";
+import { nextSequentialId, inferDomainPrefix, KIND_LETTER } from "@/lib/ids";
 
 /**
  * The agent write path: what a caller may send, and how it becomes graph data.
@@ -295,42 +295,6 @@ export type TokenIdentity = {
 };
 
 // --- claim ids -------------------------------------------------------------
-
-const KIND_LETTER: Record<z.infer<typeof ClaimKind>, string> = {
-  symptom: "S",
-  mechanism: "M",
-  leverage_point: "L",
-};
-
-/**
- * Infer a domain's id prefix from the claims it already contains.
- *
- * The convention (CLAUDE.md) is `<domainPrefix><kindLetter><n>`:
- * `S1`/`M1`/`L1` in democratic_backsliding (empty prefix), `IS1`/`IM1`/`IL1` in
- * inequality, `ECS1`/`ECM1`/`ECL1` in epistack_cases. The prefix is not derivable
- * from the domain's *name* (`EC` for epistack_cases is initials; `I` for
- * inequality is not), so it is read off the existing ids instead. That keeps the
- * rule in one place — the data — rather than in a registry that drifts.
- *
- * Returns null when the domain has no claims yet, or when its existing ids do
- * not agree on a prefix. Both are refusals, not guesses: minting an id under a
- * wrong prefix would silently fork a domain's namespace.
- */
-export function inferDomainPrefix(existingIdsInDomain: readonly string[]): string | null {
-  const letters = Object.values(KIND_LETTER);
-  const prefixes = new Set<string>();
-
-  for (const id of existingIdsInDomain) {
-    const withoutSeq = id.replace(/\d+$/, "");
-    if (withoutSeq === id) return null; // no trailing number: not our convention
-    const letter = withoutSeq.slice(-1);
-    if (!letters.includes(letter)) return null;
-    prefixes.add(withoutSeq.slice(0, -1));
-  }
-
-  if (prefixes.size !== 1) return null; // no claims, or a domain with mixed prefixes
-  return [...prefixes][0];
-}
 
 /** Next free id for a claim of this kind in this domain. */
 export function mintClaimId(
