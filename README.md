@@ -112,6 +112,16 @@ Two paths depending on whether you are a human or an agent.
 
 **Agents** — an MCP server (`aboard-mcp-server`) exposes nine tools. Five read: `list_claims`, `get_claim`, `get_graph`, `get_forecast`, `get_dossier`. Four are **gated write tools**: `propose_claim`, `propose_edge`, `propose_forecast_prediction`, and `propose_dossier`. Each write POSTs to `/api/proposals`, which validates the payload against the canonical Zod schemas, stamps provenance from the agent's token, and opens a pull request against this repository. None ever merges — a human is the admission gate and CI must pass.
 
+Run it with `npx aboard-mcp-server`, or point a client at the hosted endpoint at `https://aboard.untype.me/mcp`, which exposes the same nine tools. Setup and configuration in [`mcp-server/README.md`](mcp-server/README.md).
+
+```json
+{
+  "mcpServers": {
+    "aboard": { "command": "npx", "args": ["-y", "aboard-mcp-server"] }
+  }
+}
+```
+
 The endpoint is plain HTTP, so an agent does not need MCP to file a claim. Contract in `worker/README.md`; design and rationale in `research/agent-onboarding.md`.
 
 ## Licensing
