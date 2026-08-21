@@ -7,6 +7,8 @@ import {
 } from "@/lib/graph";
 import { aggregate } from "@/lib/forecast";
 import { siteHost } from "@/lib/site";
+import { kindPalette, surface } from "@/lib/tokens";
+import type { ClaimKind } from "@/lib/types";
 
 export function generateStaticParams() {
   return getClaims().map((c) => ({ id: c.id }));
@@ -20,11 +22,14 @@ export const contentType = "image/png";
 // Generate the images at build time (required by output: "export").
 export const dynamic = "force-static";
 
-const KIND_TOKENS = {
-  symptom: { label: "SYMPTOM", fg: "#b91c1c", bg: "#fef2f2", bd: "#fecaca" },
-  mechanism: { label: "MECHANISM", fg: "#b45309", bg: "#fffbeb", bd: "#fde68a" },
-  leverage_point: { label: "LEVERAGE", fg: "#047857", bg: "#ecfdf5", bd: "#a7f3d0" },
-} as const;
+// The colours live in `@/lib/tokens`, checked against globals.css. What stays
+// here is the one thing that is this card's own: the eyebrow wording, which is
+// neither the claim kind as stored nor the plural the site card prints.
+const KIND_LABEL: Record<ClaimKind, string> = {
+  symptom: "SYMPTOM",
+  mechanism: "MECHANISM",
+  leverage_point: "LEVERAGE",
+};
 
 export default async function Image({
   params,
@@ -38,7 +43,7 @@ export default async function Image({
     return notFoundImage();
   }
 
-  const tokens = KIND_TOKENS[claim.kind];
+  const palette = kindPalette[claim.kind];
   const forecasts = getForecastsForClaim(id);
   const dossier = getDossierForClaim(id);
 
@@ -69,8 +74,8 @@ export default async function Image({
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          background: "#fafaf9",
-          color: "#0c0a09",
+          background: surface.bg,
+          color: surface.fg,
           padding: "64px 72px",
           fontFamily: "system-ui, -apple-system, sans-serif",
           position: "relative",
@@ -80,7 +85,7 @@ export default async function Image({
           style={{
             position: "absolute",
             inset: 0,
-            background: tokens.bg,
+            background: palette.bg,
             opacity: 0.5,
             zIndex: 0,
           }}
@@ -93,16 +98,16 @@ export default async function Image({
             alignItems: "center",
             fontSize: 18,
             letterSpacing: "0.02em",
-            color: "#0c0a09",
+            color: surface.fg,
             zIndex: 1,
           }}
         >
           <div style={{ display: "flex" }}>
             <span>aboard</span>
-            <span style={{ color: "#78716c", padding: "0 6px" }}>/</span>
-            <span style={{ color: "#57534e" }}>v0</span>
+            <span style={{ color: surface.muted2, padding: "0 6px" }}>/</span>
+            <span style={{ color: surface.muted }}>v0</span>
           </div>
-          <div style={{ color: "#57534e", fontSize: 14, letterSpacing: "0.06em" }}>
+          <div style={{ color: surface.muted, fontSize: 14, letterSpacing: "0.06em" }}>
             {`domain · ${claim.domain}`}
           </div>
         </div>
@@ -122,10 +127,10 @@ export default async function Image({
               display: "flex",
               fontSize: 18,
               letterSpacing: "0.12em",
-              color: tokens.fg,
+              color: palette.fg,
             }}
           >
-            {`${tokens.label} · ${claim.id}`}
+            {`${KIND_LABEL[claim.kind]} · ${claim.id}`}
           </div>
 
           <div
@@ -134,7 +139,7 @@ export default async function Image({
               fontWeight: 500,
               lineHeight: 1.12,
               letterSpacing: "-0.02em",
-              color: "#0c0a09",
+              color: surface.fg,
               display: "flex",
               maxWidth: 1080,
             }}
@@ -148,7 +153,7 @@ export default async function Image({
               gap: 8,
               flexWrap: "wrap",
               fontSize: 18,
-              color: "#57534e",
+              color: surface.muted,
               letterSpacing: "0.04em",
             }}
           >
@@ -157,7 +162,7 @@ export default async function Image({
                 key={i}
                 style={{ display: "flex", alignItems: "center", gap: 12 }}
               >
-                {i > 0 && <span style={{ color: "#a8a29e" }}>·</span>}
+                {i > 0 && <span style={{ color: surface.separator }}>·</span>}
                 <span>{f}</span>
               </div>
             ))}
@@ -168,7 +173,7 @@ export default async function Image({
           style={{
             display: "flex",
             justifyContent: "flex-end",
-            color: "#78716c",
+            color: surface.muted2,
             fontSize: 16,
             letterSpacing: "0.04em",
             zIndex: 1,
@@ -201,20 +206,20 @@ function notFoundImage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "#fafaf9",
-          color: "#0c0a09",
+          background: surface.bg,
+          color: surface.fg,
           fontFamily: "system-ui, -apple-system, sans-serif",
         }}
       >
         <div style={{ display: "flex", fontSize: 22, letterSpacing: "0.04em" }}>
           <span>aboard</span>
-          <span style={{ color: "#78716c", padding: "0 6px" }}>/</span>
-          <span style={{ color: "#57534e" }}>v0</span>
+          <span style={{ color: surface.muted2, padding: "0 6px" }}>/</span>
+          <span style={{ color: surface.muted }}>v0</span>
         </div>
         <div
           style={{
             fontSize: 48,
-            color: "#57534e",
+            color: surface.muted,
             marginTop: 16,
             letterSpacing: "-0.01em",
           }}

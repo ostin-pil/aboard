@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { site } from "@/lib/content/loader";
 import { graph } from "@/lib/graph";
+import { kindPalette, surface } from "@/lib/tokens";
 
 // Built from the card's own two halves, so the alt text cannot describe a card
 // that is no longer what gets rasterized.
@@ -26,8 +27,8 @@ export default async function Image() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          background: "#fafaf9",
-          color: "#0c0a09",
+          background: surface.bg,
+          color: surface.fg,
           padding: "64px 72px",
           fontFamily: "system-ui, -apple-system, sans-serif",
           position: "relative",
@@ -42,16 +43,16 @@ export default async function Image() {
             alignItems: "center",
             fontSize: 18,
             letterSpacing: "0.02em",
-            color: "#0c0a09",
+            color: surface.fg,
             zIndex: 1,
           }}
         >
           <div style={{ display: "flex" }}>
             <span>aboard</span>
-            <span style={{ color: "#78716c", padding: "0 6px" }}>/</span>
-            <span style={{ color: "#57534e" }}>v0</span>
+            <span style={{ color: surface.muted2, padding: "0 6px" }}>/</span>
+            <span style={{ color: surface.muted }}>v0</span>
           </div>
-          <div style={{ color: "#57534e", fontSize: 14, letterSpacing: "0.06em" }}>
+          <div style={{ color: surface.muted, fontSize: 14, letterSpacing: "0.06em" }}>
             domain · democratic_backsliding
           </div>
         </div>
@@ -71,14 +72,14 @@ export default async function Image() {
               lineHeight: 1.12,
               letterSpacing: "-0.02em",
               maxWidth: 980,
-              color: "#0c0a09",
+              color: surface.fg,
               display: "flex",
               flexWrap: "wrap",
             }}
           >
             <span>
               {site.ogHeadline}&nbsp;
-              <span style={{ color: "#57534e", fontWeight: 400 }}>{site.tagline}</span>
+              <span style={{ color: surface.muted, fontWeight: 400 }}>{site.tagline}</span>
             </span>
           </div>
         </div>
@@ -92,9 +93,9 @@ export default async function Image() {
             letterSpacing: "0.04em",
           }}
         >
-          {chip(`${stats.symptoms} symptoms`, "#b91c1c", "#fef2f2", "#fecaca")}
-          {chip(`${stats.mechanisms} mechanisms`, "#b45309", "#fffbeb", "#fde68a")}
-          {chip(`${stats.leverage} leverage`, "#047857", "#ecfdf5", "#a7f3d0")}
+          {chip(`${stats.symptoms} symptoms`, kindPalette.symptom)}
+          {chip(`${stats.mechanisms} mechanisms`, kindPalette.mechanism)}
+          {chip(`${stats.leverage} leverage`, kindPalette.leverage_point)}
         </div>
       </div>
     ),
@@ -104,7 +105,7 @@ export default async function Image() {
   );
 }
 
-function chip(text: string, fg: string, bg: string, bd: string) {
+function chip(text: string, c: { fg: string; bg: string; bd: string }) {
   return (
     <div
       style={{
@@ -112,9 +113,9 @@ function chip(text: string, fg: string, bg: string, bd: string) {
         alignItems: "center",
         gap: 8,
         padding: "8px 14px",
-        background: bg,
-        border: `1px solid ${bd}`,
-        color: fg,
+        background: c.bg,
+        border: `1px solid ${c.bd}`,
+        color: c.fg,
         borderRadius: 6,
       }}
     >
@@ -123,7 +124,7 @@ function chip(text: string, fg: string, bg: string, bd: string) {
           width: 8,
           height: 8,
           borderRadius: 999,
-          background: fg,
+          background: c.fg,
         }}
       />
       <span>{text}</span>
@@ -145,7 +146,7 @@ function dotGrid(w: number, h: number) {
             top: y,
             width: 1.6,
             height: 1.6,
-            background: "#d6d3d1",
+            background: surface.line2,
             borderRadius: 999,
           }}
         />

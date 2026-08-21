@@ -5,6 +5,7 @@ import {
   getDossierForClaim,
 } from "@/lib/graph";
 import { siteHost } from "@/lib/site";
+import { stancePalette, surface } from "@/lib/tokens";
 
 export function generateStaticParams() {
   return getClaimsWithDossiers().map((c) => ({ claimId: c.id }));
@@ -42,8 +43,8 @@ export default async function Image({
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          background: "#fafaf9",
-          color: "#0c0a09",
+          background: surface.bg,
+          color: surface.fg,
           padding: "56px 64px",
           fontFamily: "system-ui, -apple-system, sans-serif",
           position: "relative",
@@ -60,12 +61,12 @@ export default async function Image({
         >
           <div style={{ display: "flex" }}>
             <span>aboard</span>
-            <span style={{ color: "#78716c", padding: "0 6px" }}>/</span>
-            <span style={{ color: "#57534e" }}>v0</span>
+            <span style={{ color: surface.muted2, padding: "0 6px" }}>/</span>
+            <span style={{ color: surface.muted }}>v0</span>
           </div>
           <div
             style={{
-              color: "#57534e",
+              color: surface.muted,
               fontSize: 14,
               letterSpacing: "0.16em",
             }}
@@ -81,7 +82,7 @@ export default async function Image({
             lineHeight: 1.18,
             letterSpacing: "-0.02em",
             marginTop: 32,
-            color: "#0c0a09",
+            color: surface.fg,
             display: "flex",
             maxWidth: 1080,
           }}
@@ -97,8 +98,8 @@ export default async function Image({
             flex: 1,
           }}
         >
-          {column("PRO", proThesis, "#047857", "#ecfdf5")}
-          {column("CON", conThesis, "#b91c1c", "#fef2f2")}
+          {column("PRO", proThesis, stancePalette.pro)}
+          {column("CON", conThesis, stancePalette.con)}
         </div>
 
         <div
@@ -108,7 +109,7 @@ export default async function Image({
             alignItems: "center",
             marginTop: 16,
             fontSize: 14,
-            color: "#78716c",
+            color: surface.muted2,
             letterSpacing: "0.04em",
           }}
         >
@@ -125,7 +126,7 @@ export default async function Image({
   );
 }
 
-function column(label: string, thesis: string, fg: string, bg: string) {
+function column(label: string, thesis: string, c: { fg: string; bg: string }) {
   return (
     <div
       style={{
@@ -133,8 +134,8 @@ function column(label: string, thesis: string, fg: string, bg: string) {
         flexDirection: "column",
         gap: 14,
         flex: 1,
-        background: bg,
-        border: `2px solid ${fg}`,
+        background: c.bg,
+        border: `2px solid ${c.fg}`,
         borderRadius: 6,
         padding: "20px 22px",
       }}
@@ -144,13 +145,13 @@ function column(label: string, thesis: string, fg: string, bg: string) {
           display: "flex",
           alignItems: "center",
           gap: 8,
-          color: fg,
+          color: c.fg,
           fontSize: 14,
           letterSpacing: "0.16em",
         }}
       >
         <div
-          style={{ width: 8, height: 8, borderRadius: 999, background: fg }}
+          style={{ width: 8, height: 8, borderRadius: 999, background: c.fg }}
         />
         <span>{label}</span>
       </div>
@@ -160,7 +161,7 @@ function column(label: string, thesis: string, fg: string, bg: string) {
           fontWeight: 500,
           lineHeight: 1.32,
           letterSpacing: "-0.005em",
-          color: "#0c0a09",
+          color: surface.fg,
           display: "flex",
         }}
       >
@@ -186,20 +187,20 @@ function notFoundImage() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "#fafaf9",
-          color: "#0c0a09",
+          background: surface.bg,
+          color: surface.fg,
           fontFamily: "system-ui, -apple-system, sans-serif",
         }}
       >
         <div style={{ display: "flex", fontSize: 22, letterSpacing: "0.04em" }}>
           <span>aboard</span>
-          <span style={{ color: "#78716c", padding: "0 6px" }}>/</span>
-          <span style={{ color: "#57534e" }}>v0</span>
+          <span style={{ color: surface.muted2, padding: "0 6px" }}>/</span>
+          <span style={{ color: surface.muted }}>v0</span>
         </div>
         <div
           style={{
             fontSize: 48,
-            color: "#57534e",
+            color: surface.muted,
             marginTop: 16,
             letterSpacing: "-0.01em",
           }}
