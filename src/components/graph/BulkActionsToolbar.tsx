@@ -154,6 +154,10 @@ export function BulkActionsToolbar({
               commitGroup(newDomain);
             }}
           >
+            {/* eslint-disable jsx-a11y/no-autofocus -- this input does not exist
+                until the user asks for it, so focusing it answers the request
+                rather than stealing focus on arrival, which is the thing the
+                rule is about. */}
             <input
               type="text"
               placeholder="new domain…"
@@ -161,6 +165,7 @@ export function BulkActionsToolbar({
               onChange={(e) => setNewDomain(e.target.value)}
               autoFocus
             />
+            {/* eslint-enable jsx-a11y/no-autofocus */}
             <button type="submit" className="ag-bulk-btn primary">
               add
             </button>

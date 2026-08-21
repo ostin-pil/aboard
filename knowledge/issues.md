@@ -246,3 +246,15 @@ Recovery was checked and exhausted on 2026-08-18: the login keychain has exactly
 **The general trap.** A secret store is verified by reading the value back, never by the store command exiting 0 — and a deletion never rides in the same paste as the store it depends on. `add-generic-password` stores whatever the prompt receives, silently.
 
 Status: resolved 2026-08-20 — the playbook ran end to end: fresh key in the keychain, new TXT record at the apex (whose DNS turned out to live at Cloudflare, not the registrar's panel; step 5 now checks instead of assuming), `login` succeeded, and the publish step returned the expected duplicate-version 400 with the card version unchanged. Keychain, record and registry entry verified in agreement before the temporary PEM was deleted.
+
+---
+
+## 2026-08-21 — the graph canvas is pointer-only: nodes and edge labels have no keyboard path
+
+**Symptom.** `jsx-a11y/click-events-have-key-events` and `jsx-a11y/no-static-element-interactions` both fire on `ClaimNode.tsx` and on the edge label in `ClaimEdge.tsx`. Both are right. Clicking a node opens its detail popover and clicking an edge label opens the rationale popover, and neither is reachable without a pointer.
+
+**Why it is not a one-line fix.** The obvious repair, `tabIndex={0}` plus an Enter/Space handler on the same element, makes it worse. React Flow already makes its own node *wrapper* focusable (`nodesFocusable`), so adding a tab stop to the div inside it gives every node two, and the canvas holds around thirty. Keydown does not reach a child from a focused parent either, so the handler cannot simply sit where the click handler sits: it has to move to the wrapper, which means going through React Flow's node API rather than editing the component. `role="button"` is not available as a shortcut, because the node already contains a real `<button>` (the edit affordance) and nesting interactive content inside a button role is its own violation.
+
+**Scope.** The editor dialogs are fine. They trap focus (`dialog.tsx`), and `a11y.test.ts` runs axe over all three. What is missing is reaching a node or an edge in the first place. Read-only consumers are unaffected: every claim has its own page, and `/api/graph` carries the same content.
+
+Status: open — filed in session 66, when jsx-a11y's recommended set went from 6 rules to 31 and named it. The two sites carry `eslint-disable-next-line` comments pointing here; the fix is a feature (keyboard navigation of the canvas) and wants its own slice plus a browser pass.

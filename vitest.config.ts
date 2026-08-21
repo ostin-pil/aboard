@@ -12,7 +12,11 @@ const alias = {
  *
  * - `unit`: the pure modules under src/. Anything that reaches the filesystem
  *   loader would pull in `server-only` and the Next runtime; the build already
- *   covers that path end to end. One exception, argued in
+ *   covers that path end to end. `.tsx` is in the glob since session 66 for
+ *   `a11y.test.tsx`, which renders components to run axe over them: passing
+ *   children through `createElement`'s props object is what `react/no-children-prop`
+ *   exists to refuse, and passing them variadically does not satisfy a `Props`
+ *   that requires them. JSX is the shape that satisfies both. One exception, argued in
  *   `src/lib/data/loader.test.ts`: listing *order* is the one loader property
  *   the build cannot check, because it reads `data/` once on one filesystem and
  *   validates whatever order it gets. That file mocks `server-only` away and
@@ -35,7 +39,7 @@ export default defineConfig({
     projects: [
       {
         resolve: { alias },
-        test: { name: "unit", include: ["src/**/*.test.ts"], environment: "node" },
+        test: { name: "unit", include: ["src/**/*.test.{ts,tsx}"], environment: "node" },
       },
       {
         resolve: { alias },

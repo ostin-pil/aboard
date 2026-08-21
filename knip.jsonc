@@ -41,7 +41,7 @@
     "scripts/*.mjs",
     "scripts/forecasters/ensemble-predict.ts",
     "src/lib/types.ts",
-    "src/**/*.test.ts"
+    "src/**/*.test.{ts,tsx}"
   ],
 
   // Scoped to the three trees the root package actually owns. Everything else
@@ -67,6 +67,15 @@
   // `@tailwindcss/postcss` in postcss.config.mjs. knip resolves neither, so it
   // reports the dependency as unused every run. The alternative to naming it
   // here is a permanently-red gate, which is a gate nobody reads.
+  //
+  // Since session 66 knip emits a hint asking for this entry to be removed, and
+  // the entry stays anyway. The hint appeared because `tokens.test.ts` names
+  // `globals.css` in a `new URL()`, which knip follows into the file and through
+  // the `@import`. That trace is incidental: the test exists to pin the OG
+  // palette, and any refactor of how it reaches the stylesheet takes the trace
+  // with it and turns the gate red on a dependency that did not move. E20
+  // settled that tailwindcss is load-bearing — it supplies the site's preflight
+  // — so the exemption describes a real dependency rather than hiding a dead one.
   "ignoreDependencies": ["tailwindcss"],
 
   // An export used only by a test still counts as used: test files are entry

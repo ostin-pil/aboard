@@ -155,6 +155,11 @@ function ClaimEdgeImpl(props: EdgeProps<ClaimEdgeT>) {
       )}
       {showLabel && (
         <EdgeLabelRenderer>
+          {/* Same gap as ClaimNode, and the same reason it is not fixed here:
+              the edge label is pointer-only, and giving it a tab stop of its own
+              multiplies stops across the canvas rather than solving keyboard
+              navigation. Tracked in knowledge/issues.md (2026-08-21). */}
+          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
           <div
             ref={labelRef}
             className={`ag-edge-label ag-${kind}${data?.crossDomain ? " ag-cross-domain" : ""}${
