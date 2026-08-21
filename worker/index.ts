@@ -47,6 +47,8 @@ import {
   appendPredictionToForecast,
   dossierToYaml,
   dossierPath,
+  edgeIndex,
+  relationKey,
 } from "../src/lib/data/serialize";
 import {
   claimPrBody,
@@ -56,7 +58,10 @@ import {
 } from "../src/lib/pr-body";
 import {
   classifySubmitFailure,
+  duplicateRelation,
+  staleEdgeId,
   type CollidableKind,
+  type ProposalError,
   type SubmitFailure,
 } from "../src/lib/proposal-errors";
 import { isTransientStatus, withRetry } from "../src/lib/http-retry";
@@ -235,6 +240,8 @@ type Graph = {
   claimDomains: Map<string, string>;
   claimIdsByDomain: Map<string, string[]>;
   edgeIds: string[];
+  /** relationKey → the id of the edge already asserting it (see relationKey). */
+  edgeRelations: Map<string, string>;
   /** forecastId → the domain of the claim it is attached to (its file's domain). */
   forecastDomains: Map<string, string>;
   /** claim ids that already have a dossier — so a new one is not proposed over them. */
@@ -249,6 +256,12 @@ type Graph = {
  * lets the server mint ids that collide with nothing and check that an edge's
  * endpoints exist.
  */
+/** The claim id out of a JSON-LD `{ "@id": "<base>/claims/<id>" }` node. */
+function idFromNode(node: unknown): string {
+  const id = (node as { "@id"?: unknown } | undefined)?.["@id"];
+  return typeof id === "string" ? (id.split("/").pop() ?? "") : "";
+}
+
 async function readGraph(env: Env, request: Request): Promise<Graph | null> {
   const url = new URL("/api/graph", request.url);
   const res = await env.ASSETS.fetch(new Request(url.toString()));
@@ -283,10 +296,19 @@ async function readGraph(env: Env, request: Request): Promise<Graph | null> {
 
   const edges = body["aboard:edges"];
   const edgeIds: string[] = [];
+  const edgeRelations = new Map<string, string>();
   if (Array.isArray(edges)) {
     for (const entry of edges as Record<string, unknown>[]) {
       const id = typeof entry["aboard:id"] === "string" ? entry["aboard:id"] : "";
       if (id) edgeIds.push(id);
+      // The serializer publishes endpoints as `{ "@id": ".../claims/<id>" }`
+      // and the kind as `aboard:relation`; see edgeLD in src/lib/jsonld.ts.
+      const from = idFromNode(entry["aboard:from"]);
+      const to = idFromNode(entry["aboard:to"]);
+      const kind = typeof entry["aboard:relation"] === "string" ? entry["aboard:relation"] : "";
+      if (!from || !to || !kind) continue;
+      const key = relationKey(from, kind, to);
+      if (!edgeRelations.has(key)) edgeRelations.set(key, id || "(unnamed edge)");
     }
   }
 
@@ -319,6 +341,7 @@ async function readGraph(env: Env, request: Request): Promise<Graph | null> {
     claimDomains,
     claimIdsByDomain,
     edgeIds,
+    edgeRelations,
     forecastDomains,
     claimsWithDossier,
   };
@@ -517,12 +540,16 @@ async function submitProposalPR(
 }
 
 /** `classifySubmitFailure` applied to the response shape the handlers return. */
+/** A `ProposalError` from src/lib/proposal-errors.ts, as the HTTP response. */
+function failWith(e: ProposalError): Response {
+  return fail(e.status, e.code, e.message, e.extra);
+}
+
 function failSubmit(
   failure: SubmitFailure,
   context: { kind: CollidableKind; id: string },
 ): Response {
-  const e = classifySubmitFailure(failure, context);
-  return fail(e.status, e.code, e.message, e.extra);
+  return failWith(classifySubmitFailure(failure, context));
 }
 
 // --- the endpoint ----------------------------------------------------------
@@ -612,8 +639,13 @@ async function handleEdge(
     claimDomains: graph.claimDomains,
     claimIdsByDomain: graph.claimIdsByDomain,
     allEdgeIds: graph.edgeIds,
+    existingRelations: graph.edgeRelations,
   });
-  if (!built.ok) return fail(422, "cannot_build_edge", built.error);
+  if (!built.ok) {
+    return built.duplicateOf
+      ? failWith(duplicateRelation(built.duplicateOf))
+      : fail(422, "cannot_build_edge", built.error);
+  }
 
   // An edge joins an existing YAML list, so read the current file to append to
   // it and to get the sha the update commit needs.
@@ -622,6 +654,31 @@ async function handleEdge(
     existing = await getFile(ctx, built.path, ctx.base);
   } catch (err) {
     return fail(502, "github_failed", (err as Error).message);
+  }
+
+  // The same two questions the graph was just asked, asked again of the file
+  // this commit will actually change, at the base ref. The graph is the
+  // *deployed* one and lags `main` by a Workers Builds cycle; this file is the
+  // branch point of the PR about to be opened, so it is what the answer has to
+  // be true of. Both checks run before the branch is cut, so a refusal here
+  // leaves nothing behind on GitHub to clean up.
+  const onBase = edgeIndex(existing?.content ?? "");
+  if (onBase.ids.has(built.edge.id)) {
+    return failWith(staleEdgeId({ id: built.edge.id, path: built.path }));
+  }
+  const existingId = onBase.relations.get(
+    relationKey(built.edge.fromId, built.edge.kind, built.edge.toId),
+  );
+  if (existingId !== undefined) {
+    return failWith(
+      duplicateRelation({
+        fromId: built.edge.fromId,
+        kind: built.edge.kind,
+        toId: built.edge.toId,
+        existingId,
+        path: built.path,
+      }),
+    );
   }
 
   const result = await submitProposalPR(ctx, {
@@ -1028,6 +1085,15 @@ export async function route(request: Request, env: Env): Promise<Response> {
   // Resolved at most once per request, and only if something asks.
   const credential = credentialOnce(env, request);
 
+  // No OPTIONS branch and no CORS headers, deliberately. Every other endpoint
+  // here is a read that a browser page might legitimately want cross-origin,
+  // and each sets `Access-Control-Allow-Origin: *` for that reason. This one is
+  // a write behind a Bearer token, so the only caller that could benefit from a
+  // preflight is a browser page holding a write credential — and a write
+  // credential in a page is a credential already lost. Agents call it from
+  // servers, where CORS does not apply. Adding the preflight would widen the
+  // reachable set for no caller that exists; if one ever does, the decision to
+  // revisit is this comment.
   if (pathname === "/api/proposals") {
     return handleProposal(request, env, credential);
   }

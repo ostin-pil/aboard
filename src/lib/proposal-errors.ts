@@ -58,10 +58,16 @@ export type ProposalError = {
  *
  * Only the two that create a file. An edge appends to `edges.yaml` and a
  * prediction appends to a forecast, and both read that file live from GitHub at
- * the base ref and commit with its `sha`, so neither reaches the create path. A
- * stale *edge* id is a real defect too, but it surfaces as a duplicate id
- * inside the YAML that CI's integrity check rejects on the PR, not as a 422
- * here. Different failure, different fix, deliberately out of scope.
+ * the base ref and commit with its `sha`, so neither reaches the create path.
+ *
+ * A stale *edge* id is a real collision too, and it used to be out of scope
+ * here for that reason: it surfaced as a duplicate id inside the YAML, which
+ * CI's integrity check rejects on the PR rather than at submit. Chunk 5 closed
+ * it, but not through this classifier — the edge path already reads the target
+ * file from the base ref before it commits, so the collision is knowable
+ * *before* GitHub is asked to do anything. `staleEdgeId()` below is that check
+ * expressed as the same 409, which keeps one remediation vocabulary across all
+ * three kinds instead of two shapes for one situation.
  */
 export type CollidableKind = "claim" | "dossier";
 
@@ -117,5 +123,74 @@ export function classifySubmitFailure(
     code: "github_failed",
     message: `Could not open the proposal PR: ${failure.detail}`,
     extra: {},
+  };
+}
+
+/**
+ * The id the Worker minted is already taken in the file it is about to append
+ * to — the edge form of `id_collision`.
+ *
+ * Same status and code as the claim and dossier collision, because it is the
+ * same situation with the same cause (the deployed graph lags the base branch)
+ * and the same fix (re-read and file again). Detected earlier in the sequence:
+ * no branch is cut and no commit is attempted, so a caller that retries costs
+ * GitHub nothing.
+ */
+export function staleEdgeId(context: { id: string; path: string }): ProposalError {
+  return {
+    status: 409,
+    code: "id_collision",
+    message:
+      `${context.path} already holds an edge with id ${context.id} on the base branch. ` +
+      `The published graph had not caught up when this id was chosen.`,
+    extra: {
+      kind: "edge",
+      id: context.id,
+      path: context.path,
+      retryable: true,
+      remediation:
+        "Re-read /api/graph and file again: the next free id will account for it. " +
+        "If the graph still shows this id as free, the deploy has not caught up yet; " +
+        "wait a minute and retry.",
+    },
+  };
+}
+
+/**
+ * The relation already exists — same `(fromId, kind, toId)`, different id.
+ *
+ * Not retryable, and that is what separates it from the collision above. A
+ * stale id means "ask again and you will get a good one"; a duplicate relation
+ * means the graph already says this, and filing it again under a fresh id
+ * would produce a second edge asserting the same thing, which no integrity
+ * check rejects and every consumer then double-counts. The remediation is to
+ * change the proposal or leave the graph alone, so `retryable: false` says so
+ * to an agent that would otherwise loop.
+ */
+export function duplicateRelation(context: {
+  fromId: string;
+  kind: string;
+  toId: string;
+  existingId: string;
+  path?: string;
+}): ProposalError {
+  return {
+    status: 409,
+    code: "duplicate_relation",
+    message:
+      `The graph already asserts ${context.fromId} ${context.kind} ${context.toId}, ` +
+      `as edge ${context.existingId}. A second edge for the same relation is refused.`,
+    extra: {
+      kind: "edge",
+      existingId: context.existingId,
+      ...(context.path ? { path: context.path } : {}),
+      retryable: false,
+      remediation:
+        "Read the existing edge before filing another. If its strength, rationale or " +
+        "sources should change, that is an edit to " +
+        `${context.existingId} rather than a new edge, and it goes through a pull ` +
+        "request against the file. If the relation runs the other way, propose that " +
+        "direction instead: it is a different claim, not a duplicate.",
+    },
   };
 }

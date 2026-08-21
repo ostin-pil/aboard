@@ -10,6 +10,8 @@ import {
   Source,
   type AgentAttribution,
 } from "@/lib/types";
+import { nextSequentialId, inferDomainPrefix, KIND_LETTER } from "@/lib/ids";
+import { relationKey } from "@/lib/data/serialize";
 
 /**
  * The agent write path: what a caller may send, and how it becomes graph data.
@@ -295,63 +297,6 @@ export type TokenIdentity = {
 
 // --- claim ids -------------------------------------------------------------
 
-const KIND_LETTER: Record<z.infer<typeof ClaimKind>, string> = {
-  symptom: "S",
-  mechanism: "M",
-  leverage_point: "L",
-};
-
-/**
- * Infer a domain's id prefix from the claims it already contains.
- *
- * The convention (CLAUDE.md) is `<domainPrefix><kindLetter><n>`:
- * `S1`/`M1`/`L1` in democratic_backsliding (empty prefix), `IS1`/`IM1`/`IL1` in
- * inequality, `ECS1`/`ECM1`/`ECL1` in epistack_cases. The prefix is not derivable
- * from the domain's *name* (`EC` for epistack_cases is initials; `I` for
- * inequality is not), so it is read off the existing ids instead. That keeps the
- * rule in one place — the data — rather than in a registry that drifts.
- *
- * Returns null when the domain has no claims yet, or when its existing ids do
- * not agree on a prefix. Both are refusals, not guesses: minting an id under a
- * wrong prefix would silently fork a domain's namespace.
- */
-export function inferDomainPrefix(existingIdsInDomain: readonly string[]): string | null {
-  const letters = Object.values(KIND_LETTER);
-  const prefixes = new Set<string>();
-
-  for (const id of existingIdsInDomain) {
-    const withoutSeq = id.replace(/\d+$/, "");
-    if (withoutSeq === id) return null; // no trailing number: not our convention
-    const letter = withoutSeq.slice(-1);
-    if (!letters.includes(letter)) return null;
-    prefixes.add(withoutSeq.slice(0, -1));
-  }
-
-  if (prefixes.size !== 1) return null; // no claims, or a domain with mixed prefixes
-  return [...prefixes][0];
-}
-
-/**
- * Next unused `<stem><n>` id, given every id already in use.
- *
- * Takes the max sequence already used for the stem and adds one, rather than
- * counting: ids are never reused, so a deleted `S3` does not come back and
- * collide with the `S3` some consumer already cached. The stem is anchored, so
- * stem `E` does not swallow `IE7` or `CE1`.
- */
-export function nextSequentialId(
-  stem: string,
-  existingIds: readonly string[],
-): string {
-  const pattern = new RegExp(`^${stem}(\\d+)$`);
-  let max = 0;
-  for (const id of existingIds) {
-    const m = pattern.exec(id);
-    if (m) max = Math.max(max, Number(m[1]));
-  }
-  return `${stem}${max + 1}`;
-}
-
 /** Next free id for a claim of this kind in this domain. */
 export function mintClaimId(
   prefix: string,
@@ -465,11 +410,31 @@ export type BuildEdgeInput = {
   claimIdsByDomain: ReadonlyMap<string, readonly string[]>;
   /** every edge id in the graph, so the minted id collides with nothing. */
   allEdgeIds: readonly string[];
+  /**
+   * relationKey → the id of the edge already asserting it, over the whole
+   * graph. The first of the two duplicate-relation checks: this one is free
+   * (the graph is already in hand) and refuses before GitHub is touched at
+   * all, but it reads the *deployed* graph, so it can be a deploy cycle
+   * behind. The Worker runs the same check again against the target file at
+   * the base ref, which is the authoritative one.
+   */
+  existingRelations: ReadonlyMap<string, string>;
 };
 
 export type BuildEdgeResult =
   | { ok: true; edge: Edge; path: string; crossDomain: boolean }
-  | { ok: false; error: string };
+  | {
+      ok: false;
+      error: string;
+      /**
+       * Set only where the caller must answer with something other than the
+       * default `422 cannot_build_edge`. A duplicate relation is a valid
+       * payload refused by the state of the graph, which is a 409, and an
+       * agent that cannot tell the two apart retries a proposal that will
+       * never be accepted.
+       */
+      duplicateOf?: { existingId: string; fromId: string; kind: string; toId: string };
+    };
 
 /**
  * Turn a validated edge payload into a full Edge, and decide which file it
@@ -486,11 +451,25 @@ export function buildEdge({
   claimDomains,
   claimIdsByDomain,
   allEdgeIds,
+  existingRelations,
 }: BuildEdgeInput): BuildEdgeResult {
   const { from, to } = payload;
 
   if (from === to) {
     return { ok: false, error: `An edge cannot point a claim at itself ("${from}").` };
+  }
+
+  // Before minting anything. An id minted for a proposal that is about to be
+  // refused is an id burned for nothing: `nextSequentialId` takes the max and
+  // adds one, so nothing reuses it, and the sequence grows a hole per refused
+  // duplicate.
+  const existingId = existingRelations.get(relationKey(from, payload.kind, to));
+  if (existingId !== undefined) {
+    return {
+      ok: false,
+      error: `The graph already asserts ${from} ${payload.kind} ${to}, as edge ${existingId}.`,
+      duplicateOf: { existingId, fromId: from, kind: payload.kind, toId: to },
+    };
   }
   const fromDomain = claimDomains.get(from);
   const toDomain = claimDomains.get(to);

@@ -12,7 +12,16 @@ const alias = {
  *
  * - `unit`: the pure modules under src/. Anything that reaches the filesystem
  *   loader would pull in `server-only` and the Next runtime; the build already
- *   covers that path end to end.
+ *   covers that path end to end. `.tsx` is in the glob since session 66 for
+ *   `a11y.test.tsx`, which renders components to run axe over them: passing
+ *   children through `createElement`'s props object is what `react/no-children-prop`
+ *   exists to refuse, and passing them variadically does not satisfy a `Props`
+ *   that requires them. JSX is the shape that satisfies both. One exception, argued in
+ *   `src/lib/data/loader.test.ts`: listing *order* is the one loader property
+ *   the build cannot check, because it reads `data/` once on one filesystem and
+ *   validates whatever order it gets. That file mocks `server-only` away and
+ *   reverses `readdirSync`, and it is the only test here that touches the
+ *   loader at all.
  * - `worker`: the Worker's HTTP shell (worker/*.test.ts), driven through
  *   `route()` with faked bindings. Plain node rather than
  *   `@cloudflare/vitest-pool-workers` — the probe (session 64) found the pool
@@ -30,7 +39,7 @@ export default defineConfig({
     projects: [
       {
         resolve: { alias },
-        test: { name: "unit", include: ["src/**/*.test.ts"], environment: "node" },
+        test: { name: "unit", include: ["src/**/*.test.{ts,tsx}"], environment: "node" },
       },
       {
         resolve: { alias },

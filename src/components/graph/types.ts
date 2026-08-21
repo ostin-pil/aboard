@@ -35,6 +35,11 @@ type ClaimEdgeData = {
   crossDomain: boolean;
   outOfDomain: boolean;
   collapsedRemap?: CollapsedRemap;
+  // Both absent for a sandbox-authored edge, and that absence is the signal
+  // the exporter reads: an edge with no `canonicalId` is one it must mint an
+  // id for. See EngineEdge in src/types/global.d.ts.
+  canonicalId?: EngineEdge["canonicalId"];
+  strength?: EngineEdge["strength"];
   [key: string]: unknown;
 };
 

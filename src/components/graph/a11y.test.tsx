@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import axe from "axe-core";
 import { ModalDialog } from "./dialog";
@@ -50,29 +49,29 @@ function describeViolations(violations: axe.Result[]): string {
 describe("the editor dialogs pass axe", () => {
   it("the node editor, creating a claim", async () => {
     const v = await violationsOf(
-      createElement(NodeEditorModal, {
-        node: null,
-        onSave: noop,
-        onDelete: noop,
-        onClose: noop,
-        newId: () => "M9",
-        existingRowsCount: () => 0,
-        availableDomains: ["democratic_backsliding", "inequality"],
-        defaultDomain: "inequality",
-        getDefaultPosition: () => ({ x: 0, y: 0 }),
-      })
+      <NodeEditorModal
+        node={null}
+        onSave={noop}
+        onDelete={noop}
+        onClose={noop}
+        newId={() => "M9"}
+        existingRowsCount={() => 0}
+        availableDomains={["democratic_backsliding", "inequality"]}
+        defaultDomain="inequality"
+        getDefaultPosition={() => ({ x: 0, y: 0 })}
+      />
     );
     expect(describeViolations(v)).toBe("");
   });
 
   it("the edge editor, creating a relation", async () => {
     const v = await violationsOf(
-      createElement(EdgeEditorModal, {
-        draft: { source: "M1", target: "S1", kind: "causes", isNew: true },
-        onSave: noop,
-        onDelete: noop,
-        onClose: noop,
-      })
+      <EdgeEditorModal
+        draft={{ source: "M1", target: "S1", kind: "causes", isNew: true }}
+        onSave={noop}
+        onDelete={noop}
+        onClose={noop}
+      />
     );
     expect(describeViolations(v)).toBe("");
   });
@@ -82,19 +81,20 @@ describe("the editor dialogs pass axe", () => {
     // in the graph store for no gain: what is being checked is the dialog shell
     // plus the focusable `<pre>`, and that is all of it.
     const v = await violationsOf(
-      createElement(ModalDialog, {
-        labelledBy: "jsonld-title",
-        onClose: noop,
-        backdropClassName: "jsonld-modal open",
-        className: "box",
-        children: [
-          createElement("div", { className: "head", key: "head" },
-            createElement("div", { id: "jsonld-title" }, "JSON-LD export")),
-          createElement("pre",
-            { key: "pre", tabIndex: 0, role: "region", "aria-label": "JSON-LD export" }, "{}"),
-          createElement("button", { className: "btn-mono", key: "copy" }, "copy to clipboard"),
-        ],
-      })
+      <ModalDialog
+        labelledBy="jsonld-title"
+        onClose={noop}
+        backdropClassName="jsonld-modal open"
+        className="box"
+      >
+        <div className="head">
+          <div id="jsonld-title">JSON-LD export</div>
+        </div>
+        <pre tabIndex={0} role="region" aria-label="JSON-LD export">
+          {"{}"}
+        </pre>
+        <button className="btn-mono">copy to clipboard</button>
+      </ModalDialog>
     );
     expect(describeViolations(v)).toBe("");
   });

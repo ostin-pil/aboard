@@ -41,7 +41,7 @@
     "scripts/*.mjs",
     "scripts/forecasters/ensemble-predict.ts",
     "src/lib/types.ts",
-    "src/**/*.test.ts"
+    "src/**/*.test.{ts,tsx}"
   ],
 
   // Scoped to the three trees the root package actually owns. Everything else

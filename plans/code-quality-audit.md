@@ -94,6 +94,10 @@ attribution stays honest.
 | E8 | session 54 | `mintClaimId` derives the prefix from the domain's own claims, falling back to the domain's initials. Filing a symptom into `inequality` mints `IS4`, verified in the browser |
 | E9 | session 54 | All four: confidence clamped at the input, the persisted-sandbox read made write-free, both flash timers cleared and `clipboard.writeText` given a rejection path, `useGraphInstance` deleted |
 | E11 | session 47 | `locationErrors` asserts filename-equals-id, directory-equals-domain, and that a forecast or dossier sits with its claim |
+| E12 | session 65 | `EngineEdge` carries `canonicalId` and `strength`, so a seeded edge exports as itself: its id, calibrated strength, rationale and sources all round-trip, and a sandbox-drawn edge is minted after the file's maximum on the domain's own stem. `exporter.test.ts` runs the real graph through loader → engine → exporter and asserts the result is a no-op against `data/` |
+| E15 | session 65 | All of it. `appendEdgeToYaml`'s empty-file guard parses instead of comparing strings (`[] # comment` produced invalid YAML); `nextSequentialId` matches stems as literal text; the duplicate-relation refusal is a `409 duplicate_relation` in both `buildEdge` and the Worker's base-ref check; the `/api/proposals` CORS decision and the claims route's dev-only 404 branch are argued at their sites |
+| E16 | session 65 | `readDirIfExists` sorts, so claims, forecasts, dossiers and analyses all load deterministically. `loader.test.ts` reverses `readdirSync` and asserts sorted order, which is the one loader property the build cannot check |
+| E17 | session 65 | `--update` runs `Prediction.safeParse` per result (naming the provider) and `Forecast.safeParse` over the whole file before writing, and appends through `appendPredictionToForecast` — measured on F7: 7 lines added, every prior line byte-identical, where the old whole-file re-stringify reformatted all 57 |
 
 Also closed from the C and D lists: the route error boundary, the
 `about/page.tsx` split, `vocab.ts`, both forbidden-string gates, the enum-sync
@@ -107,11 +111,11 @@ deleted.
 | # | State on `0d60660` |
 |---|---|
 | B (hex) | `src/lib/tokens.ts` still does not exist; 59 re-typed hex values across the three OG images |
-| E10 | Partly closed, and **downgraded on evidence** — read its row, which session 51 rewrote and which supersedes anything said about E10 elsewhere in this file. Two v2 premises were wrong (deploy-on-merge exists via Workers Builds; concurrent minting surfaces as an add/add conflict, not silently), the collision is now a structured `409 id_collision`, and what remains is the stale *edge* id and the option of reading ids live at `ctx.base` |
-| E12 | Exporter still re-mints edge ids from `E1` and emits whole-file `edges.yaml` replacements |
-| E15 | The one-liners and duplicate-relation refusal (E13's branch cleanup and E14's ordering closed in session 64) |
-| E16 | `loader.ts` sorts only `listDomains()`; claims, forecasts and dossiers load in `readdirSync` order |
-| E17 | `ensemble-predict --update` still writes without `Forecast.parse` and re-stringifies the whole file |
+| E10 | Partly closed, and **downgraded on evidence** — read its row, which session 51 rewrote and which supersedes anything said about E10 elsewhere in this file. Two v2 premises were wrong (deploy-on-merge exists via Workers Builds; concurrent minting surfaces as an add/add conflict, not silently), the collision is now a structured `409 id_collision`, and what remains is the option of reading ids live at `ctx.base`. The stale *edge* id was closed in session 65: the edge path already reads its target file at the base ref before committing, so the collision is checked there and answered as the same `409 id_collision`, before a branch is cut |
+| ~~E12~~ | Closed in session 65: the PR pack preserves edge identity and strength |
+| ~~E15~~ | Closed in session 65: the one-liners and the duplicate-relation refusal |
+| ~~E16~~ | Closed in session 65: every directory listing sorts |
+| ~~E17~~ | Closed in session 65: `--update` validates and appends rather than re-stringifying |
 | ~~E18~~ | Closed in session 64: the stdio default is the production origin |
 | ~~E19~~ | Closed in session 66: the dark values live in one source block, both selectors alias it, and `tokens.test.ts` pins the two alias lists as equal |
 | ~~E20~~ | Decided in session 66: **keep**. Zero utilities is true; "therefore droppable" is not — preflight is the site's reset |

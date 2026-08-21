@@ -19,10 +19,24 @@ const DATA_ROOT = join(process.cwd(), "data");
 /** Repo-relative path, so thrown errors name the file a contributor has to open. */
 const rel = (p: string) => relative(process.cwd(), p);
 
+/**
+ * A directory's entries, in a deterministic order.
+ *
+ * `readdirSync` returns whatever order the filesystem hands back — inode order
+ * on ext4, roughly-insertion order on APFS, and neither is stable across a
+ * clone or a checkout. Everything downstream inherits that: `/api/graph`'s
+ * arrays reorder between machines for no change in `data/`, so the published
+ * document diffs noisily, and first-reference-wins attribution (which source
+ * label a shared URL is credited to) can land on a different claim.
+ *
+ * `listDomains()` has sorted since it was written; the three per-domain
+ * listings never did. Sorting here rather than at each call site is what makes
+ * that hard to reintroduce.
+ */
 function readDirIfExists(p: string): string[] {
   if (!existsSync(p)) return [];
   if (!statSync(p).isDirectory()) return [];
-  return readdirSync(p);
+  return readdirSync(p).sort();
 }
 
 function readFileOptional(p: string): string | null {
