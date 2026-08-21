@@ -38,6 +38,7 @@ order they could be picked up; pick any.
 | Plan | Effort | Decision-heavy? | Prereq |
 | --- | --- | --- | --- |
 | [audit-2026-08.md](audit-2026-08.md) | 9 chunks, ~½–1 day each | Light — chunk 6 picks a test harness; the rest is decided | Chunk 8 (launch post) wants chunks 1, 4 and ideally 7 first; others independent |
+| [distribution-listings.md](distribution-listings.md) | ~1–2 hr, all operator | One decision: whether to bump the card version so the registry can carry the npm package | Chunk 7's code half, done in session 67 |
 | [integrity-foundations.md](integrity-foundations.md) | do-now slice shipped (session 34); enforcement half unscoped | Decisions taken; see its Status | Enforcement half was gated on the MCP write path, which is now met |
 | [repo-hardening.md](repo-hardening.md) | ~3–4 hr | Light — license choice | §4 blocked on domain choice; rest none |
 | [domain-on-create.md](domain-on-create.md) | ~1–2 hr | Light — slot-on-create vs leave-free | None |
