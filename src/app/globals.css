@@ -763,6 +763,10 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 }
 
 /* Edge label */
+/* A <button> rather than a div, so the element that takes the click says so.
+   The four properties past the chip's own styling are the button defaults that
+   would otherwise show: preflight already zeroes margin, padding and
+   background, but not the appearance, the centring or the line box. */
 .ag-edge-label {
   background: var(--paper);
   border: 1px solid var(--line);
@@ -774,6 +778,10 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
   border-radius: 2px;
   white-space: nowrap;
   transition: opacity .15s;
+  appearance: none;
+  display: block;
+  text-align: left;
+  line-height: normal;
 }
 .ag-edge-label.ag-causes    { color: var(--edge-causes); }
 .ag-edge-label.ag-moderates { color: var(--edge-moderates); opacity: .85; }
@@ -838,6 +846,30 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 .ag-node.is-dimmed { opacity: .35; box-shadow: none; transform: none; }
 .ag-node.ag-out-of-domain { opacity: .22; box-shadow: none; }
 .ag-node.is-selected { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+/* The tab stop is React Flow's wrapper, not this div, so the ring has to be
+   drawn from the wrapper's state onto the card inside it. Dashed, because the
+   solid ring above already means selected and a keyboard user moving through
+   the canvas is not selecting anything yet. */
+.react-flow__node:focus { outline: none; }
+.react-flow__node:focus-visible { outline: none; }
+.react-flow__node:focus-visible .ag-node {
+  outline: 2px dashed var(--fg);
+  outline-offset: 2px;
+}
+
+/* Same for an edge, where the focusable element is a <g> whose bounding box is
+   most of a bezier. Ringing that box would be noise, so the edge's own line
+   thickens instead. */
+.react-flow__edge:focus { outline: none; }
+.react-flow__edge:focus-visible { outline: none; }
+/* `!important` because `ClaimEdge` sets both of these inline, per kind, and an
+   inline style beats any selector. Measured in the browser: without it the ring
+   silently does nothing and the focused edge is indistinguishable. */
+.react-flow__edge:focus-visible .react-flow__edge-path {
+  stroke-width: 2.6px !important;
+  opacity: 1 !important;
+}
 
 .ag-node-meta {
   display: flex; justify-content: space-between; align-items: baseline;
@@ -924,6 +956,9 @@ footer.foot .l { display: flex; gap: 22px; flex-wrap: wrap; }
 /* edge hit-zone: invisible wide stroke for reliable hover on thin edges */
 .ag-edge-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: help; }
 .ag-edge-label.has-rationale { cursor: help; }
+
+.ag-popover:focus-visible,
+.ag-edge-popover:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 
 .ag-edge-popover {
   position: absolute; width: 280px;

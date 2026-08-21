@@ -57,6 +57,17 @@ export function canonicalEndpoints(e: ClaimEdge): { source: string; target: stri
   };
 }
 
+/**
+ * Whether an edge has anything to show in its rationale popover. Two callers
+ * that must agree: `ClaimEdge` decides whether to mount the hover hit-path,
+ * and the canvas decides whether focusing the edge opens anything. A copy of
+ * the condition in each is a copy that drifts into an edge you can focus but
+ * not read.
+ */
+export function edgeHasPopover(e: Pick<ClaimEdge, "data">): boolean {
+  return !!(e.data?.rationale || (e.data?.sources && e.data.sources.length > 0));
+}
+
 type DomainGroupData = {
   domain: string;
   claimCount: number;

@@ -62,6 +62,16 @@ export function EdgePopover({
       className="ag-edge-popover"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      // Focus does for the keyboard what hover does for the pointer, including
+      // the close it schedules on leaving. Without the focus half, moving into
+      // the panel to reach its source links blurs the edge and closes the panel
+      // under the focus that just arrived. `tabIndex` is what makes that move
+      // possible at all; the panel is not itself a tab stop.
+      onFocus={onMouseEnter}
+      onBlur={onMouseLeave}
+      tabIndex={-1}
+      role="group"
+      aria-label={`${edge.source} ${edge.data?.kind ?? "causes"} ${edge.target}, rationale`}
       style={{
         position: "absolute",
         left: pos?.left ?? -9999,

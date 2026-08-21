@@ -257,4 +257,14 @@ Status: resolved 2026-08-20 — the playbook ran end to end: fresh key in the ke
 
 **Scope.** The editor dialogs are fine. They trap focus (`dialog.tsx`), and `a11y.test.ts` runs axe over all three. What is missing is reaching a node or an edge in the first place. Read-only consumers are unaffected: every claim has its own page, and `/api/graph` carries the same content.
 
-Status: open — filed in session 66, when jsx-a11y's recommended set went from 6 rules to 31 and named it. The two sites carry `eslint-disable-next-line` comments pointing here; the fix is a feature (keyboard navigation of the canvas) and wants its own slice plus a browser pass.
+Status: resolved 2026-08-21 (session 68). The repair went where this entry said it would have to: onto React Flow's wrappers, through `onNodeClick`/`onNodeMouseEnter` and a `keydown`/`focusin` listener on the canvas root, rather than onto the divs the components render. Enter opens a claim's details or an edge's editor, focus lights the neighbourhood the way hover does, and every wrapper carries an `ariaLabel` naming what it is. Both disables are gone, because neither div binds an interaction any more; the edge label is a real `<button>` kept out of the tab order, since the edge itself is already a stop. Verified in a browser against `npm run build` output, which rewrote one line of the model — see the tab-order entry below for what the pass could not fix.
+
+## 2026-08-21 — the canvas tabs through every edge before it reaches a node
+
+**Symptom.** Tab into the fullbleed graph and the first 26 stops are edges; the 28 claims come after all of them. On the landing page's inline graph it is 12 edges before 12 claims.
+
+**Why.** React Flow renders `.react-flow__edges` before `.react-flow__nodes` inside the viewport, because edges have to paint under nodes, and tab order follows DOM order. Nothing in the public API reorders those layers, and the two levers that would change the count both cost more than they save: `edgesFocusable={false}` removes the edges' keyboard path entirely (focus is what opens a rationale, so that is the whole feature for edges), and a positive `tabIndex` is an anti-pattern `jsx-a11y/tabindex-no-positive` refuses on sight.
+
+**Scope.** Every stop is named, so a screen-reader user hears "M1 causes S1, has a rationale" rather than silence, and can keep going. It is a cost in keystrokes, not a dead end. A reader who wants the claims and not the relations is better served by `/claims/<id>` or `/api/graph`, both of which carry the same content.
+
+Status: open — filed in session 68 from the browser pass, and measured rather than inferred. Worth revisiting if React Flow ever exposes layer ordering, or if a roving-tabindex model over the canvas (one stop, arrow keys between elements) is worth building against `onlyRenderVisibleElements`, which unmounts everything off screen.
