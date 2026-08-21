@@ -10,10 +10,12 @@
  * leave the SEP-era path serving a stale card, which is the same drift session 33
  * deleted the root `server.json` to avoid.
  *
- * The version has four hand-written homes: `package.json`, `SERVER_VERSION` in
- * `protocol.ts`, and the two cards. `SERVER_VERSION`'s doc comment already claims
- * it mirrors `package.json`; these tests are what make that claim checkable, and
- * extend it to the two documents the registry and any probing agent actually read.
+ * The version has five hand-written homes as of session 67: `package.json`,
+ * `SERVER_VERSION` in `protocol.ts`, the two cards, and now `mcp-server/package.json`,
+ * which the cards name in their `packages` entry. `SERVER_VERSION`'s doc comment
+ * already claims it mirrors `package.json`; these tests are what make that claim
+ * checkable, and extend it to the two documents the registry and any probing agent
+ * actually read, and to the npm package they send a client to install.
  *
  * Reading `public/` from disk is a wider reach than the pure-module unit tests
  * around it, and stays inside `vitest.config.ts`'s constraint: `readFileSync` over
@@ -103,5 +105,72 @@ describe("the server card", () => {
     // Publishing is authorised by a TXT record at the untype.me apex, which
     // grants `me.untype/*` and nothing else. A name outside it cannot publish.
     expect(String(registry.name).startsWith("me.untype/")).toBe(true);
+  });
+});
+
+/**
+ * Session 67 gave the card a `packages` entry, which made `mcp-server/package.json`
+ * a fifth hand-written home for a version and the first one that is also a claim
+ * about a third-party registry. The failure it invites is quiet: bump the npm
+ * package, forget the card, and the registry directs every client at a version
+ * that is no longer latest, with the app, the tests and the build all green
+ * because none of them reads npm.
+ *
+ * These assertions relate the card to the package it advertises. What they
+ * deliberately do not do is call the npm registry: a network round trip would
+ * make `npm test` fail offline and on a rate limit, and the drift worth catching
+ * is between two files in this repo. Whether the version is actually live is the
+ * publish step's job, and `npm view aboard-mcp-server` answers it in one line.
+ */
+describe("the card's npm package entry", () => {
+  const registry = card(REGISTRY_CARD);
+  const mcpPkg = card(join(REPO_ROOT, "mcp-server/package.json"));
+
+  /** The one npm entry, narrowed so its fields can be read without `any`. */
+  function npmPackage(): Record<string, JsonValue> {
+    const packages = registry.packages;
+    if (!Array.isArray(packages)) throw new Error("the card has no packages array");
+    const npm = packages.find(
+      (p) => p !== null && typeof p === "object" && !Array.isArray(p) && p.registryType === "npm",
+    );
+    if (npm === undefined || npm === null || typeof npm !== "object" || Array.isArray(npm)) {
+      throw new Error("the card has no npm package entry");
+    }
+    return npm;
+  }
+
+  it("advertises the package name mcp-server/package.json declares", () => {
+    expect(npmPackage().identifier).toBe(mcpPkg.name);
+  });
+
+  it("advertises the version mcp-server/package.json declares", () => {
+    // The card pins an exact version — the schema rejects ranges — so a publish
+    // that does not edit this file leaves the registry one release behind.
+    expect(npmPackage().version).toBe(mcpPkg.version);
+  });
+
+  it("advertises a package that is actually publishable", () => {
+    // `private: true` was the state that made M4 a finding: a card naming a
+    // package npm would refuse to accept. Re-adding the flag must fail here
+    // rather than at the next publish attempt.
+    expect(mcpPkg.private).toBeUndefined();
+  });
+
+  it("declares stdio, which is the transport the package speaks", () => {
+    // The streamable-http endpoint is a `remotes` entry, not this one. Saying
+    // stdio here and http there is what lets a client choose without launching
+    // the wrong thing to find out.
+    expect(npmPackage().transport).toEqual({ type: "stdio" });
+  });
+
+  it("points bin at built output rather than at TypeScript", () => {
+    // The card telling a client to run `npx aboard-mcp-server` is only true if
+    // the bin is executable by node. It used to be `src/index.ts` behind an
+    // `npx tsx` shebang, which resolved only inside a checkout of this repo.
+    const bin = mcpPkg.bin;
+    if (bin === null || typeof bin !== "object" || Array.isArray(bin)) {
+      throw new Error("mcp-server/package.json has no bin object");
+    }
+    expect(bin["aboard-mcp-server"]).toBe("dist/index.js");
   });
 });
