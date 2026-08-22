@@ -17,7 +17,7 @@ two of them does not have to work out which is current.
 | Item | State |
 | --- | --- |
 | npm package | Live. `aboard-mcp-server@0.1.0`, Apache-2.0, 2 deps, 40.6 kB unpacked. |
-| Official MCP registry | Entry live at `me.untype/aboard` version `0.1.0`, remotes only. Needs a re-publish to carry the npm package; see below. |
+| Official MCP registry | Entry live at `me.untype/aboard` version `0.1.0`, remotes only. The card is bumped to `0.1.1` and validates; the publish waits on the deploy. See below. |
 | Glama | Not submitted. |
 | mcp.so | Not submitted. |
 | awesome-mcp-servers | No entry. |
@@ -63,10 +63,31 @@ the local card against the served one. Order: bump, merge, wait for the
 deploy, then `scripts/publish-registry.sh --verify` to confirm the served
 card is the new one, then `scripts/publish-registry.sh`.
 
-Deciding not to bump is defensible. The registry entry is not wrong, only
-incomplete, and the next release will carry the packages entry anyway.
-The cost of waiting is that npx discovery through the registry stays dark
-until then.
+**Done, session 67.** The bump is committed: `0.1.1` in all four homes
+(the lockfile carries the root version twice, so it is five lines rather
+than four), with `packages[0].version` left at `0.1.0`. `mcp-publisher
+validate` passes against the live registry schema, and `mcp-publisher`
+plus the signing key in the keychain are both present on this machine.
+
+What remains is the publish, and it cannot run earlier. The script
+fetches `https://aboard.untype.me/.well-known/mcp.json` and refuses to
+continue if it differs from the local card, on the grounds that
+publishing a card production does not serve would put a lie in the
+registry. So the order is fixed:
+
+1. Merge the session PR.
+2. Wait for the Cloudflare deploy, then confirm it landed:
+   `curl -s https://aboard.untype.me/.well-known/mcp.json | grep version`
+   should show `0.1.1`.
+3. `scripts/publish-registry.sh --verify` to see the old entry one last
+   time (it reports `0.1.0`, remotes only).
+4. `scripts/publish-registry.sh` to publish. It re-verifies for up to
+   five attempts afterwards, because the registry is read-through
+   cached and believing the publish command alone is how session 30
+   ended up with an unverified claim.
+
+The keychain prompt in step 4 is the one interactive moment: macOS may
+ask to allow `security` to read `mcp-publisher-untype`.
 
 ## 1. Glama
 
@@ -297,8 +318,8 @@ npx aboard-mcp-server
 
 ## Done means
 
-- The registry entry at `me.untype/aboard` carries a `packages` array, or
-  the decision not to bump is recorded in a session log.
+- The registry entry at `me.untype/aboard` reports `0.1.1` and carries a
+  `packages` array naming `aboard-mcp-server`.
 - Glama and mcp.so both list aboard and the listings resolve.
 - The awesome-mcp-servers PR is merged.
 - `untype.me` is a verified Search Console domain property, the
