@@ -9,6 +9,16 @@ These adapters exist to prove two things:
 
 Anything new on top of the schema should pick a third concern (e.g. live calibration tracking, cross-domain ingestion).
 
+## Not published to npm
+
+Deliberately, and unlike [`mcp-server/`](../mcp-server), which is published as `aboard-mcp-server`. Session 67 settled this rather than leaving `private: true` to be read as an oversight.
+
+The distribution story the audit's M4 item complains about is entirely the MCP server's: the root README, `CONTRIBUTING.md` and the registry card all name `aboard-mcp-server`, so a reader who follows any of them hits a package that has to exist. Nothing advertises `aboard-clients`, so publishing it closes no gap anyone can walk into.
+
+What an outside consumer needs in order to check aboard's output is the schema, and that is already published at a stable URL any JSON Schema validator can read. These two adapters wrap ajv in a way that is worth copying and not worth depending on: a published name would imply an API stability that "reference adapter" is meant to disclaim.
+
+Publishing is cheap if that ever changes — drop `allowImportingTsExtensions`, emit to `dist/` the way `mcp-server/tsconfig.json` now does, and add `bin` entries. The package embeds no schema (see the loader below), so it would not have to version in lockstep with one that is still in flux.
+
 ## Install
 
 ```bash
@@ -76,6 +86,6 @@ The main app is a Next.js 16 web service. Its `package.json` is full of React 19
 ## Known limitations
 
 - `briefing.ts` only works against `/api/graph` (the full-graph response). Single-claim responses validate fine but don't have a briefing renderer.
-- The schema loader looks for the local `public/schema/v0.json` first (so it works against unreleased schema changes), then falls back to fetching `{origin}/schema/v0.json` over HTTP. For now that HTTP path **does not exist** as a route in the Next app — only the local file path works. Adding a route to serve `/schema/v0.json` is a one-line change in the Next config; deferred until a remote consumer needs it.
+- The schema loader looks for the local `public/schema/v0.json` first (so it works against unreleased schema changes), then falls back to fetching `{origin}/schema/v0.json` over HTTP. Both paths work. This note used to say the HTTP one did not exist as a route, which stopped being true when the app moved to `output: "export"`: `public/schema/v0.json` is copied to `out/schema/v0.json` and served as a static asset. Verified in session 67 against the deploy, which answers `200 application/json`.
 - No retry / timeout on the HTTP fetch. If the server hangs, the script hangs.
 - No CLI flag handling beyond a single positional URL argument. Add `commander` or similar if/when richer flags are needed.

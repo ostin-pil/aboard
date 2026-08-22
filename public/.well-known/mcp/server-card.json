@@ -3,13 +3,38 @@
   "name": "me.untype/aboard",
   "title": "aboard",
   "description": "Falsifiable claims about systemic problems: causal graph, forecasts, dossiers.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "websiteUrl": "https://aboard.untype.me/about",
   "repository": {
     "url": "https://github.com/ostin-pil/aboard",
     "source": "github",
     "id": "1233371921"
   },
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "aboard-mcp-server",
+      "version": "0.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "ABOARD_API_BASE_URL",
+          "description": "Base URL of the aboard instance to read from. Defaults to the canonical deploy; set it to point the server at another instance.",
+          "isRequired": false,
+          "default": "https://aboard.untype.me"
+        },
+        {
+          "name": "ABOARD_AGENT_TOKEN",
+          "description": "Service token issued by the aboard operator. Needed only by the four write tools, each of which opens a pull request a human must review. The five read tools need no credential.",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ],
   "remotes": [
     {
       "type": "streamable-http",

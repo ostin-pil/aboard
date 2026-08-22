@@ -64,7 +64,7 @@ The data layer is a filesystem CMS — each claim is a Markdown file with YAML f
 - `src/components/graph/` — the React Flow graph: `ClaimGraphRF.tsx` plus node, edge, popover and modal components, and `persist.ts` for localStorage layout.
 - `src/lib/engine-adapter.ts` — `ClaimGraph` to `EngineGraphData`; `src/components/graph/engine-to-rf.ts` takes that to React Flow nodes and edges. The "engine" in both names is the data shape, which outlived the vanilla-JS engine it was built for.
 - `src/app/api/` — JSON-LD endpoints (`/api/graph`, `/api/claims/[id]`). Output validates against `public/schema/v0.json`.
-- `clients/` — independent npm package with a TypeScript reference adapter (`validate.ts`, `briefing.ts`) consuming the JSON-LD endpoints.
+- `clients/` — independent TypeScript package, deliberately unpublished, with reference adapters (`validate.ts`, `briefing.ts`) consuming the JSON-LD endpoints. Its README argues the choice; `mcp-server/` is the one that ships to npm.
 
 ## Rules
 
@@ -136,10 +136,13 @@ src/
     site.ts                             deploy-following display origin (SITE_URL)
     engine-adapter.ts                   ClaimGraph → engine data shape
 
-clients/                                independent npm package
+clients/                                independent TS package, not published
   validate.ts                           validates /api/graph against v0 schema
   briefing.ts                           renders Markdown briefing from API
   package.json, tsconfig.json
+mcp-server/                             published to npm as aboard-mcp-server
+  src/index.ts                          stdio entry; bin points at the dist build
+  package.json, tsconfig.json           tsconfig emits; prepack rebuilds before publish
 scripts/
   forecasters/ensemble-predict.ts       multi-provider ensemble forecast generator
   lint-resolution.ts                    resolution-criteria rigor lint
@@ -201,7 +204,7 @@ After any change under `bin/` or `scripts/*.sh`, run `shellcheck` on it. Nothing
 
 After any change to a `.js` or `.mjs` file, run `npm run lint`. `tsc` does not read either extension, so eslint is the only automated check that will.
 
-After any change under `clients/` or `mcp-server/`, run `npm run typecheck:clients` or `npm run typecheck:mcp`. The root `tsc` excludes both directories, and `tsx` runs them without type-checking, so nothing else reads them. A change to `mcp-server/src/tools/` also wants `npm test`: the parity project pins that surface (names, argument fields, required sets, the mirrored `HttpUrl`) to the remote catalogue in `src/lib/mcp/tools.ts`, and it is the only check that will notice the two servers drifting apart.
+After any change under `clients/` or `mcp-server/`, run `npm run typecheck:clients` or `npm run typecheck:mcp`. The root `tsc` excludes both directories, and `tsx` runs them without type-checking, so nothing else reads them. Since session 67 a change under `mcp-server/src/` also wants `npm pack --dry-run` in that directory, because `bin` points at compiled output rather than at the source: the typecheck runs `tsc --noEmit` and so proves the code checks, not that it emits, and `prepack` is where the build and the LICENSE copy actually run. `clients/` needs no equivalent, and its README says why it is not published. A change to `mcp-server/src/tools/` also wants `npm test`: the parity project pins that surface (names, argument fields, required sets, the mirrored `HttpUrl`) to the remote catalogue in `src/lib/mcp/tools.ts`, and it is the only check that will notice the two servers drifting apart.
 
 After any change under `worker/`, run `npm test`. Since session 64 the worker project drives `route()` and `handleMcp` with faked bindings and a stubbed GitHub: the write path's check order, the size cap, the failure-path branch cleanup, markdown negotiation and the telemetry points are all pinned there, and every one of them is a seam `tsc` and the build accept broken. The suite runs in plain node, so anything workerd-only (there is none today; the marker would be `caches.default`) needs the harness decision in `vitest.config.ts` revisited first.
 

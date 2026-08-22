@@ -49,7 +49,7 @@ export const SUPPORTED_PROTOCOL_VERSIONS = [
 ] as const;
 
 /** Mirrors `version` in package.json. */
-export const SERVER_VERSION = "0.1.0";
+export const SERVER_VERSION = "0.1.1";
 
 /** `CANONICAL_ORIGIN` rather than `siteBaseUrl()`: the origin literal stays in
  *  its single source (`canonical-urls.test.ts` enforces that), and the Worker

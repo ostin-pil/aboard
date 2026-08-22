@@ -1,1 +1,10 @@
 node_modules/
+
+# Build output. `bin` points into it and `prepack` regenerates it, so a stale
+# or missing dist can never reach the tarball.
+dist/
+
+# Copied from the repo root by `prepack`, so the published package carries the
+# Apache-2.0 text that licence requires recipients be given, without this
+# directory keeping a second copy under version control.
+LICENSE
