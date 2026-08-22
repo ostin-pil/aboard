@@ -16,7 +16,7 @@ two of them does not have to work out which is current.
 
 | Item | State |
 | --- | --- |
-| npm package | Live. `aboard-mcp-server@0.1.0`, Apache-2.0, 2 deps, 40.6 kB unpacked. |
+| npm package | `aboard-mcp-server@0.1.0` live but missing `mcpName`, so the registry refuses it. `0.1.1` adds the field and needs publishing. |
 | Official MCP registry | Entry live at `me.untype/aboard` version `0.1.0`, remotes only. The card is bumped to `0.1.1` and validates; the publish waits on the deploy. See below. |
 | Glama | Not submitted. |
 | mcp.so | Not submitted. |
@@ -62,6 +62,34 @@ The deploy has to land before the publish, because the script compares
 the local card against the served one. Order: bump, merge, wait for the
 deploy, then `scripts/publish-registry.sh --verify` to confirm the served
 card is the new one, then `scripts/publish-registry.sh`.
+
+**The publish failed on 2026-08-22, and the reason is worth reading before
+retrying.** Everything up to the registry's own validation passed: the card
+matched production, `mcp-publisher validate` said valid, the DNS record and the
+keychain key agreed, and login succeeded. Then:
+
+```
+NPM package 'aboard-mcp-server' is missing required 'mcpName' field.
+Add this to your package.json: "mcpName": "me.untype/aboard"
+```
+
+`mcpName` is the registry's ownership proof for an npm package. It fetches the
+tarball's `package.json` and requires that field to equal the card's `name`, so
+that nobody can advertise a package they do not control. It has to be in the
+*published* package, and npm will not let a version be overwritten, so the fix
+costs a second npm release rather than an edit.
+
+The refusal was atomic: the registry entry was still `0.1.0` with no `packages`
+array afterwards, checked with `--verify`.
+
+Session 69 does the fix: `mcpName` added, `mcp-server` bumped to `0.1.1`, both
+cards' `packages[0].version` following it, and an assertion in
+`server-card.test.ts` that pins `mcpName` to the card's `name` so this cannot
+be rediscovered at a publish step again. The card's own `version` stays `0.1.1`,
+because the registry never accepted it.
+
+Order for the retry: publish `aboard-mcp-server@0.1.1` to npm, merge and deploy
+the card change, then run the script.
 
 **Done, session 67.** The bump is committed: `0.1.1` in all four homes
 (the lockfile carries the root version twice, so it is five lines rather
