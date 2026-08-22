@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useRef } from "react";
+import { memo } from "react";
 import { Handle, Position, useConnection, useStore, type NodeProps } from "@xyflow/react";
 import { useGraphContext } from "./GraphContext";
 import type { ClaimNode as ClaimNodeT } from "./types";
@@ -10,7 +10,6 @@ const zoomSelector = (s: { transform: [number, number, number] }) => s.transform
 
 function ClaimNodeImpl({ id, data, selected }: NodeProps<ClaimNodeT>) {
   const ctx = useGraphContext();
-  const ref = useRef<HTMLDivElement>(null);
   const zoom = useStore(zoomSelector);
   const lod = zoom < LOD_THRESHOLD;
   const isFocused = ctx.focusId !== null && ctx.isNeighbor(id);
@@ -34,33 +33,18 @@ function ClaimNodeImpl({ id, data, selected }: NodeProps<ClaimNodeT>) {
     .filter(Boolean)
     .join(" ");
 
-  // Click without modifier: open detail popover. With modifier (Cmd/Ctrl/Shift):
-  // let React Flow handle selection — don't preventDefault or stopPropagation,
-  // those swallow the event before selection runs.
-  const onClick = (e: React.MouseEvent) => {
-    if (e.metaKey || e.ctrlKey || e.shiftKey) return;
-    if (ref.current) ctx.openNodePopover(id, ref.current);
-  };
-
-  const onMouseEnter = () => ctx.setFocusId(id);
-  const onMouseLeave = () => ctx.setFocusId(null);
-
+  // Nothing interactive is bound here. Opening the detail popover and the
+  // neighbourhood highlight both hang off React Flow's node wrapper instead
+  // (`onNodeClick`, `onNodeMouseEnter`, and the canvas's own focus and keydown
+  // listeners), because the wrapper is the element that holds the tab stop and
+  // a keydown never reaches this div from it. That is what lets pointer and
+  // keyboard run the same code path rather than two that drift.
   return (
-    // The two rules below are right, and the fix is a feature rather than an
-    // edit: a node is reachable today only by pointer. React Flow already makes
-    // its own node *wrapper* focusable, so the handler would have to move there
-    // or this div would add a second tab stop per node — thirty-odd extra stops
-    // across the canvas. Tracked in knowledge/issues.md (2026-08-21).
-    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
     <div
-      ref={ref}
       className={classes}
       data-kind={data.kind}
       data-id={id}
       data-domain={data.domain}
-      onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
     >
       <Handle type="target" position={Position.Top} className="ag-rf-handle" isConnectable={ctx.editable} />
       <Handle type="target" position={Position.Left} className="ag-rf-handle" isConnectable={ctx.editable} id="left-target" />
