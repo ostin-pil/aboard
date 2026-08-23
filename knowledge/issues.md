@@ -290,3 +290,25 @@ package.json: "mcpName": "me.untype/aboard"
 **Order that works.** Publish the npm package carrying `mcpName` first, then deploy the card, then run `scripts/publish-registry.sh`. The script already refuses to publish a card production does not serve, so the deploy has to precede it either way; the npm release has to precede the deploy only because the card pins an exact package version and the schema rejects ranges.
 
 Status: resolved in session 69 — `mcpName` is in `mcp-server/package.json` and `src/lib/mcp/server-card.test.ts` asserts it equals the card's `name`, verified by planting a mismatch. The failed publish was atomic: `--verify` afterwards showed the entry unchanged at `0.1.0`, so nothing needed undoing.
+
+---
+
+## 2026-08-23 — the remote MCP endpoint refused every caller that sent an `Origin`
+
+Glama listed aboard as unhealthy at `glama.ai/mcp/connectors/me.untype/aboard`, health-checking the `streamable-http` remote at `https://aboard.untype.me/mcp`. The endpoint was not down: an anonymous `POST initialize` returned 200 with a valid result, and `tools/list` returned all nine tools.
+
+**The cause.** `isAllowedOrigin` allowed same-origin and loopback and refused everything else, so `Origin: https://glama.ai` got 403 on both the preflight and the POST. Reproduced directly:
+
+```
+POST    Origin: https://glama.ai         -> 403 "Origin not allowed."
+OPTIONS Origin: https://glama.ai         -> 403
+POST    Origin: https://aboard.untype.me -> 200
+```
+
+**Why the guard was wrong here.** Its own doc comment carried the premise that agent clients "call server-side and send none at all", which one real directory falsified. Past that, it protected nothing. DNS rebinding is a threat to a server bound to loopback, where the browser is the only reachable path and the server trusts its network position. This endpoint is public over HTTPS, reads no cookie anywhere in the Worker, and gates all four write tools on an `Authorization: Bearer` credential a browser never attaches ambiently cross-origin (verified: an unauthenticated `propose_claim` returns 401). A hostile page reaching `/mcp` gets what `/api/graph` already serves it CORS-open, and 401 on anything that writes.
+
+**What could not see it.** Every check in the gate passed, and the endpoint answered `curl` correctly, because `curl` sends no `Origin` unless told to. `worker/mcp.test.ts` did exercise the path, and asserted the 403 as intended behaviour, so the suite was pinning the defect rather than catching it. That is the general shape worth remembering: a test that encodes a policy cannot tell you the policy is wrong.
+
+**Diagnosing this class again.** Probe the endpoint the way the reporting client does, not the way it is convenient to. For a directory badge that means sending an `Origin`, and checking `OPTIONS` as well as `POST`; a preflight refusal is invisible to any tool that only ever sends the real request.
+
+Status: resolved in session 69 — the check is now well-formedness only, which is what the spec requires, with `worker/mcp.test.ts` pinning both the 200 for a foreign origin and the absence of `access-control-allow-credentials` (echoing an origin is only safe while no credential is ambient). Glama re-checks on its own schedule, so the badge clears some time after the deploy rather than immediately.
