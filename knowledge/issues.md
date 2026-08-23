@@ -268,3 +268,47 @@ Status: resolved 2026-08-21 (session 68). The repair went where this entry said 
 **Scope.** Every stop is named, so a screen-reader user hears "M1 causes S1, has a rationale" rather than silence, and can keep going. It is a cost in keystrokes, not a dead end. A reader who wants the claims and not the relations is better served by `/claims/<id>` or `/api/graph`, both of which carry the same content.
 
 Status: open — filed in session 68 from the browser pass, and measured rather than inferred. Worth revisiting if React Flow ever exposes layer ordering, or if a roving-tabindex model over the canvas (one stop, arrow keys between elements) is worth building against `onlyRenderVisibleElements`, which unmounts everything off screen.
+
+---
+
+## 2026-08-22 — the MCP registry rejects an npm package that does not claim the server name
+
+Publishing the server card with a `packages` entry fails at the registry with a 400, after login has already succeeded:
+
+```
+registry validation failed for package 0 (aboard-mcp-server): NPM package
+'aboard-mcp-server' is missing required 'mcpName' field. Add this to your
+package.json: "mcpName": "me.untype/aboard"
+```
+
+**Why.** `mcpName` is the registry's ownership proof for an npm package. It fetches the tarball's `package.json` and requires that field to equal the card's `name`, so a card cannot advertise a package its author does not control. DNS verification proves the `me.untype/*` namespace and says nothing about who owns a name on npm, so the two checks are independent and both have to pass.
+
+**Why it cost more than an edit.** The field has to be in the *published* package, and npm refuses to overwrite a version. Session 67 published `aboard-mcp-server@0.1.0` without it and only found out at the publish step, by which point the card carrying the `packages` entry had already deployed. The fix was a second npm release (`0.1.1`), both cards' `packages[0].version` following it, and a second deploy before the registry could be retried.
+
+**What could not see it.** Nothing in the repo. `mcp-publisher validate` checks the card against the published JSON Schema and never reads `package.json`; npm accepts any extra key without comment; `npm pack --dry-run` shows a field that is absent exactly as it shows one that is present, which is to say not at all. The gap was that no check related the two files.
+
+**Order that works.** Publish the npm package carrying `mcpName` first, then deploy the card, then run `scripts/publish-registry.sh`. The script already refuses to publish a card production does not serve, so the deploy has to precede it either way; the npm release has to precede the deploy only because the card pins an exact package version and the schema rejects ranges.
+
+Status: resolved in session 69 — `mcpName` is in `mcp-server/package.json` and `src/lib/mcp/server-card.test.ts` asserts it equals the card's `name`, verified by planting a mismatch. The failed publish was atomic: `--verify` afterwards showed the entry unchanged at `0.1.0`, so nothing needed undoing.
+
+---
+
+## 2026-08-23 — the remote MCP endpoint refused every caller that sent an `Origin`
+
+Glama listed aboard as unhealthy at `glama.ai/mcp/connectors/me.untype/aboard`, health-checking the `streamable-http` remote at `https://aboard.untype.me/mcp`. The endpoint was not down: an anonymous `POST initialize` returned 200 with a valid result, and `tools/list` returned all nine tools.
+
+**The cause.** `isAllowedOrigin` allowed same-origin and loopback and refused everything else, so `Origin: https://glama.ai` got 403 on both the preflight and the POST. Reproduced directly:
+
+```
+POST    Origin: https://glama.ai         -> 403 "Origin not allowed."
+OPTIONS Origin: https://glama.ai         -> 403
+POST    Origin: https://aboard.untype.me -> 200
+```
+
+**Why the guard was wrong here.** Its own doc comment carried the premise that agent clients "call server-side and send none at all", which one real directory falsified. Past that, it protected nothing. DNS rebinding is a threat to a server bound to loopback, where the browser is the only reachable path and the server trusts its network position. This endpoint is public over HTTPS, reads no cookie anywhere in the Worker, and gates all four write tools on an `Authorization: Bearer` credential a browser never attaches ambiently cross-origin (verified: an unauthenticated `propose_claim` returns 401). A hostile page reaching `/mcp` gets what `/api/graph` already serves it CORS-open, and 401 on anything that writes.
+
+**What could not see it.** Every check in the gate passed, and the endpoint answered `curl` correctly, because `curl` sends no `Origin` unless told to. `worker/mcp.test.ts` did exercise the path, and asserted the 403 as intended behaviour, so the suite was pinning the defect rather than catching it. That is the general shape worth remembering: a test that encodes a policy cannot tell you the policy is wrong.
+
+**Diagnosing this class again.** Probe the endpoint the way the reporting client does, not the way it is convenient to. For a directory badge that means sending an `Origin`, and checking `OPTIONS` as well as `POST`; a preflight refusal is invisible to any tool that only ever sends the real request.
+
+Status: resolved in session 69 — the check is now well-formedness only, which is what the spec requires, with `worker/mcp.test.ts` pinning both the 200 for a foreign origin and the absence of `access-control-allow-credentials` (echoing an origin is only safe while no credential is ambient). Glama re-checks on its own schedule, so the badge clears some time after the deploy rather than immediately.

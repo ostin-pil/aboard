@@ -1,6 +1,7 @@
 {
   "name": "aboard-mcp-server",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "mcpName": "me.untype/aboard",
   "description": "Model Context Protocol server over stdio for the aboard claim graph. Consumes the JSON-LD API; independent of the Next.js app.",
   "keywords": [
     "mcp",

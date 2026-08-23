@@ -496,9 +496,23 @@ describe("isAllowedOrigin", () => {
     expect(isAllowedOrigin("http://127.0.0.1:8787", url)).toBe(true);
   });
 
-  it("refuses another site's origin, and anything unparseable", () => {
-    expect(isAllowedOrigin("https://evil.example", url)).toBe(false);
-    expect(isAllowedOrigin("https://aboard.untype.me.evil.example", url)).toBe(false);
+  it("allows another site's origin, since nothing here is ambient", () => {
+    // Reversed in session 69. These used to be refused as a DNS-rebinding
+    // guard, which cost Glama's directory health check (it sends
+    // `Origin: https://glama.ai` and got 403 on both preflight and POST) and
+    // bought nothing: no cookie is read anywhere in the Worker and every write
+    // tool needs a bearer credential a browser will not attach cross-origin.
+    expect(isAllowedOrigin("https://evil.example", url)).toBe(true);
+    expect(isAllowedOrigin("https://glama.ai", url)).toBe(true);
+    // A lookalike host is allowed for the same reason rather than by oversight:
+    // the check no longer compares hosts at all, so there is nothing for a
+    // suffix trick to defeat.
+    expect(isAllowedOrigin("https://aboard.untype.me.evil.example", url)).toBe(true);
+  });
+
+  it("still refuses an Origin that does not parse", () => {
+    // The one rule the spec actually requires, and all that is left.
     expect(isAllowedOrigin("not a url", url)).toBe(false);
+    expect(isAllowedOrigin("://nope", url)).toBe(false);
   });
 });

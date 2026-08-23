@@ -16,10 +16,10 @@ two of them does not have to work out which is current.
 
 | Item | State |
 | --- | --- |
-| npm package | Live. `aboard-mcp-server@0.1.0`, Apache-2.0, 2 deps, 40.6 kB unpacked. |
+| npm package | `aboard-mcp-server@0.1.0` live but missing `mcpName`, so the registry refuses it. `0.1.1` adds the field and needs publishing. |
 | Official MCP registry | Entry live at `me.untype/aboard` version `0.1.0`, remotes only. The card is bumped to `0.1.1` and validates; the publish waits on the deploy. See below. |
-| Glama | Not submitted. |
-| mcp.so | Not submitted. |
+| Glama | Listed at `glama.ai/mcp/connectors/me.untype/aboard`, sourced from the official registry rather than submitted. Marked unhealthy; cause found and fixed in session 69, awaiting deploy. |
+| mcp.so | **Dropped.** No free submission path found; see below. |
 | awesome-mcp-servers | No entry. |
 | Search Console | Domain not verified, sitemap not submitted. |
 
@@ -62,6 +62,34 @@ The deploy has to land before the publish, because the script compares
 the local card against the served one. Order: bump, merge, wait for the
 deploy, then `scripts/publish-registry.sh --verify` to confirm the served
 card is the new one, then `scripts/publish-registry.sh`.
+
+**The publish failed on 2026-08-22, and the reason is worth reading before
+retrying.** Everything up to the registry's own validation passed: the card
+matched production, `mcp-publisher validate` said valid, the DNS record and the
+keychain key agreed, and login succeeded. Then:
+
+```
+NPM package 'aboard-mcp-server' is missing required 'mcpName' field.
+Add this to your package.json: "mcpName": "me.untype/aboard"
+```
+
+`mcpName` is the registry's ownership proof for an npm package. It fetches the
+tarball's `package.json` and requires that field to equal the card's `name`, so
+that nobody can advertise a package they do not control. It has to be in the
+*published* package, and npm will not let a version be overwritten, so the fix
+costs a second npm release rather than an edit.
+
+The refusal was atomic: the registry entry was still `0.1.0` with no `packages`
+array afterwards, checked with `--verify`.
+
+Session 69 does the fix: `mcpName` added, `mcp-server` bumped to `0.1.1`, both
+cards' `packages[0].version` following it, and an assertion in
+`server-card.test.ts` that pins `mcpName` to the card's `name` so this cannot
+be rediscovered at a publish step again. The card's own `version` stays `0.1.1`,
+because the registry never accepted it.
+
+Order for the retry: publish `aboard-mcp-server@0.1.1` to npm, merge and deploy
+the card change, then run the script.
 
 **Done, session 67.** The bump is committed: `0.1.1` in all four homes
 (the lockfile carries the root version twice, so it is five lines rather
@@ -117,14 +145,50 @@ After it indexes, Glama issues a score badge. The awesome-mcp-servers
 entry in section 3 has a slot for it, so do Glama before the PR if you
 want the badge in the first version of that line.
 
-## 2. mcp.so
+**What actually happened, 2026-08-23.** No submission was needed: Glama
+had already listed aboard at
+<https://glama.ai/mcp/connectors/me.untype/aboard>, sourced from the
+official MCP registry. It health-checks the *remote* endpoint rather
+than the npm package, and marked it **unhealthy**.
 
-<https://mcp.so/submit>. Public GitHub servers only, which aboard is.
+The endpoint was fine. Anonymous `POST initialize` returned 200 and
+`tools/list` returned all nine tools. What failed was the origin guard:
+Glama sends `Origin: https://glama.ai`, and `isAllowedOrigin` allowed
+only same-origin and loopback, so the preflight and the POST both
+answered 403. Session 69 removed that check down to well-formedness,
+which is all the spec requires, on the grounds that the endpoint is
+public, reads no cookie, and gates every write on a bearer credential a
+browser will not attach cross-origin. See `knowledge/issues.md`.
 
-The flow creates a draft from the repository and publishes it when saved.
-Same repository URL and same canonical copy as above. If the form asks
-for an install command, `npx aboard-mcp-server` is the one; if it asks
-for a hosted endpoint, `https://aboard.untype.me/mcp`.
+Glama re-checks on its own schedule, so the badge should clear a while
+after the session 69 deploy. If it does not, re-probe with:
+
+```bash
+curl -i -X POST https://aboard.untype.me/mcp \
+  -H 'Origin: https://glama.ai' \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}}'
+```
+
+A 200 means the endpoint is answering the check correctly and the
+remaining fault is on their side.
+
+## 2. mcp.so (dropped)
+
+Decided 2026-08-23, after the operator found no free submission path.
+Recorded here rather than left as a standing to-do, so it is not
+rediscovered and re-evaluated every time this file is read.
+
+The reasoning is that a paid listing buys placement in one directory,
+while the channels that actually feed discovery are free and already
+covered. The official MCP registry is the upstream several directories
+read from, which is how Glama listed aboard without a submission at all.
+awesome-mcp-servers is a pull request. Those two plus Glama are the
+reach a paid slot would be competing with.
+
+Revisit only if mcp.so turns out to be a meaningful referrer for
+comparable servers, which the chunk 4 instrumentation would show.
 
 ## 3. awesome-mcp-servers
 
@@ -320,7 +384,7 @@ npx aboard-mcp-server
 
 - The registry entry at `me.untype/aboard` reports `0.1.1` and carries a
   `packages` array naming `aboard-mcp-server`.
-- Glama and mcp.so both list aboard and the listings resolve.
+- Glama lists aboard as healthy. (mcp.so is dropped, see section 2.)
 - The awesome-mcp-servers PR is merged.
 - `untype.me` is a verified Search Console domain property, the
   `v=MCPv1` TXT record is intact, and `sitemap.xml` is submitted.

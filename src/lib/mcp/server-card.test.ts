@@ -116,8 +116,9 @@ describe("the server card", () => {
  * that is no longer latest, with the app, the tests and the build all green
  * because none of them reads npm.
  *
- * These assertions relate the card to the package it advertises. What they
- * deliberately do not do is call the npm registry: a network round trip would
+ * These assertions relate the card to the package it advertises, including the
+ * `mcpName` ownership marker the MCP registry validates on the npm side rather
+ * than in the card. What they deliberately do not do is call the npm registry: a network round trip would
  * make `npm test` fail offline and on a rate limit, and the drift worth catching
  * is between two files in this repo. Whether the version is actually live is the
  * publish step's job, and `npm view aboard-mcp-server` answers it in one line.
@@ -161,6 +162,20 @@ describe("the card's npm package entry", () => {
     // stdio here and http there is what lets a client choose without launching
     // the wrong thing to find out.
     expect(npmPackage().transport).toEqual({ type: "stdio" });
+  });
+
+  it("is claimed by the npm package it names", () => {
+    // `mcpName` is the registry's ownership proof for an npm package: it fetches
+    // the tarball's package.json and refuses the publish unless that field equals
+    // the card's `name`. Without it anyone could advertise a package they do not
+    // control.
+    //
+    // Session 67 learned this from a 400 at the publish step, after the npm
+    // release and the card deploy had both already happened, which made the fix
+    // a second npm version and a second deploy rather than an edit. Nothing in
+    // the repo could see it: `mcp-publisher validate` checks the card against the
+    // schema and never reads package.json, and npm accepts any extra key.
+    expect(mcpPkg.mcpName).toBe(registry.name);
   });
 
   it("points bin at built output rather than at TypeScript", () => {
