@@ -514,24 +514,41 @@ export function planMessage(raw: unknown, headers: HeaderReader): McpPlan {
 // --- origin ----------------------------------------------------------------
 
 /**
- * DNS-rebinding guard. The spec requires rejecting a request whose `Origin` is
- * present and invalid; agent clients (Claude, ChatGPT, IDEs, the Inspector's
- * proxy) call server-side and send none at all.
+ * `Origin` well-formedness check. The spec requires rejecting a request whose
+ * `Origin` is present and invalid, and that is now all this does: any origin
+ * that parses is served, and only an unparseable one is refused.
  *
- * Same-origin and loopback are allowed so local tooling works. A browser page on
- * some other origin is refused here rather than served: everything the read
- * tools expose is already available to it, CORS-open, at `/api/graph`.
+ * It used to allow same-origin and loopback and refuse every other site, as a
+ * DNS-rebinding guard. Session 69 removed that on evidence. Glama's directory
+ * health check sends `Origin: https://glama.ai`, so the endpoint answered 403
+ * to both the preflight and the POST and was listed as unhealthy, while the
+ * doc comment here asserted that agent clients "send none at all". One real
+ * client contradicting the premise is enough to retire it, and the next
+ * directory would have hit the same wall.
+ *
+ * Removing it costs nothing this endpoint was actually protecting. DNS
+ * rebinding is a threat to a server bound to loopback, where the browser is
+ * the only reachable path and the server trusts its network position. This one
+ * is public over HTTPS, reads no cookie anywhere in the Worker, and gates all
+ * four write tools on an `Authorization: Bearer` credential a browser never
+ * attaches ambiently cross-origin. So a hostile page reaching `/mcp` gets what
+ * it could already fetch from `/api/graph`, which is deliberately CORS-open,
+ * and gets 401 on anything that writes.
+ *
+ * `corsHeaders` echoes the origin, which stays safe for the same reason: with
+ * no `access-control-allow-credentials` and no cookie, an echoed origin
+ * conveys no authority.
  */
 export function isAllowedOrigin(origin: string | null, requestUrl: string): boolean {
   if (origin === null || origin === "" || origin === "null") return true;
-  let candidate: URL;
-  let target: URL;
   try {
-    candidate = new URL(origin);
-    target = new URL(requestUrl);
+    new URL(origin);
   } catch {
     return false;
   }
-  if (candidate.origin === target.origin) return true;
-  return candidate.hostname === "localhost" || candidate.hostname === "127.0.0.1";
+  // `requestUrl` is no longer consulted. It stays in the signature because the
+  // call site passes it and a future policy that needs the target back would
+  // otherwise be a signature change at every caller.
+  void requestUrl;
+  return true;
 }

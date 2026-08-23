@@ -134,13 +134,32 @@ describe("write tools at the transport level", () => {
 });
 
 describe("the transport gates", () => {
-  it("refuses a foreign Origin before anything else", async () => {
+  it("serves a foreign Origin, and echoes it back", async () => {
+    // Reversed in session 69. This asserted 403 for two reasons that did not
+    // survive contact with a real client: the guard was a DNS-rebinding
+    // defence for an endpoint that is public, cookieless and bearer-gated, and
+    // Glama's directory health check sends an Origin, so the badge read
+    // "unhealthy" while the endpoint itself was fine.
     const { deps, record } = makeDeps();
 
     const res = await handleMcp(
-      rpc(call("list_claims"), { origin: "https://evil.example" }),
+      rpc(call("list_claims"), { origin: "https://glama.ai" }),
       deps,
     );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("access-control-allow-origin")).toBe("https://glama.ai");
+    // Echoing is only safe while no credential is ambient, so pin that here
+    // rather than leaving it to the comment in `corsHeaders`.
+    expect(res.headers.get("access-control-allow-credentials")).toBeNull();
+    expect(record).toHaveBeenCalled();
+  });
+
+  it("still refuses an Origin that does not parse", async () => {
+    // The one origin rule left, and the only one the spec asks for.
+    const { deps, record } = makeDeps();
+
+    const res = await handleMcp(rpc(call("list_claims"), { origin: "not a url" }), deps);
 
     expect(res.status).toBe(403);
     expect(record).not.toHaveBeenCalled();
