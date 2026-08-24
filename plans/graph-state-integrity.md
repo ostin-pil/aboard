@@ -7,6 +7,17 @@ because three of them compound each other: E1 puts the editor sandbox on the
 landing page, E2 turns a corrupt sandbox into a persistent white screen, and
 via E1 that white screen reaches the landing page too.
 
+## Status — SHIPPED (session 25, verified 2026-08-24)
+
+Landed as `fix/graph-state-integrity` (PRs #53 and #54); session 47 records it
+as all of sequencing batch 2. Every deliverable verified present: N1 as
+`ssr: false` in `ClaimGraphCanvas.tsx`, E1 as the `mode === "inline"` guard that
+keeps the sandbox key off the landing page, E2 as the validated hydrate in
+`persist.ts`, E3 as `seedHash` in `seed.ts`, E4 as the collapse replay in
+`use-graph-history.ts`, N2 as `cleanHandle`, and the route error boundary as
+`src/app/graph/error.tsx`. The follow-up below (closing the `knowledge/issues.md`
+entry of 2026-05-20) is also done; that entry reads RESOLVED.
+
 This is also the second half of a known issue. `knowledge/issues.md`
 (2026-05-20, "localStorage staleness silently breaks the graph") ranked four
 mitigations; option 1 landed in session 10 and is the `schemaOk` check in

@@ -23,6 +23,13 @@ prerequisite is now met (sessions 18 to 20 for the write path, 31 for OAuth).
 
 ### Why the last two findings stay open
 
+**Update (session 70).** They no longer do, and they were closed the way this
+section prescribed rather than by editing the questions. `F4` is superseded by
+`F7`, `F5` by `F6` and `F8`; the originals carry `supersededBy` and the lint
+skips them as historical record, so `npm run lint:resolution --strict` now
+reports 0 findings on 12 forecasts with 2 skipped. The argument below is kept
+because it is the reasoning that produced the replacements.
+
 `npm run lint:resolution` reports two findings, and neither should be closed by
 editing the forecast:
 

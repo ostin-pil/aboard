@@ -4,6 +4,34 @@ Replace the single-Claude forecast with an ensemble of cheap open-weights
 models against one mechanism, end-to-end. Proves the cost-aware forecasting
 story (vision decision #4) with real artifacts.
 
+## Status — SHIPPED (verified 2026-08-24)
+
+Every deliverable in "Concrete file-level work" exists, and the prototype ran
+wider than the plan scoped it.
+
+- **Scripts** — `scripts/forecasters/ensemble-predict.ts` with a provider
+  abstraction (`openai-compatible`, `ollama-native`, `anthropic-native`),
+  `providers.example.json`, `prompt.ts` and a README. The plan assumed
+  OpenRouter only.
+- **Data** — F2 carries five predictions: the Claude seed plus four
+  open-weights models from distinct families (`llama-3.3-70b`,
+  `llama-4-scout`, `qwen3-32b`, `gpt-oss-120b`). The inequality ensemble
+  (`IF1`–`IF3`) ran the same way, which the plan did not ask for.
+- **Types** — `src/lib/forecast.ts` shipped in session 7 with `median`,
+  `spread`, `aggregate`, and later `leaveOneOut`, `simulatedN` and
+  `framingVariantGroups`.
+- **UI** — the ensemble headline, count and spread render on the claim page,
+  with the individual predictions in a `<details>`; `InterpretationCard.tsx`
+  carries the leave-one-out deltas.
+- **OG cards** — the per-claim card surfaces `P=… (ensemble of N)`.
+- **Schema** — `research/schema.md` documents ensemble semantics, the median
+  reduction and why spread is shown alongside it.
+
+The three "decisions to make before coding" were all taken in the doing:
+provider is configurable rather than fixed, the roster is four open-weights
+families, and the aggregation rule is the median with spread reported (Brier
+weighting deferred until a forecast resolves, recorded in `schema.md`).
+
 ## Context
 
 Today's forecasts are baked outputs from Claude. The vision decision

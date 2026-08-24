@@ -7,6 +7,23 @@ no referential-integrity checks (dangling references load silently), and the
 JSON-LD vocab still points at the placeholder `https://aboard.example/vocab/`.
 Effort: ~3–4 hr total; each step is an independent commit.
 
+## Status — SHIPPED (verified 2026-08-24)
+
+All four sections landed. The plan is retired and kept for the arguments it
+makes, which `funding-applications.md` draws on as an evidence item.
+
+| Section | Where it lives now | Landed |
+| --- | --- | --- |
+| §1 LICENSE | `LICENSE` (Apache-2.0), `data/LICENSE` (CC BY 4.0), README "Licensing" | `7b3348e` |
+| §2 CI | `.github/workflows/ci.yml`, since extended well past this brief | `f4b1e5b` (last touch) |
+| §3 Referential integrity | `src/lib/data/integrity.ts` — dangling edges, unknown attachments, duplicate IDs, orphaned analyses, plus a frontmatter-vs-directory check this plan never asked for | `17abb87` |
+| §4 Real vocab namespace | `src/lib/vocab.ts` mints `https://aboard.untype.me/vocab/`; no `aboard.example` remains anywhere | `c7e5736` |
+
+§4's "Blocked on: domain choice" line below was stale for months. The hostname
+was settled in session 17 and the placeholder swept with it; the index went on
+advertising the block until this sweep, which is what makes the line worth
+naming rather than deleting.
+
 ## 1. LICENSE (do first — pulled forward by `flf-epistack-entry.md`)
 
 Dual-license, stated in a root `LICENSE` + a "Licensing" section in README:
