@@ -17,7 +17,7 @@ visible link traversal + explicit agent instructions moves it a lot
 (d=0.60). Classic SEO still matters as the second channel — claim statements
 are literal search queries — and both channels reward the same architecture.
 
-## Status (2026-07-27)
+## Status (2026-07-27, re-swept 2026-08-24 in session 70)
 
 Reconciled against the shipped state; the sections below are kept as
 written, with their outcomes noted in place.
@@ -25,12 +25,23 @@ written, with their outcomes noted in place.
 - §1 and §3 shipped via the discovery-surface slice
   (`proposed-direction-2026-07.md` slice 1): robots allow-stance, sitemap,
   `llms.txt`, per-claim markdown twins, and the `/about` agents section.
-  One §1 item is still open: promoting that section to a full `/agents`
-  page, whose stated trigger (the remote MCP endpoint landing) has now
-  fired.
-- §2 was decided the other way: parallel `.md` URLs shipped instead of
-  Worker content negotiation. See the note in §2.
-- §4, §5, §6, and §7 are unbuilt and form the open slice of this plan.
+  The one §1 item this listed as open — promoting that section to a full
+  `/agents` page — is not open: `agent-surface.md`'s own decision note
+  allowed either form, and the `## For agents` section in `content/about.md`
+  is the form that shipped. Recorded here in session 70, because the index's
+  `agent-surface` entry had said the choice was made while this said it was
+  pending.
+- §2 shipped after all, and this bullet used to deny it. Parallel `.md` URLs
+  landed first, and the Worker negotiation followed two days before this
+  Status was written (`3ecace2`, 2026-07-25): `serveMarkdownTwin` serves the
+  twin on an `Accept` preference, with `Vary: Accept` and `no-store` because
+  Cloudflare's edge keys on `Accept-Encoding` rather than `Accept`. The note
+  in §2 is kept as the reasoning of the day, not as the outcome.
+- §5 and §6 are unbuilt and form the open slice of this plan. §4 has since
+  landed (per-page `alternates.canonical`, the ensemble median on the
+  per-claim OG card), and §7's first bullet — the Worker instrumentation —
+  landed as audit chunk 4 in session 60; what remains of §7 is Search
+  Console, which `distribution-listings.md` §4 owns.
   External evidence has since strengthened the §7 case and the thesis
   above: agents overwhelmingly fetch HTML and skip `llms.txt`
   ([Ahrefs via ppc.land](https://ppc.land/llms-txt-adoption-rises-8-8x-but-97-of-files-get-zero-ai-requests/)),
