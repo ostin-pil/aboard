@@ -51,10 +51,11 @@ the anchor application, and start the OWID-style small-donor long tail early
 
 ## 3. Evidence package (the real work — everything else is writing)
 
-- [ ] Deployed public URL (FLF plan, Day 1).
-- [ ] FLF competition entry submitted (win or not, it's a credibility +
-      priority artifact — `flf-epistack-entry.md`).
-- [ ] LICENSE + CI (`repo-hardening.md`) — funders check the repo.
+- [x] Deployed public URL (FLF plan, Day 1) — `https://aboard.untype.me`.
+- [x] FLF competition entry submitted (win or not, it's a credibility +
+      priority artifact — `flf-epistack-entry.md`). Went in by the 2026-07-19
+      deadline; outcome not yet known.
+- [x] LICENSE + CI (`repo-hardening.md`) — funders check the repo. Apache-2.0 for code, CC BY 4.0 for `data/` and the schema, and a CI workflow that has since grown well past the original brief.
 - [ ] **One external consumer**: a named agent/framework/researcher consuming
       `/api/graph` or the MCP read tools, in writing. Candidate targets: an
       LLM-forecasting research group (they hand-curate exactly this data), an
@@ -62,7 +63,12 @@ the anchor application, and start the OWID-style small-donor long tail early
       (Full Fact AI / Duke Reporters' Lab).
 - [ ] **One resolved forecast** with computed Brier (short-horizon slate,
       `corpus-growth.md` §3) — or, until one resolves, the published slate
-      with pre-committed resolution sources.
+      with pre-committed resolution sources. The fallback half is met: the
+      slate is published and every live forecast carries a
+      `resolutionSource`, with `lint:resolution --strict` clean. A genuine
+      resolution is calendar-blocked until 2027-01-31 (F9), so whether the
+      fallback is enough to claim this item is a pitch decision, not a
+      build one.
 - [ ] One citation/mention in journalism, a think-tank note, or an academic
       preprint.
 
