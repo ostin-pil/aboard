@@ -31,43 +31,72 @@ order they could be picked up; pick any.
 
 | Plan | Deadline | Effort | Prereq |
 | --- | --- | --- | --- |
-| [funding-applications.md](funding-applications.md) | Rolling (micro-grants now) | ~1 day writing + evidence package | Evidence items: FLF entry (submitted, see Shipped), repo-hardening, one resolved forecast — **calendar-blocked until 2027-01-31**, the earliest resolution date in `data/` (F9); no amount of work brings it forward |
+| [funding-applications.md](funding-applications.md) | Rolling (micro-grants now) | ~1 day writing + evidence package | Evidence items: FLF entry (submitted, see Shipped) and repo-hardening (shipped, see Shipped) both satisfied; one resolved forecast is the only one left — **calendar-blocked until 2027-01-31**, the earliest resolution date in `data/` (F9); no amount of work brings it forward |
 
 ## Open — build
 
 | Plan | Effort | Decision-heavy? | Prereq |
 | --- | --- | --- | --- |
-| [audit-2026-08.md](audit-2026-08.md) | 9 chunks, ~½–1 day each | Light — chunk 6 picks a test harness; the rest is decided | Chunk 8 (launch post) wants chunks 1, 4 and ideally 7 first; others independent |
-| [distribution-listings.md](distribution-listings.md) | ~1–2 hr, all operator | One decision: whether to bump the card version so the registry can carry the npm package | Chunk 7's code half, done in session 67 |
-| [integrity-foundations.md](integrity-foundations.md) | do-now slice shipped (session 34); enforcement half unscoped | Decisions taken; see its Status | Enforcement half was gated on the MCP write path, which is now met |
-| [repo-hardening.md](repo-hardening.md) | ~3–4 hr | Light — license choice | §4 blocked on domain choice; rest none |
-| [domain-on-create.md](domain-on-create.md) | ~1–2 hr | Light — slot-on-create vs leave-free | None |
+| [audit-2026-08.md](audit-2026-08.md) | 2 of 9 chunks left: chunk 7's operator half and chunk 8, ~½–1 day each | Decided; chunk 6's test-harness pick was made in session 64 | Chunk 8 (launch post) wanted chunks 1, 4 and 7, all now met |
+| [distribution-listings.md](distribution-listings.md) | ~1–2 hr, all operator | None left — the card-version question was settled in session 69 (npm and card both at `0.1.1`) | Publishing `aboard-mcp-server@0.1.1` to npm, which needs a 2FA one-time password |
+| [integrity-foundations.md](integrity-foundations.md) | do-now slice shipped (session 34); enforcement half unscoped | Decisions taken; see its Status, whose two open lint findings have since been superseded rather than edited | Enforcement half was gated on the MCP write path, which is now met |
 | [cross-domain-claim-drag.md](cross-domain-claim-drag.md) | ~half-day | Yes — extent strategy, confirm UX, coordinate math | None |
-| [editor-mode-posture.md](editor-mode-posture.md) | ~3 hr (Posture 2) / ~12+ hr (Posture 3) | Yes — three postures to choose between | None |
-| [open-weights-forecaster.md](open-weights-forecaster.md) | ~4–6 hr for the M2/F2 prototype | Yes — inference provider, model roster, aggregation rule | None |
-| [organic-traffic-dual-ux.md](organic-traffic-dual-ux.md) | ~2 days (§4–§7; §1–§3 shipped or superseded, see its Status) | Light — leaderboard timing, feed granularity | First resolution for §5's leaderboard; rest none |
-| [agent-distribution.md](agent-distribution.md) | ~2 days (operator + writing) | Light — dataset home, post timing | MCP OAuth for §5's post; organic-traffic §7 instrumentation helps; rest none |
+| [organic-traffic-dual-ux.md](organic-traffic-dual-ux.md) | ~1 day: §5 and §6 only. §1–§3 all shipped (its Status; §2's Worker negotiation landed in `3ecace2`, which that Status used to deny), §4 has since landed (per-page `alternates.canonical`, the ensemble median on the OG card), and §7's Worker instrumentation landed as audit chunk 4 in session 60 | Light — leaderboard timing, feed granularity | First resolution for §5's leaderboard; rest none |
+| [agent-distribution.md](agent-distribution.md) | ~2 days (operator + writing); §1 done in session 33 and §2 overlaps `distribution-listings.md` | Light — dataset home, post timing | None outstanding: §5's MCP OAuth landed in session 31 and §7's instrumentation in session 60 |
 | [proposal-dry-run.md](proposal-dry-run.md) | ~half-day | Light — flag shape on the envelope | None |
-| [signals-substrate.md](signals-substrate.md) | ~1 day | Medium — D1 vs KV, retention, MCP exposure | MCP OAuth |
-| [news-layer.md](news-layer.md) | ~1–2 days + sweep cadence | Medium — filter rule, sweep tuning | signals-substrate, integrity-foundations |
-| [agent-social-layer.md](agent-social-layer.md) | ~1–2 days | Medium — endorsement subjects, page naming | signals-substrate |
-| [graph-state-integrity.md](graph-state-integrity.md) | ~half-day (mostly QA) | Light — inline persistence, seed-hash scope, notify vs nuke | None (audit batch 1 merged) |
+| [signals-substrate.md](signals-substrate.md) | ~1 day | Medium — D1 vs KV, retention, MCP exposure | None — its MCP OAuth prereq landed in session 31 |
+| [news-layer.md](news-layer.md) | ~1–2 days + sweep cadence | Medium — filter rule, sweep tuning | signals-substrate (unbuilt); integrity-foundations' enforcement half |
+| [agent-social-layer.md](agent-social-layer.md) | ~1–2 days | Medium — endorsement subjects, page naming | signals-substrate (unbuilt) |
 
-Suggested order (2026-07-11 review), with the FLF entry since submitted and its
-deadline passed: integrity-foundations (do-now slice shipped in session 34) →
-repo-hardening, with funding applications running in parallel as evidence items
-land. `agent-surface` and `corpus-growth` were the next two links in that chain
-and have both since shipped (see Shipped). The pre-review plans
-(domain-on-create, cross-domain-claim-drag, editor-mode-posture,
-open-weights-forecaster) remain independent and can interleave.
-
-Note: `open-weights-forecaster.md`'s aggregation substrate already landed in
-session 7 — `src/lib/forecast.ts` (`median`/`spread`/`aggregate`/`leaveOneOut`/
-`simulatedN`). The remaining scope is live multi-model inference + display, not
-the math.
+The 2026-07-11 suggested order is now spent: every link in it has shipped
+except `integrity-foundations`'s enforcement half, and the FLF entry went in
+before its deadline. `audit-2026-08.md`'s Suggested order governs near-term
+work, and what it has left is chunk 7's operator half (the npm publish, then
+the registry) and chunk 8 (the launch post). Of the four pre-review plans that
+paragraph called independent, three have since shipped; only
+`cross-domain-claim-drag` is still open, and it still interleaves freely.
 
 ## Shipped
 
+- [repo-hardening.md](repo-hardening.md) — done, all four sections. `LICENSE`
+  (Apache-2.0) and `data/LICENSE` (CC BY 4.0) with the README "Licensing"
+  section (`7b3348e`); `.github/workflows/ci.yml`, since grown well past the
+  brief; referential integrity as `src/lib/data/integrity.ts` (`17abb87`),
+  which also reconciles a file's frontmatter against its directory, a check
+  the plan never asked for; and the real vocab namespace in `src/lib/vocab.ts`
+  (`c7e5736`), settled in session 17. Moved here in session 70. Its §4 was
+  still advertised as "blocked on domain choice" long after
+  `aboard.untype.me` went live, which is the stale line that prompted this
+  sweep.
+- [graph-state-integrity.md](graph-state-integrity.md) — done, session 25
+  (PRs #53 and #54), recorded in session 47 as all of sequencing batch 2. N1
+  (client-only render), E1 (the landing page never shows the sandbox), E2
+  (validated hydrate), E3 (`seedHash` drift notice), E4 (collapse replay on
+  undo), N2 (`cleanHandle`) and the route error boundary all verified present.
+  The `knowledge/issues.md` entry it was paired with reads RESOLVED. Moved
+  here in session 70, three months after it landed.
+- [open-weights-forecaster.md](open-weights-forecaster.md) — done, and wider
+  than scoped. `scripts/forecasters/` carries `ensemble-predict.ts` with three
+  provider adapters rather than the planned OpenRouter-only path; F2 holds the
+  Claude seed plus four open-weights models from distinct families
+  (`llama-3.3-70b`, `llama-4-scout`, `qwen3-32b`, `gpt-oss-120b`), and the
+  inequality ensemble `IF1`–`IF3` ran the same way; `src/lib/forecast.ts` has
+  the aggregation; the claim page renders the median, count and spread with the
+  individual predictions behind a `<details>`; the OG card carries the ensemble
+  median; and `research/schema.md` documents ensemble semantics. Moved here in
+  session 70.
+- [domain-on-create.md](domain-on-create.md) — done. `NodeEditorModal` has the
+  picker with a new-domain sentinel, and its design fork was settled as Option
+  A: `saveClaimNode` in `graph-ops.ts` finds or creates the
+  `__domain_<domain>` group and slots the claim into its row. `newId` mints a
+  domain-prefixed id to match. Moved here in session 70.
+- [editor-mode-posture.md](editor-mode-posture.md) — done as Posture 2, the
+  recommended one. `/graph` labels the editor as a local sandbox
+  (`● local sandbox · not filed`, pointing at the PR-pack export and
+  `/about#contributing`), and `content/about.md` says the same in prose.
+  Posture 3's real submission flow arrived by another route entirely, as the
+  MCP write path and `POST /api/proposals`, so the two coexist rather than one
+  replacing the other. Moved here in session 70.
 - [agent-surface.md](agent-surface.md) — done. §1 `llms.txt`
   (`src/app/llms.txt/route.ts`), §2 entity-page navigation (a Markdown twin per
   claim and per dossier, plus `/index.md`, `/auth.md` and

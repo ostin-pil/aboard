@@ -2,6 +2,17 @@
 
 Decide what `/graph`'s editor-mode does now that `data/` is the source of truth.
 
+## Status — SHIPPED as Posture 2 (verified 2026-08-24)
+
+The recommended posture landed. `/graph` keeps the editor as an explicitly
+labelled local sandbox: `GraphFullbleed.tsx` renders the
+`● local sandbox · not filed` pill, whose title text points at the PR-pack
+export and `/about#contributing`, and `content/about.md` says the same in
+prose. The real submission flow of Posture 3 arrived by a different route than
+this plan imagined — the MCP write path and `POST /api/proposals`, both
+PR-only — so the sandbox and the filing path coexist rather than one replacing
+the other.
+
 ## Context
 
 The custom JS graph engine at `public/graph-engine.js` (ported from Claude Design)

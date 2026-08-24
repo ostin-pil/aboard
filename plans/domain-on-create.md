@@ -3,6 +3,17 @@
 Let an author choose a domain (existing or new) when creating a claim in
 the `/graph` editor, instead of every new claim being domainless.
 
+## Status — SHIPPED (verified 2026-08-24)
+
+`NodeEditorModal.tsx` renders the domain picker with a "type a new domain"
+sentinel, seeds it from `node.data.domain` when editing and from the editor's
+active domain when creating, and builds the draft with the resolved value. The
+design fork below was settled as **Option A, slot on create**: `saveClaimNode`
+in `graph-ops.ts` finds or creates the `__domain_<domain>` group, assigns
+`parentId` with `extent: "parent"`, computes the slot column within the claim's
+row, and positions into the group's local coordinates. `newId` is
+domain-aware, so a new claim also mints an id carrying the domain's prefix.
+
 ## Context
 
 `NodeEditorModal` (`src/components/graph/NodeEditorModal.tsx`) builds the
