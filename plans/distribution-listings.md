@@ -196,6 +196,24 @@ comparable servers, which the chunk 4 instrumentation would show.
 request, so it is the most exacting of the three and the draft below is
 ready to paste.
 
+**File it, and then forget about it.** Measured 2026-08-26: 3,575 open
+pull requests, 1,880 opened in the last 30 days against 74 merged, and
+no commit to `main` since 2026-08-17. A submission filed today sits
+behind the whole backlog, and the oldest entry still open was filed
+2025-12-03. Four years is the optimistic reading and assumes the queue
+drains in order, which it does not.
+
+The `🤖🤖🤖` agent fast track `CONTRIBUTING.md` offers does not change
+this. 1,666 of the 3,575 open pull requests already carry it, so it
+marks 47% of the queue and confers no priority.
+
+None of that is a reason to skip it. One submission costs nothing to
+maintain and the backlink is permanent if it ever lands. It is a reason
+not to sequence anything behind it, and not to treat "merged" as a
+completion condition. `research/review-capacity.md` works through what
+this failure mode implies for aboard's own admission gate, which has the
+same shape.
+
 **Section.** `### 🔬 Research`, which the file introduces as "Tools for
 conducting research, surveys, interviews, and data collection". The
 neighbours there are the right ones: election results at
@@ -385,6 +403,7 @@ npx aboard-mcp-server
 - The registry entry at `me.untype/aboard` reports `0.1.1` and carries a
   `packages` array naming `aboard-mcp-server`.
 - Glama lists aboard as healthy. (mcp.so is dropped, see section 2.)
-- The awesome-mcp-servers PR is merged.
+- The awesome-mcp-servers PR is **filed**. Merged is not a condition
+  this project can satisfy; see section 3 for the throughput numbers.
 - `untype.me` is a verified Search Console domain property, the
   `v=MCPv1` TXT record is intact, and `sitemap.xml` is submitted.
