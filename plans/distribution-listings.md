@@ -20,7 +20,7 @@ two of them does not have to work out which is current.
 | Official MCP registry | Entry live at `me.untype/aboard` version `0.1.0`, remotes only. The card is bumped to `0.1.1` and validates; the publish waits on the deploy. See below. |
 | Glama | Listed at `glama.ai/mcp/connectors/me.untype/aboard`, sourced from the official registry rather than submitted. Marked unhealthy; cause found and fixed in session 69, awaiting deploy. |
 | mcp.so | **Dropped.** No free submission path found; see below. |
-| awesome-mcp-servers | No entry. |
+| awesome-mcp-servers | **Filed 2026-08-26** as [#12962](https://github.com/punkpeye/awesome-mcp-servers/pull/12962). Do not expect a merge; see section 3. |
 | Search Console | Domain not verified, sitemap not submitted. |
 
 Verified 2026-08-22 by `npm view aboard-mcp-server` and a `GET` against
@@ -160,8 +160,21 @@ which is all the spec requires, on the grounds that the endpoint is
 public, reads no cookie, and gates every write on a bearer credential a
 browser will not attach cross-origin. See `knowledge/issues.md`.
 
-Glama re-checks on its own schedule, so the badge should clear a while
-after the session 69 deploy. If it does not, re-probe with:
+**It did not clear.** Glama re-tested 2026-08-26 17:40, after the session
+69 deploy, and still reports unhealthy. Session 71 re-probed and found the
+endpoint correct on every measure: 200 for `POST initialize` with Glama's
+own origin set, 204 for the preflight, all nine tools on `tools/list`, and
+clean protocol negotiation across four requested versions.
+
+`wrangler tail` then found a traffic shape nobody had looked at. Of
+fourteen requests to `/mcp` in four minutes, twelve were `GET` and one was
+`HEAD`, and all thirteen got 405; the single `POST` caller got 200. None
+of the thirteen sent an `Origin` at all, which is why the session 69 fix
+did not move them. Whether one of them is Glama is unproven, since none
+identifies itself. `knowledge/issues.md`, 2026-08-26, has the evidence and
+the open decision about serving SSE on `GET`.
+
+To re-probe the `POST` path, which is the one that works:
 
 ```bash
 curl -i -X POST https://aboard.untype.me/mcp \
@@ -195,6 +208,26 @@ comparable servers, which the chunk 4 instrumentation would show.
 <https://github.com/punkpeye/awesome-mcp-servers>. This one is a pull
 request, so it is the most exacting of the three and the draft below is
 ready to paste.
+
+**Filed 2026-08-26 as [#12962](https://github.com/punkpeye/awesome-mcp-servers/pull/12962)**, one line in `🔬 Research` between `OrgMentem/zotio` and `ovlabs/mcp-server-originalvoices`, with no Glama score badge because the connector currently renders unhealthy and an unhealthy badge is worse than none.
+
+**File it, and then forget about it.** Measured 2026-08-26: 3,575 open
+pull requests, 1,880 opened in the last 30 days against 74 merged, and
+no commit to `main` since 2026-08-17. A submission filed today sits
+behind the whole backlog, and the oldest entry still open was filed
+2025-12-03. Four years is the optimistic reading and assumes the queue
+drains in order, which it does not.
+
+The `🤖🤖🤖` agent fast track `CONTRIBUTING.md` offers does not change
+this. 1,666 of the 3,575 open pull requests already carry it, so it
+marks 47% of the queue and confers no priority.
+
+None of that is a reason to skip it. One submission costs nothing to
+maintain and the backlink is permanent if it ever lands. It is a reason
+not to sequence anything behind it, and not to treat "merged" as a
+completion condition. `research/review-capacity.md` works through what
+this failure mode implies for aboard's own admission gate, which has the
+same shape.
 
 **Section.** `### 🔬 Research`, which the file introduces as "Tools for
 conducting research, surveys, interviews, and data collection". The
@@ -385,6 +418,7 @@ npx aboard-mcp-server
 - The registry entry at `me.untype/aboard` reports `0.1.1` and carries a
   `packages` array naming `aboard-mcp-server`.
 - Glama lists aboard as healthy. (mcp.so is dropped, see section 2.)
-- The awesome-mcp-servers PR is merged.
+- The awesome-mcp-servers PR is **filed**. Merged is not a condition
+  this project can satisfy; see section 3 for the throughput numbers.
 - `untype.me` is a verified Search Console domain property, the
   `v=MCPv1` TXT record is intact, and `sitemap.xml` is submitted.
