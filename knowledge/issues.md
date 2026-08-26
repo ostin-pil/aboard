@@ -312,3 +312,21 @@ POST    Origin: https://aboard.untype.me -> 200
 **Diagnosing this class again.** Probe the endpoint the way the reporting client does, not the way it is convenient to. For a directory badge that means sending an `Origin`, and checking `OPTIONS` as well as `POST`; a preflight refusal is invisible to any tool that only ever sends the real request.
 
 Status: resolved in session 69 — the check is now well-formedness only, which is what the spec requires, with `worker/mcp.test.ts` pinning both the 200 for a foreign origin and the absence of `access-control-allow-credentials` (echoing an origin is only safe while no credential is ambient). Glama re-checks on its own schedule, so the badge clears some time after the deploy rather than immediately.
+
+---
+
+## 2026-08-26 — most automated traffic to `/mcp` is `GET`, and every `GET` gets 405
+
+Glama still lists aboard as unhealthy (`glama.ai/mcp/connectors/me.untype/aboard`, last tested 2026-08-26 17:40) after session 69 fixed the origin guard that was the first suspect. The endpoint answers correctly on every black-box probe: `POST initialize` returns 200 with `Origin: https://glama.ai` set, `OPTIONS` returns 204, `tools/list` returns all nine tools, and protocol negotiation succeeds for four different requested versions including an unknown one.
+
+**What `wrangler tail` showed.** Fourteen requests reached `/mcp` in a four-minute window on 2026-08-26. Twelve were `GET` and one was `HEAD`; all thirteen received 405. Exactly one client used `POST`, `SentinelOracle/0.1`, and it got 200 and 202. None of the thirteen sent an `Origin` header at all, which is why session 69's fix did not change their outcome: they never reach that check.
+
+The `GET` callers are a mix of generic browser user-agent strings from scattered datacenter IPs plus Googlebot and GoogleOther. None identifies itself as Glama, so this is a strong hypothesis about the badge rather than a confirmed root cause, and it should not be written up as more than that. What it does establish independently of Glama is the traffic shape: the dominant way automated clients touch this endpoint is a `GET`, and every one of them sees a failure status.
+
+**Why the 405 is there.** The Streamable HTTP spec permits a server with no SSE stream to answer `GET` with 405, and `worker/mcp.ts` does exactly that with an error body explaining the server is stateless. The behaviour is correct. The observation is that correctness and reachability have come apart: a liveness checker that probes with `GET` marks this endpoint dead however good the `POST` path is.
+
+**The decision this leaves open.** Serving an SSE stream on `GET` would be spec-correct and would satisfy a `GET` probe, at the cost of adding streaming surface to a deliberately stateless Worker, with its own tests and its own failure modes. That is a scoped design decision, not a reflex fix, and session 71 deliberately did not take it. Improving the 405 body is cheap but changes nothing for an automated checker, which is the only caller that matters here.
+
+**How to re-measure.** `npx wrangler tail aboard --format json` into a file, then parse for `event.request.url` matching `/mcp` and read `method` alongside `event.response.status`. Do not grep the stream line by line: `--format json` pretty-prints across lines, so a line filter returns TLS handshake fields rather than request outcomes. Four minutes was enough to see the pattern.
+
+Status: open — the 405 behaviour is deliberate and spec-permitted, so this is a reachability question rather than a defect. Revisit if the Glama badge matters commercially, or if a client that is not a crawler turns out to be failing on it.
