@@ -16,15 +16,16 @@ two of them does not have to work out which is current.
 
 | Item | State |
 | --- | --- |
-| npm package | `aboard-mcp-server@0.1.0` live but missing `mcpName`, so the registry refuses it. `0.1.1` adds the field and needs publishing. |
-| Official MCP registry | Entry live at `me.untype/aboard` version `0.1.0`, remotes only. The card is bumped to `0.1.1` and validates; the publish waits on the deploy. See below. |
-| Glama | Listed at `glama.ai/mcp/connectors/me.untype/aboard`, sourced from the official registry rather than submitted. Marked unhealthy; cause found and fixed in session 69, awaiting deploy. |
+| npm package | **Done.** `aboard-mcp-server@0.1.1` live and carrying `mcpName: me.untype/aboard`, published in session 69. |
+| Official MCP registry | **Done.** `me.untype/aboard` serves `0.1.1` with one `packages` entry (`aboard-mcp-server` `0.1.1`) alongside the remote. The `0.1.0` entry remains as history. |
+| Glama | Listed at `glama.ai/mcp/connectors/me.untype/aboard`, sourced from the official registry rather than submitted. Still unhealthy after session 69's origin fix deployed; session 71 found most automated traffic to `/mcp` is `GET` and every `GET` gets 405. Strong hypothesis, not a confirmed cause. See `knowledge/issues.md`, 2026-08-26. |
 | mcp.so | **Dropped.** No free submission path found; see below. |
 | awesome-mcp-servers | **Filed 2026-08-26** as [#12962](https://github.com/punkpeye/awesome-mcp-servers/pull/12962). Do not expect a merge; see section 3. |
-| Search Console | Domain not verified, sitemap not submitted. |
+| Search Console | **Done 2026-08-27.** `untype.me` verified as a Domain property; `sitemap.xml` submitted. |
 
-Verified 2026-08-22 by `npm view aboard-mcp-server` and a `GET` against
-`https://registry.modelcontextprotocol.io/v0/servers?search=me.untype/aboard`.
+Re-verified 2026-08-27 by `npm view aboard-mcp-server`, a `GET` against
+`https://registry.modelcontextprotocol.io/v0/servers?search=me.untype/aboard`,
+and `dig +short TXT untype.me`.
 
 ## 0. The registry re-publish, and the version bump it needs
 
@@ -303,6 +304,24 @@ prepared draft, so leave the title as written above.
 
 ## 4. Search Console
 
+**Done 2026-08-27.** Both steps below were carried out as written. The
+property is a Domain property on `untype.me`, and `sitemap.xml` is
+submitted. The paragraphs that follow are kept as the record of why it was
+done this way, not as outstanding work.
+
+The warning about the apex TXT set was the part that mattered, and it held:
+the two existing records survived byte-identical, so the MCP registry key
+needed no rotation. Measured after verification rather than assumed:
+
+```
+"google-site-verification=PW8b-0ePRCSxgn400EHWja_U1Vlgg7hP1aNNpE6VRp8"
+"v=MCPv1; k=ecdsap384; p=A+f9jyWwWhQn3ZbZ6pxY+fkR8UGjO3wf6aksCbHqStJV8Fn0l3LlZ8tRiGwYsI1T/Q=="
+"v=spf1 include:spf.efwd.spaceship.net ~all"
+```
+
+Three records, which is the count this section said to expect. Re-run
+`dig +short TXT untype.me` before touching the zone again for any reason.
+
 Two steps, verification then the sitemap.
 
 **Property type.** Use a Domain property on `untype.me`, not a URL-prefix
@@ -422,3 +441,5 @@ npx aboard-mcp-server
   this project can satisfy; see section 3 for the throughput numbers.
 - `untype.me` is a verified Search Console domain property, the
   `v=MCPv1` TXT record is intact, and `sitemap.xml` is submitted.
+  **Met 2026-08-27**, with the TXT set checked after the edit rather than
+  before it.
