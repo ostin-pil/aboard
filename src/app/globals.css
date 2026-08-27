@@ -9,7 +9,7 @@
   --bg: #fafaf9;
   --fg: #0c0a09;
   --muted: #57534e;
-  --muted-2: #78716c;
+  --muted-2: #756e69;
   --line: #e7e5e4;
   --line-2: #d6d3d1;
   --hair: #f5f5f4;
@@ -84,7 +84,7 @@
   --dark-bg: #171614;
   --dark-fg: #f5f5f4;
   --dark-muted: #a8a29e;
-  --dark-muted-2: #78716c;
+  --dark-muted-2: #8f8880;
   --dark-line: #292524;
   --dark-line-2: #44403c;
   --dark-hair: #1c1b18;
@@ -1117,7 +1117,7 @@ h1.headline em { font-style: normal; color: var(--muted); font-weight: 400; }
 }
 .graph-head .left { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
 .graph-head .left .label { color: var(--fg); }
-.graph-head .left .sep { color: var(--line-2); }
+.graph-head .left .sep { color: var(--muted-2); }
 .graph-head .right { display: flex; gap: 14px; }
 .graph-head .right span { color: var(--muted-2); cursor: default; }
 .graph-head .right span.active { color: var(--fg); }
@@ -1282,7 +1282,7 @@ h1.headline em { font-style: normal; color: var(--muted); font-weight: 400; }
   display: flex; flex-wrap: wrap; gap: 0; align-items: center;
 }
 .meta-row .item { display: inline-flex; align-items: center; }
-.meta-row .sep { color: var(--line-2); padding: 0 12px; }
+.meta-row .sep { color: var(--muted-2); padding: 0 12px; }
 .meta-row .key { color: var(--muted-2); padding-right: 6px; }
 .meta-row .val { color: var(--fg); }
 .meta-row a.val { text-decoration: none; border-bottom: 1px solid var(--line-2); padding-bottom: 1px; }
@@ -1395,7 +1395,7 @@ h1.headline em { font-style: normal; color: var(--muted); font-weight: 400; }
 .forecast-head .question { font-family: var(--sans); font-weight: 500; font-size: 17px; line-height: 1.35; color: var(--fg); margin: 0 0 10px; text-wrap: pretty; }
 .forecast-head .resolves { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.04em; margin-bottom: 12px; }
 .forecast-head .resolves .id { color: var(--mech-fg); }
-.forecast-head .resolves .sep { color: var(--line-2); padding: 0 8px; }
+.forecast-head .resolves .sep { color: var(--muted-2); padding: 0 8px; }
 .forecast-head .criteria { font-style: italic; color: var(--muted); font-size: 14px; line-height: 1.55; margin: 0; }
 
 /* Superseded marker. Muted rather than alarming: a superseded forecast is
@@ -1545,7 +1545,7 @@ a.dossier-cta:hover { background: var(--fg); color: var(--bg); }
   margin-bottom: 22px;
   display: flex; gap: 12px; align-items: center;
 }
-.dossier-caption .sep { color: var(--line-2); }
+.dossier-caption .sep { color: var(--muted-2); }
 .dossier-caption .em { color: var(--fg); }
 .dossier-caption span { white-space: nowrap; }
 .dossier-headline {

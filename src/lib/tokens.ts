@@ -31,7 +31,7 @@ export const surface = {
   /** `--muted` */
   muted: "#57534e",
   /** `--muted-2` */
-  muted2: "#78716c",
+  muted2: "#756e69",
   /** `--line-2`, and `--grid-dot`, which hold the same value in light. */
   line2: "#d6d3d1",
   /**
