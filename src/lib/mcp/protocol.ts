@@ -275,6 +275,11 @@ function validateModernHeaders(
  * `prompts`, `logging` or `completions` — declaring a capability is a promise
  * to serve it, and a client MUST only use what was negotiated, so an empty
  * declaration would buy nothing but two wasted round-trips per connection.
+ *
+ * `prompts/list` is nonetheless answered, with an empty list. That is not a
+ * contradiction: not declaring keeps conforming clients from asking, and
+ * answering keeps the callers that ask regardless from reading a `-32601` as
+ * a broken server. See the handler in `planMessage`.
  */
 const CAPABILITIES = { tools: {}, resources: {} } as const;
 
@@ -431,6 +436,18 @@ export function planMessage(raw: unknown, headers: HeaderReader): McpPlan {
   }
   // Both listings fit in one page, so neither returns a `nextCursor`; its
   // absence is what tells a paginating client it has the whole list.
+  // Answered without declaring the capability, which is the deliberate part.
+  // Declaring `prompts` would be a promise to serve prompts and would make
+  // every conforming client spend a round trip discovering there are none,
+  // forever. Answering the method changes nothing for those clients — they
+  // MUST only use what was negotiated, so they never ask — and changes the
+  // answer only for callers that ask anyway. Introspection tooling does
+  // exactly that: Glama's published methodology runs `prompts/list`
+  // unconditionally, and `-32601` there is indistinguishable from a broken
+  // server. An empty listing is the truthful answer to what it asked.
+  if (method === "prompts/list") {
+    return { kind: "result", id, era, result: { prompts: [] } };
+  }
   if (method === "resources/list") {
     return { kind: "result", id, era, result: { resources: resourceListing() } };
   }
