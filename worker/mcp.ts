@@ -30,7 +30,7 @@ import {
 } from "../src/lib/mcp/protocol";
 import { authorizeWrite, RESOURCE_URI, type ChallengeOptions, type Credential } from "../src/lib/mcp/auth";
 import type { ReadOp, ToolDescriptor } from "../src/lib/mcp/tools";
-import { mcpCallEvent, type EventPoint } from "../src/lib/telemetry";
+import { mcpCallEvent, mcpProbeEvent, type EventPoint } from "../src/lib/telemetry";
 
 export type ProposalEnvelopeInput = {
   kind: string;
@@ -379,6 +379,12 @@ export async function handleMcp(request: Request, deps: McpDeps): Promise<Respon
   // The modern era dropped the GET stream and the DELETE session teardown, and
   // this server never had either. 405 is the prescribed answer to both.
   if (request.method !== "POST") {
+    // Counted before the answer is chosen, because the open question is what
+    // arrives rather than what we say back. OPTIONS is already answered above
+    // and is deliberately not counted: a preflight is a CORS mechanism, not a
+    // caller probing for liveness. See `mcpProbeEvent`.
+    deps.record?.(mcpProbeEvent(request.method, request.headers.get("user-agent"), request.headers.get("accept")));
+
     return new Response(
       JSON.stringify(
         {

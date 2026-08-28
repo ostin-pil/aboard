@@ -186,6 +186,36 @@ describe("the transport gates", () => {
     expect(res.headers.get("allow")).toBe("POST, OPTIONS");
   });
 
+  // Session 71 could only see this traffic through a live `wrangler tail`, so
+  // the shape of it was unmeasurable outside the window someone was watching.
+  it("records a probe point for a non-POST request", async () => {
+    const { deps, record } = makeDeps();
+
+    await handleMcp(
+      new Request(`${ORIGIN}/mcp`, { headers: { "user-agent": "Googlebot/2.1", accept: "*/*" } }),
+      deps,
+    );
+
+    expect(record).toHaveBeenCalledWith({
+      indexes: ["mcp_probe"],
+      blobs: ["GET", "googlebot", "other"],
+    });
+  });
+
+  // A preflight is a CORS mechanism, not a caller probing for liveness, and it
+  // is answered before the method gate — counting it would inflate the very
+  // number this point exists to measure.
+  it("does not count a preflight as a probe", async () => {
+    const { deps, record } = makeDeps();
+
+    await handleMcp(
+      new Request(`${ORIGIN}/mcp`, { method: "OPTIONS", headers: { origin: ORIGIN } }),
+      deps,
+    );
+
+    expect(record).not.toHaveBeenCalled();
+  });
+
   it("answers a non-JSON body with a -32700 parse error", async () => {
     const { deps } = makeDeps();
 

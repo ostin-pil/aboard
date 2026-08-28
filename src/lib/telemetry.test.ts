@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   mcpCallEvent,
+  mcpProbeEvent,
   proposalEvent,
   record,
   twinEvent,
@@ -51,6 +52,44 @@ describe("mcpCallEvent", () => {
       indexes: ["mcp_call"],
       blobs: ["propose_claim", "credentialed"],
     });
+  });
+});
+
+describe("mcpProbeEvent", () => {
+  it("carries the method, the folded agent class and the accept class", () => {
+    expect(mcpProbeEvent("GET", "Mozilla/5.0 (Macintosh)", "text/html")).toEqual({
+      indexes: ["mcp_probe"],
+      blobs: ["GET", "browser-ua", "other"],
+    });
+  });
+
+  it("names the checkers and crawlers worth telling apart", () => {
+    expect(mcpProbeEvent("GET", "Glama/1.0 health", null).blobs[1]).toBe("glama");
+    expect(mcpProbeEvent("GET", "GoogleOther", null).blobs[1]).toBe("google-other");
+    expect(mcpProbeEvent("GET", "Googlebot/2.1", null).blobs[1]).toBe("googlebot");
+    expect(mcpProbeEvent("GET", "SomeSpider/3", null).blobs[1]).toBe("crawler");
+  });
+
+  it("folds an absent or unrecognised agent rather than logging it", () => {
+    expect(mcpProbeEvent("HEAD", null, null).blobs[1]).toBe("none");
+    expect(mcpProbeEvent("HEAD", "curl/8.4.0", null).blobs[1]).toBe("other");
+  });
+
+  // GoogleOther also matches the generic `bot` test, so order is load-bearing:
+  // the named branch has to win or the dimension collapses to `crawler`.
+  it("prefers the named class over the generic crawler class", () => {
+    expect(mcpProbeEvent("GET", "Mozilla/5.0 (compatible; Googlebot/2.1)", null).blobs[1]).toBe(
+      "googlebot",
+    );
+  });
+
+  it("separates a spec-following stream request from a probe", () => {
+    expect(mcpProbeEvent("GET", null, "text/event-stream").blobs[2]).toBe("event-stream");
+    expect(mcpProbeEvent("GET", null, "application/json, text/event-stream").blobs[2]).toBe(
+      "event-stream",
+    );
+    expect(mcpProbeEvent("GET", null, "*/*").blobs[2]).toBe("other");
+    expect(mcpProbeEvent("GET", null, null).blobs[2]).toBe("none");
   });
 });
 

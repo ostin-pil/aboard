@@ -146,13 +146,16 @@ Two honest bounds, both from the binding's design (`src/lib/rate-limit.ts` has t
 
 ## Telemetry
 
-The Worker writes one Analytics Engine data point per event on its three agent-facing surfaces (the `EVENTS` binding, dataset `aboard_events`; `src/lib/telemetry.ts` builds the rows and is unit-tested there):
+The Worker writes one Analytics Engine data point per event on its agent-facing surfaces (the `EVENTS` binding, dataset `aboard_events`; `src/lib/telemetry.ts` builds the rows and is unit-tested there):
 
 | `index1` | `blob1` | `blob2` |
 | --- | --- | --- |
 | `proposal` | outcome class: `accepted`, `unauthorized`, `rate_limited`, `rejected`, `failed` | entry point: `POST /api/proposals` or the MCP tool name |
 | `mcp_call` | tool name | `credentialed` or `anonymous` |
 | `twin` | pathname served as its Markdown twin | — |
+| `mcp_probe` | HTTP method of a non-POST request to `/mcp` | agent class, then accept class |
+
+`mcp_probe` is the newest and the odd one out, because it measures callers rather than usage. Session 71 found through `wrangler tail` that thirteen of fourteen requests to `/mcp` in a four-minute window were `GET` or `HEAD`, every one answered 405, and could not say whether Glama's health checker was among them: a live tail only sees the window someone is watching. Analytics Engine stamps every row with a timestamp, so a checker that publishes when it last tested can be correlated against what actually arrived. Both text dimensions are folded to closed sets by `agentClass` and `acceptClass` in `src/lib/telemetry.ts` rather than logged raw, which is what keeps the bound below true; the cost is that a probe carrying no distinguishing User-Agent is invisible to that dimension, and the correlation then rests entirely on the timestamp. `OPTIONS` is deliberately not counted, and `POST` is not either — the former is a CORS mechanism rather than a caller, and the latter is what `mcp_call` already counts.
 
 No tokens, no logins, no payload content, and every dimension is a closed or corpus-bounded set. Two honest bounds of its own. `mcp_call`'s who-dimension is credential *presence*, not validity — resolving a credential just to label a row would put a KV lookup on the anonymous read path, which deliberately touches no storage. And a write through MCP counts twice by design, once as `mcp_call` and once as `proposal`: the former counts the door, the latter the decision, whichever door it came through.
 
