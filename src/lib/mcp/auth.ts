@@ -215,7 +215,7 @@ export function authorizeWrite(
         challenge: {
           status: 401,
           description:
-            "The four propose_* tools require a credential. Read tools need none.",
+            "Proposing requires a credential, over MCP or by POST to /api/proposals. Reading needs none.",
           wwwAuthenticate: bearerChallenge({ scope: PROPOSE_SCOPE, discovery }),
         },
       };
