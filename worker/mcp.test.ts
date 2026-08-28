@@ -202,6 +202,40 @@ describe("the transport gates", () => {
     });
   });
 
+  // A checker that speaks the protocol correctly and stops after the handshake
+  // reaches no tool, so `mcp_call` never fires for it. That was the blind spot:
+  // the endpoint could not see the callers most likely to be health-checking it.
+  it("records a handshake POST, which reaches no tool", async () => {
+    const { deps, record } = makeDeps();
+
+    await handleMcp(
+      rpc(
+        { jsonrpc: "2.0", id: 1, method: "tools/list" },
+        { "user-agent": "Glama/1.0", accept: "application/json" },
+      ),
+      deps,
+    );
+
+    expect(record).toHaveBeenCalledWith({
+      indexes: ["mcp_probe"],
+      blobs: ["POST", "glama", "other"],
+    });
+  });
+
+  // The one thing the handshake point must not do is double-count the traffic
+  // `mcp_call` already owns.
+  it("counts a tools/call once, as mcp_call only", async () => {
+    const { deps, record } = makeDeps();
+
+    await handleMcp(rpc(call("list_claims")), deps);
+
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(record).toHaveBeenCalledWith({
+      indexes: ["mcp_call"],
+      blobs: ["list_claims", "anonymous"],
+    });
+  });
+
   // A preflight is a CORS mechanism, not a caller probing for liveness, and it
   // is answered before the method gate — counting it would inflate the very
   // number this point exists to measure.

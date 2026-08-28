@@ -418,6 +418,12 @@ export async function handleMcp(request: Request, deps: McpDeps): Promise<Respon
     return rpcError(plan.id, plan.status, plan.error, origin);
   }
   if (plan.kind === "result") {
+    // A handshake or a listing: a POST that reaches no tool, and therefore the
+    // one shape of real traffic neither `mcp_call` nor the non-POST branch
+    // above can see. A health checker that speaks the protocol properly leaves
+    // exactly this trace and nothing else, so without it the endpoint's own
+    // telemetry cannot answer who is checking it.
+    deps.record?.(mcpProbeEvent(request.method, request.headers.get("user-agent"), request.headers.get("accept")));
     return rpcResult(plan.id, plan.era, plan.result, origin);
   }
 

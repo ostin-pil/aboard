@@ -76,9 +76,13 @@ export function mcpCallEvent(tool: string, credentialed: boolean): EventPoint {
  * a timestamp, so a checker that publishes when it last tested can be
  * correlated against what actually arrived.
  *
- * Only non-POST requests are counted. A point per POST would put a second row
- * on the hot path to re-count what `mcp_call` already counts, and the open
- * question is entirely about the traffic that never reaches a tool.
+ * Despite the name it covers two shapes, and the method dimension separates
+ * them: a non-POST request, and a POST that resolves to a handshake or a
+ * listing rather than a tool. Both are traffic that reaches no tool, which is
+ * precisely the traffic nothing else here counts — `mcp_call` fires only on
+ * `tools/call`, so a checker that speaks the protocol correctly and stops
+ * after `initialize` was, until this point existed, completely invisible. A
+ * `tools/call` is deliberately still counted once, by `mcp_call` alone.
  *
  * `accept` is the dimension the `GET` behaviour keys on, so it is recorded
  * rather than inferred: a caller that asks for `text/event-stream` is a client
