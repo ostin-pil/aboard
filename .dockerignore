@@ -1,0 +1,9 @@
+# The build copies exactly what it needs from mcp-server/; everything else is
+# context the daemon would ship for nothing. The Next.js app is the bulk of
+# this repo and none of it reaches the image.
+*
+!mcp-server/package.json
+!mcp-server/package-lock.json
+!mcp-server/tsconfig.json
+!mcp-server/src
+!LICENSE
