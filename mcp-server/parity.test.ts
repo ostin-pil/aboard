@@ -18,6 +18,7 @@
  * vitest's parity project is its reader, and a type error here fails at run
  * time inside `npm test` rather than nowhere.
  */
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 import type { z as z3 } from "zod";
@@ -71,6 +72,22 @@ it("resolves the stdio server's zod from this package, not the root", () => {
   // below would run zod 4 against zod 4. parity.setup.ts provisions it;
   // `npm ci` here by hand does the same.
   expect(resolved).toContain("mcp-server/node_modules");
+});
+
+// --- the version pin --------------------------------------------------------
+
+// `serverInfo.version` is what a connected client is told it is talking to,
+// and it is a hand-written literal because rootDir is src/. It drifted: the
+// package went to 0.1.1 while the running server kept announcing 0.1.0, so
+// every client of the published package read the wrong version and nothing
+// anywhere noticed. Same shape as the mcpName pin session 69 added.
+it("announces the version the package actually ships", () => {
+  const require_ = createRequire(import.meta.url);
+  const pkg = require_("./package.json") as { version: string };
+  const source = readFileSync(new URL("./src/index.ts", import.meta.url), "utf8");
+  const declared = /version:\s*"([^"]+)"/.exec(source)?.[1];
+
+  expect(declared).toBe(pkg.version);
 });
 
 // --- the three pins ----------------------------------------------------------

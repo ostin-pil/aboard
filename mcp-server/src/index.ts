@@ -36,7 +36,12 @@ import { registerWriteTools } from "./tools/write.js";
 async function main(): Promise<void> {
   const server = new McpServer({
     name: "aboard-mcp-server",
-    version: "0.1.0",
+    // Kept equal to package.json's version by a test in parity.test.ts. It is
+    // a literal because rootDir is src/, so importing ../package.json would
+    // put the manifest inside the emitted tree; the pin is what makes the
+    // duplication safe. It had already drifted once, reporting 0.1.0 from the
+    // published 0.1.1.
+    version: "0.1.1",
   });
 
   registerReadTools(server);
