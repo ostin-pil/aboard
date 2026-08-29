@@ -37,7 +37,7 @@ order they could be picked up; pick any.
 
 | Plan | Effort | Decision-heavy? | Prereq |
 | --- | --- | --- | --- |
-| [audit-2026-08.md](audit-2026-08.md) | 2 of 9 chunks left: chunk 7's operator half and chunk 8, ~½–1 day each | Decided; chunk 6's test-harness pick was made in session 64 | Chunk 8 (launch post) wanted chunks 1, 4 and 7, all now met |
+| [audit-2026-08.md](audit-2026-08.md) | 8 of 9 chunks done. Chunk 7 closed in session 73; chunk 8's build half closed in session 74, leaving only operator time: post, link back, then measure | Decided; nothing outstanding | None; chunk 8's prerequisites were met before it started |
 | [distribution-listings.md](distribution-listings.md) | ~1–2 hr, all operator | None left — the card-version question was settled in session 69 (npm and card both at `0.1.1`) | Publishing `aboard-mcp-server@0.1.1` to npm, which needs a 2FA one-time password |
 | [integrity-foundations.md](integrity-foundations.md) | do-now slice shipped (session 34); enforcement half unscoped | Decisions taken; see its Status, whose two open lint findings have since been superseded rather than edited | Enforcement half was gated on the MCP write path, which is now met |
 | [cross-domain-claim-drag.md](cross-domain-claim-drag.md) | ~half-day | Yes — extent strategy, confirm UX, coordinate math | None |
