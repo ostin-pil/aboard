@@ -330,3 +330,21 @@ The `GET` callers are a mix of generic browser user-agent strings from scattered
 **How to re-measure.** `npx wrangler tail aboard --format json` into a file, then parse for `event.request.url` matching `/mcp` and read `method` alongside `event.response.status`. Do not grep the stream line by line: `--format json` pretty-prints across lines, so a line filter returns TLS handshake fields rather than request outcomes. Four minutes was enough to see the pattern.
 
 Status: open — the 405 behaviour is deliberate and spec-permitted, so this is a reachability question rather than a defect. Revisit if the Glama badge matters commercially, or if a client that is not a crawler turns out to be failing on it.
+
+---
+
+## 2026-08-27 — `output: "export"` drops the charset, and `text/plain` then means US-ASCII
+
+Reported as mojibake: `https://aboard.untype.me/robots.txt` rendered its em dashes as `â€"` in a browser. The bytes were correct UTF-8 the whole time (`e2 80 94`), and `curl` showed the file perfectly, which is what made it look like a non-problem.
+
+**The cause.** The response was `content-type: text/plain` with no charset parameter. RFC 2046 makes an absent charset on `text/*` mean US-ASCII, so the browser fell back to its locale default and decoded three UTF-8 bytes as three windows-1252 characters.
+
+**Why the source looked innocent.** `src/app/llms.txt/route.ts` and all five `index.md` routes already set `Content-Type: ...; charset=utf-8`, so grepping the repo finds a charset everywhere and nothing looks wrong. `output: "export"` bakes a Route Handler to a static file and discards its headers; the content type is then inferred from the file extension by the assets binding, without a charset. `public/_headers` exists precisely because of this, and its own comment says so about CORS, but it only listed the *extensionless* routes: those have no content type at all otherwise, so they were the ones anybody noticed. `.txt` and `.md` do infer one, which is exactly why they were missed.
+
+Seven files were affected: `robots.txt`, `llms.txt`, and the five markdown twins. The twins are the clearest illustration, because the same content is correct on one path and wrong on the other: `/claims/S1` with `Accept: text/markdown` is served by the Worker, which sets the charset itself, while `/claims/S1/index.md` comes from the assets binding and did not.
+
+**What could not see it.** Nothing in the repo read `_headers` at all — no test, no lint, no CI step. `check:built-urls` scans `out/` for localhost. The build writes the file without parsing it. tsc and eslint do not read it.
+
+**Detecting this class.** `curl -sI <url> | grep -i content-type` on anything the static export serves, and treat a bare `text/*` as the bug. Do not check by fetching the body: `curl` prints the bytes correctly regardless, and the fault only exists in a client that honours the header. `npx wrangler dev --local` serves `out/` through the real assets binding and applies `_headers`, so this is verifiable before deploying.
+
+Status: resolved — `public/_headers` now sets `charset=utf-8` on `/robots.txt`, `/llms.txt` and `/*.md`, and `src/lib/headers.test.ts` is the first reader that file has had. It asserts a charset on every charset-dependent content type and pins the three paths; both faults were planted and caught.
