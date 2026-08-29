@@ -20,6 +20,7 @@
  */
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { z as z3 } from "zod";
 import { TOOLS } from "../src/lib/mcp/tools";
@@ -84,7 +85,13 @@ it("resolves the stdio server's zod from this package, not the root", () => {
 it("announces the version the package actually ships", () => {
   const require_ = createRequire(import.meta.url);
   const pkg = require_("./package.json") as { version: string };
-  const source = readFileSync(new URL("./src/index.ts", import.meta.url), "utf8");
+  // The path is derived at run time rather than written as a `new URL(...)`
+  // literal on purpose. knip follows a literal into the file it names, and
+  // from `src/index.ts` it would reach the MCP SDK import — a dependency of
+  // this package but not of the root, which is what `check:exports` reads.
+  // knip.jsonc documents the same trap costing an `ignoreDependencies` entry
+  // for tailwindcss; one is enough.
+  const source = readFileSync(join(dirname(require_.resolve("./package.json")), "src", "index.ts"), "utf8");
   const declared = /version:\s*"([^"]+)"/.exec(source)?.[1];
 
   expect(declared).toBe(pkg.version);
