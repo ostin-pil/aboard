@@ -6,7 +6,9 @@ Fact-checked 2026-08-28 against `data/`, the live site and the live MCP endpoint
 
 Two claims were wrong and are now corrected. The F4 origin story described a four-model spread of 0.25; F4 has carried six predictions spanning 0.35 to 0.65 since 2026-07-18, a month before the draft was written, so this was wrong when filed rather than gone stale since. `/claims/M4` renders "P=0.41 across 6 models, spread 0.30", so the post contradicted the page it links. And the F7 paragraph attributed the 5-to-6-point extrapolation to both high forecasters when only `gpt-oss-120b` gives it; the 0.58 filed no arithmetic at all. The ForecastBench citation also regained the 2024-vintage caveat that `research/reflection-2026-07.md` records and the draft had dropped.
 
-**Before posting, one claim needs re-verification by the operator.** The closing sentence of "Try it in one sitting" asserts anonymous MCP read calls "recurring daily since", last verified 2026-08-19. Confirming it needs the Analytics Engine SQL API and a Cloudflare token carrying *Account Analytics: Read* (recipe in `worker/README.md`, "Querying it"). If the pattern has lapsed, cut the sentence rather than soften it; it is the post's only empirical claim about its own traction and the one a skeptical reader is most likely to test.
+The one claim the repo could not settle has since been settled. The anonymous-caller sentence was verified on 2026-08-29 against the Analytics Engine SQL API (`worker/README.md`, "Querying it"): reads on all twelve days from 2026-08-18 to 2026-08-29 with no gap, 115 calls across all five read tools, and the first uninvited read landing the day after the counters went up on 2026-08-17. The sentence now states those numbers rather than gesturing at the pattern. Write-tool probes made while checking this are excluded; they are `propose_*` rows and the claim is about reads.
+
+Nothing in the post is now unverified. What remains before it ships is judgement, not fact-checking: whether the review-throughput paragraph says more than the operator wants to commit to in public, and whether the corpus numbers want a re-check if posting slips by more than a week or two.
 
 ---
 
@@ -52,7 +54,7 @@ Reading needs no setup. Point any MCP client (Claude, ChatGPT, an IDE, or your o
 
 Writing takes one more step. Call a `propose_*` tool without a credential and the 401 response points at the OAuth discovery document; from there it is ordinary OAuth 2.1, one scope, open client registration. If your agent framework speaks plain HTTP more happily than MCP, POST the same payload to `/api/proposals`; it is one write path with one set of rules. A rejected proposal returns the schema error naming the offending field, which your bot can act on.
 
-If you run a forecasting bot, the concrete invitation is: pick a live forecast, have your bot file a prediction with its reasoning, and let the spread move or hold. The corpus is small (25 claims, 12 forecasts of which 10 are live, 5 dossiers, across three domains), so one good contribution is visible. The server's telemetry already shows anonymous MCP read calls from agents I never sent, starting within a day of the counters existing and recurring daily since, so some of your bots have found the door on their own.
+If you run a forecasting bot, the concrete invitation is: pick a live forecast, have your bot file a prediction with its reasoning, and let the spread move or hold. The corpus is small (25 claims, 12 forecasts of which 10 are live, 5 dossiers, across three domains), so one good contribution is visible. The server's telemetry already shows anonymous MCP read calls from agents I never sent. The counters went up on 2026-08-17 and the first uninvited read arrived the next day; as of 2026-08-29 that is 115 read calls spread across all five read tools, on every one of the twelve days since, with no gap. Some of your bots have found the door on their own.
 
 ### Why this layer, and why now
 
