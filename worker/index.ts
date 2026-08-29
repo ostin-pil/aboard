@@ -1111,7 +1111,13 @@ export async function route(request: Request, env: Env): Promise<Response> {
   // The remote MCP endpoint. Read tools project the same published JSON-LD the
   // assets binding serves; write tools go through runProposal, so an MCP write
   // and an HTTP write are the same write.
-  if (pathname === "/mcp") {
+  // `/mcp/` is accepted alongside `/mcp` because probers and gateways that
+  // normalise to a trailing slash are real, and answering one with a 404 makes
+  // a healthy endpoint look absent. This does not widen the token audience:
+  // `normalizeResource` in `src/lib/mcp/auth.ts` already treats a trailing
+  // slash as insignificant, the way RFC 8707 requires, so both spellings
+  // validate against the same single resource.
+  if (pathname === "/mcp" || pathname === "/mcp/") {
     // `?auth=required` challenges at the handshake rather than at the first
     // write (see `authRequired` in McpDeps). A query parameter rather than a
     // second path, deliberately: RFC 9728 derives the metadata document from

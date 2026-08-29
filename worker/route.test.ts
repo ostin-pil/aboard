@@ -483,6 +483,38 @@ describe("branch cleanup on failed submits (E13)", () => {
   });
 });
 
+describe("the MCP endpoint's path", () => {
+  // A prober or gateway that normalises to a trailing slash used to get a 404
+  // from a healthy endpoint, which is indistinguishable from an absent one.
+  // The audience is unaffected: `normalizeResource` already treats the two
+  // spellings as one resource, the way RFC 8707 requires.
+  it("answers /mcp/ exactly as it answers /mcp", async () => {
+    const { env } = makeEnv();
+
+    const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" });
+    const bare = await route(
+      new Request(`${ORIGIN}/mcp`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body,
+      }),
+      env,
+    );
+    const slashed = await route(
+      new Request(`${ORIGIN}/mcp/`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body,
+      }),
+      env,
+    );
+
+    expect(bare.status).toBe(200);
+    expect(slashed.status).toBe(200);
+    expect(await slashed.json()).toEqual(await bare.json());
+  });
+});
+
 describe("markdown negotiation", () => {
   it("serves the twin, uncacheable and CORS-open, and records the twin event", async () => {
     const { env, events } = makeEnv();

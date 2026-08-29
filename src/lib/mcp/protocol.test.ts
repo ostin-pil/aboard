@@ -306,22 +306,31 @@ describe("planMessage", () => {
 
   it("reports an unknown method as -32601, with 404 in the modern era only", () => {
     const legacy = expectError(
-      planMessage({ jsonrpc: "2.0", id: 4, method: "prompts/list" }, headers()),
+      planMessage({ jsonrpc: "2.0", id: 4, method: "logging/setLevel" }, headers()),
     );
     expect(legacy.error.code).toBe(METHOD_NOT_FOUND);
     expect(legacy.status).toBe(200);
 
-    const { body, headers: h } = modern("prompts/list");
+    const { body, headers: h } = modern("logging/setLevel");
     const mod = expectError(planMessage(body, h));
     expect(mod.error.code).toBe(METHOD_NOT_FOUND);
     expect(mod.status).toBe(404);
   });
 
-  // `prompts` is deliberately not declared, so a client MUST NOT call it and
-  // -32601 is the correct answer. Pinned as a test because a scanner that calls
-  // it anyway (Smithery does) reads the error as a defect, and the temptation is
-  // to silence the warning by declaring a capability this server does not have.
-  it("leaves prompts undeclared and unimplemented", () => {
+  // `prompts` is deliberately not declared, and that half is unchanged: the
+  // temptation this test was written against is to silence a scanner's warning
+  // by declaring a capability this server does not have, and it still refuses.
+  //
+  // The other half was revised in session 72. The original reasoning was that a
+  // client MUST NOT call an undeclared method, so -32601 is the correct answer
+  // and one scanner (Smithery) calling it anyway was that scanner's defect.
+  // Two now do — Glama's published methodology runs `prompts/list`
+  // unconditionally as part of introspection — which makes it the behaviour of
+  // introspection tooling generally rather than one vendor's quirk. So the
+  // method is answered with an empty list, which is true, while the capability
+  // stays undeclared, which is also true. Conforming clients never ask and see
+  // no difference; nothing is promised that is not delivered.
+  it("leaves prompts undeclared, whatever the method answers", () => {
     const plan = expectResult(
       planMessage({ jsonrpc: "2.0", id: 1, method: "server/discover" }, headers()),
     );
@@ -410,6 +419,23 @@ describe("resources", () => {
     expect(templates.result.resourceTemplates).toEqual([
       expect.objectContaining({ uriTemplate: CLAIM_RESOURCE_TEMPLATE }),
     ]);
+  });
+
+  // Answered although `prompts` is not a declared capability: introspection
+  // tooling calls it regardless, and -32601 there reads as a broken server.
+  it("answers prompts/list with an empty list, without declaring the capability", () => {
+    const list = expectResult(
+      planMessage({ jsonrpc: "2.0", id: 1, method: "prompts/list" }, headers()),
+    );
+    expect(list.result.prompts).toEqual([]);
+
+    const init = expectResult(
+      planMessage(
+        { jsonrpc: "2.0", id: 2, method: "initialize", params: {} },
+        headers(),
+      ),
+    );
+    expect(init.result.capabilities).not.toHaveProperty("prompts");
   });
 
   it("omits nextCursor, which is what says the page is the whole list", () => {

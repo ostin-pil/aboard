@@ -30,7 +30,7 @@ import {
 } from "../src/lib/mcp/protocol";
 import { authorizeWrite, RESOURCE_URI, type ChallengeOptions, type Credential } from "../src/lib/mcp/auth";
 import type { ReadOp, ToolDescriptor } from "../src/lib/mcp/tools";
-import { mcpCallEvent, type EventPoint } from "../src/lib/telemetry";
+import { mcpCallEvent, mcpProbeEvent, type EventPoint } from "../src/lib/telemetry";
 
 export type ProposalEnvelopeInput = {
   kind: string;
@@ -379,6 +379,12 @@ export async function handleMcp(request: Request, deps: McpDeps): Promise<Respon
   // The modern era dropped the GET stream and the DELETE session teardown, and
   // this server never had either. 405 is the prescribed answer to both.
   if (request.method !== "POST") {
+    // Counted before the answer is chosen, because the open question is what
+    // arrives rather than what we say back. OPTIONS is already answered above
+    // and is deliberately not counted: a preflight is a CORS mechanism, not a
+    // caller probing for liveness. See `mcpProbeEvent`.
+    deps.record?.(mcpProbeEvent(request.method, request.headers.get("user-agent"), request.headers.get("accept")));
+
     return new Response(
       JSON.stringify(
         {
@@ -412,6 +418,12 @@ export async function handleMcp(request: Request, deps: McpDeps): Promise<Respon
     return rpcError(plan.id, plan.status, plan.error, origin);
   }
   if (plan.kind === "result") {
+    // A handshake or a listing: a POST that reaches no tool, and therefore the
+    // one shape of real traffic neither `mcp_call` nor the non-POST branch
+    // above can see. A health checker that speaks the protocol properly leaves
+    // exactly this trace and nothing else, so without it the endpoint's own
+    // telemetry cannot answer who is checking it.
+    deps.record?.(mcpProbeEvent(request.method, request.headers.get("user-agent"), request.headers.get("accept")));
     return rpcResult(plan.id, plan.era, plan.result, origin);
   }
 

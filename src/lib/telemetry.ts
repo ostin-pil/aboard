@@ -67,6 +67,59 @@ export function mcpCallEvent(tool: string, credentialed: boolean): EventPoint {
   return { indexes: ["mcp_call"], blobs: [tool, credentialed ? "credentialed" : "anonymous"] };
 }
 
+/**
+ * A non-POST request reached `/mcp`. Session 71 measured thirteen of fourteen
+ * requests in a four-minute window as `GET` or `HEAD`, every one answered 405,
+ * and could not say whether Glama's health checker was among them because
+ * `wrangler tail` only sees the window someone is watching. This point is the
+ * persistent version of that measurement: Analytics Engine stamps each row with
+ * a timestamp, so a checker that publishes when it last tested can be
+ * correlated against what actually arrived.
+ *
+ * Despite the name it covers two shapes, and the method dimension separates
+ * them: a non-POST request, and a POST that resolves to a handshake or a
+ * listing rather than a tool. Both are traffic that reaches no tool, which is
+ * precisely the traffic nothing else here counts — `mcp_call` fires only on
+ * `tools/call`, so a checker that speaks the protocol correctly and stops
+ * after `initialize` was, until this point existed, completely invisible. A
+ * `tools/call` is deliberately still counted once, by `mcp_call` alone.
+ *
+ * `accept` is the dimension the `GET` behaviour keys on, so it is recorded
+ * rather than inferred: a caller that asks for `text/event-stream` is a client
+ * following the spec, and one that does not is a probe.
+ */
+export function mcpProbeEvent(method: string, userAgent: string | null, accept: string | null): EventPoint {
+  return { indexes: ["mcp_probe"], blobs: [method, agentClass(userAgent), acceptClass(accept)] };
+}
+
+/**
+ * Fold a User-Agent to a closed set.
+ *
+ * The raw header is the one dimension here that would be unbounded, and this
+ * file's contract is that none of them are. The named entries are the checkers
+ * and crawlers worth telling apart by name; everything else lands in three
+ * buckets. A directory whose probe carries no distinguishing string is
+ * therefore invisible to this dimension by construction, which is why the
+ * timestamp above is what the correlation actually rests on.
+ */
+function agentClass(userAgent: string | null): string {
+  if (!userAgent) return "none";
+  const ua = userAgent.toLowerCase();
+  if (ua.includes("glama")) return "glama";
+  if (ua.includes("googleother")) return "google-other";
+  if (ua.includes("googlebot")) return "googlebot";
+  if (ua.includes("bot") || ua.includes("crawler") || ua.includes("spider")) return "crawler";
+  if (ua.startsWith("mozilla/")) return "browser-ua";
+  return "other";
+}
+
+/** Whether the caller asked for an SSE stream, which is what a spec-following
+ *  MCP client does and what a liveness probe does not. */
+function acceptClass(accept: string | null): string {
+  if (!accept) return "none";
+  return accept.toLowerCase().includes("text/event-stream") ? "event-stream" : "other";
+}
+
 /** A page was served as its Markdown twin — an agent-shaped read of the site. */
 export function twinEvent(pathname: string): EventPoint {
   return { indexes: ["twin"], blobs: [pathname] };

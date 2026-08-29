@@ -18,7 +18,7 @@ two of them does not have to work out which is current.
 | --- | --- |
 | npm package | **Done.** `aboard-mcp-server@0.1.1` live and carrying `mcpName: me.untype/aboard`, published in session 69. |
 | Official MCP registry | **Done.** `me.untype/aboard` serves `0.1.1` with one `packages` entry (`aboard-mcp-server` `0.1.1`) alongside the remote. The `0.1.0` entry remains as history. |
-| Glama | Listed at `glama.ai/mcp/connectors/me.untype/aboard`, sourced from the official registry rather than submitted. Still unhealthy after session 69's origin fix deployed; session 71 found most automated traffic to `/mcp` is `GET` and every `GET` gets 405. Strong hypothesis, not a confirmed cause. See `knowledge/issues.md`, 2026-08-26. |
+| Glama | Two objects, and they had been conflated. The **connector** at `glama.ai/mcp/connectors/me.untype/aboard` is the unhealthy one; session 72 settled that the `GET`/405 shape is not the cause and that serving anything else on `GET` would be harmful, and claimed ownership via `/.well-known/glama.json`. The **server** listing at `glama.ai/mcp/servers/OWNER/REPO` is a separate, unstarted route that runs a Dockerfile against `mcp-server/`, and it is the one the awesome-mcp-servers badge points at. See `knowledge/issues.md`, 2026-08-26. |
 | mcp.so | **Dropped.** No free submission path found; see below. |
 | awesome-mcp-servers | **Filed 2026-08-26** as [#12962](https://github.com/punkpeye/awesome-mcp-servers/pull/12962). Do not expect a merge; see section 3. |
 | Search Console | **Done 2026-08-27.** `untype.me` verified as a Domain property; `sitemap.xml` submitted. |
@@ -172,8 +172,9 @@ fourteen requests to `/mcp` in four minutes, twelve were `GET` and one was
 `HEAD`, and all thirteen got 405; the single `POST` caller got 200. None
 of the thirteen sent an `Origin` at all, which is why the session 69 fix
 did not move them. Whether one of them is Glama is unproven, since none
-identifies itself. `knowledge/issues.md`, 2026-08-26, has the evidence and
-the open decision about serving SSE on `GET`.
+identifies itself, and session 72's research makes it unlikely: the best
+evidence is that Glama's probe is a `POST`. `knowledge/issues.md`,
+2026-08-26, has the evidence and the decision, which is now settled.
 
 To re-probe the `POST` path, which is the one that works:
 
@@ -187,6 +188,64 @@ curl -i -X POST https://aboard.untype.me/mcp \
 
 A 200 means the endpoint is answering the check correctly and the
 remaining fault is on their side.
+
+### The distinction that had been missed (session 72)
+
+Glama has **connectors** and **servers**, and every session up to this one
+worked only the first. A connector is a hosted HTTP endpoint, ours being
+`/mcp` on the Worker, health-tested by Glama on its own roughly-hourly
+schedule. A server is a repository listing, verified by building a
+Dockerfile and checking that the process starts and answers introspection.
+They have different URLs, different check regimes, and different badges.
+
+That matters because the badge the awesome-mcp-servers maintainer asks for
+is the **server** score badge,
+`glama.ai/mcp/servers/OWNER/REPO/badges/score.svg`. It is not the connector
+badge, so the connector's unhealthy state does not block it. Session 71 left
+the badge off the PR reasoning that "an unhealthy badge is worse than none",
+which was correct about the connector and does not apply here.
+
+The server route also sidesteps the problem entirely. It runs `mcp-server/`,
+our stdio package, which never touches the Worker or the connector health
+check that has now resisted three sessions. A `Dockerfile` at the repo root
+builds it: two-stage, non-root, runtime dependencies only. It is unbuilt
+here because docker is not installed on the authoring machine; what was
+verified is the substance it packages, the built stdio server answering
+`initialize` and `tools/list` over real stdio. That probe is what surfaced
+the `serverInfo.version` drift, since the server had been announcing 0.1.0
+from the published 0.1.1 with nothing able to see it.
+
+Order matters if the badge is wanted: the badge URL 404s until the server
+listing exists, and a broken image in the PR is worse than the omission
+session 71 chose.
+
+One divergence is deliberate and stays. The remote endpoint answers
+`prompts/list` with an empty list; the stdio server still answers `-32601`.
+The SDK's high-level `McpServer` declares the `prompts` capability as a side
+effect of registering a handler, and `src/lib/mcp/protocol.test.ts` pins
+that this server does not declare capabilities it does not have. Answering
+without declaring would mean dropping to the low-level SDK `Server`, which
+is a rewrite disproportionate to an unverified check.
+
+### On whether the badge is worth chasing at all
+
+Roughly 40% of 15,045 Glama connectors show unhealthy, Linear, Notion,
+Atlassian and Sentry among them, and research found no case of anyone
+getting a connector un-stuck. There is no re-scan button and no documented
+re-check request; the routes are `support@glama.ai`, their Discord, and the
+ownership claim now served at `/.well-known/glama.json`, which verifies
+against a matching maintainer email within minutes. Treat the badge as close
+to uninformative and size the effort accordingly.
+
+### The 2026-08-28 mail from the maintainer
+
+A message to open awesome-mcp-servers PR authors, framed as updated listing
+requirements: list the server on Glama, confirm it passes checks ("we only
+need the server to start and respond to introspection requests"), and add
+the score badge after the description. The wording reads as a broadcast
+rather than a note about our PR specifically. It removes a stated blocker;
+against 1,880 arrivals a month and 74 merges it does not make the merge
+likely, and section 3's repricing stands.
 
 ## 2. mcp.so (dropped)
 
