@@ -4,6 +4,74 @@ Project-level plans for follow-up work. Each file is a self-contained brief a
 future session can execute without re-deriving context. Sorted roughly by the
 order they could be picked up; pick any.
 
+## Priority order (2026-09-07)
+
+Set by `reports/2026-09-07-state-audit.md`, the first audit after the
+late-August break. It supersedes the two orderings below for near-term
+work; they stay as the record of how the plans relate. Ranked by what
+each item unblocks, then by how long it has already waited.
+
+**Now, operator time, days not weeks**
+
+1. **Glama listing and badge, answer #12962.** The awesome-mcp-servers
+   maintainer asked on 2026-09-07 for the Glama claim and score badge.
+   The runbook is `distribution-listings.md` §"Runbook", on the unmerged
+   `feature/session-76-glama-runbook` branch: land it (log, PR), then
+   run it. About twenty minutes in a browser once the branch is in.
+2. **Settle the launch-post version, then post.** Two versions exist
+   (committed, and an uncommitted rewrite in the primary checkout that
+   drops the fact-check block). Pick one, keep the fact-check record
+   somewhere a future session can find it, re-state the telemetry
+   sentence against the audit's section 3, and post before the Fall
+   FutureEval announcement, which was still unpublished on 2026-09-07.
+   Then the link-backs (`content/about.md`, `README.md`).
+3. **Identify the 1,150-a-day `mcp_probe` client** before posting if it
+   takes under an hour, after if not. It is a `POST` handshake every
+   ~75 seconds that never calls a tool; a health checker's cadence. The
+   post makes a claim about anonymous readers, and the probe rows are
+   what a reader would check it against.
+
+**Next, one session each**
+
+4. **`deps` session.** `next@16.3.4` carries the `sharp` fix for five
+   high advisories; take the minor bumps (`@xyflow/react`, `zod`,
+   `react`, `tailwindcss`) in the same session behind the full gate and
+   the canvas browser pass. Majors (`typescript` 7, `vitest` 5,
+   `eslint` 10, the two model SDKs, the OAuth provider) are each their
+   own decision; none is urgent.
+5. **Post-launch measurement.** Seven-day totals of `mcp_call`, `twin`
+   and `proposal` against the week of 2026-08-30 (191 reads), stating
+   the 2026-09-05 cliff. Record the numbers whatever they are, in the
+   log of the session that reads them.
+6. **Records sweep.** Retire or redirect `HANDOVER.md` (its next action
+   shipped in session 34); one pass over `research/open-questions.md`
+   to record the answers Q3, Q6 and Q7 already have; close the
+   `plans/`-versus-logs question, which is done below.
+7. **`proposal-dry-run.md`.** Half a day, no prerequisite, and it is the
+   first thing a bot builder arriving from the post will want: a way to
+   exercise the write path without opening a pull request.
+
+**Then, in the order the table below already gives**
+
+8. `integrity-foundations.md` enforcement half, scoped first.
+9. `organic-traffic-dual-ux.md` §6; §5 is calendar-blocked.
+10. `signals-substrate.md`, which unblocks `news-layer.md` and
+    `agent-social-layer.md`.
+11. `cross-domain-claim-drag.md`.
+
+Calendar-blocked, no work brings them forward: `funding-applications.md`
+(first resolution 2027-01-31) and the FLF outcome (unannounced on
+2026-09-07).
+
+**What `plans/` is, settled.** Sessions 72 to 75 each carried the
+question of whether `plans/` records what shipped or the session logs
+do, and each answered it by editing `plans/` to catch up. That is the
+answer: the session logs are the record of what happened; `plans/` is
+the record of what is still open; a plan's Status section is the one
+part of it expected to stay true, and the session that closes work
+edits it in the same PR, as `audit-2026-08.md` already requires for its
+own rows. The item is no longer carried.
+
 ## Roadmap (current)
 
 - [proposed-direction-2026-07.md](proposed-direction-2026-07.md) — the active
@@ -37,13 +105,15 @@ order they could be picked up; pick any.
 
 | Plan | Effort | Decision-heavy? | Prereq |
 | --- | --- | --- | --- |
-| [audit-2026-08.md](audit-2026-08.md) | 8 of 9 chunks done. Chunk 7 closed in session 73; chunk 8's build half closed in session 74, leaving only operator time: post, link back, then measure | Decided; nothing outstanding | None; chunk 8's prerequisites were met before it started |
-| [distribution-listings.md](distribution-listings.md) | ~1–2 hr, all operator | None left — the card-version question was settled in session 69 (npm and card both at `0.1.1`) | Publishing `aboard-mcp-server@0.1.1` to npm, which needs a 2FA one-time password |
+| [audit-2026-08.md](audit-2026-08.md) | 8 of 9 chunks done. Chunk 8's build half closed in session 74; posting is priority 2 above. Its telemetry baseline moved on 2026-09-05 (reads fell from ~35 to ~2 a day), so the measurement half compares seven-day windows and names the cliff | One: which launch-post version is canonical | None |
+| [distribution-listings.md](distribution-listings.md) | ~20 min operator, priority 1 above: the Glama server listing, then the badge on #12962, which the maintainer asked for on 2026-09-07. npm, registry and Search Console are done | None; the runbook on `feature/session-76-glama-runbook` decides the steps | Landing that branch, which has a commit but no log or PR |
 | [integrity-foundations.md](integrity-foundations.md) | do-now slice shipped (session 34); enforcement half unscoped | Decisions taken; see its Status, whose two open lint findings have since been superseded rather than edited | Enforcement half was gated on the MCP write path, which is now met |
 | [cross-domain-claim-drag.md](cross-domain-claim-drag.md) | ~half-day | Yes — extent strategy, confirm UX, coordinate math | None |
 | [organic-traffic-dual-ux.md](organic-traffic-dual-ux.md) | ~1 day: §5 and §6 only. §1–§3 all shipped (its Status; §2's Worker negotiation landed in `3ecace2`, which that Status used to deny), §4 has since landed (per-page `alternates.canonical`, the ensemble median on the OG card), and §7's Worker instrumentation landed as audit chunk 4 in session 60 | Light — leaderboard timing, feed granularity | First resolution for §5's leaderboard; rest none |
 | [agent-distribution.md](agent-distribution.md) | ~2 days (operator + writing); §1 done in session 33 and §2 overlaps `distribution-listings.md` | Light — dataset home, post timing | None outstanding: §5's MCP OAuth landed in session 31 and §7's instrumentation in session 60 |
 | [proposal-dry-run.md](proposal-dry-run.md) | ~half-day | Light — flag shape on the envelope | None |
+| Dependencies (no plan file; `reports/2026-09-07-state-audit.md` §1) | ~half-day: `next@16.3.4` for the five `sharp` advisories plus the minor bumps, full gate and a canvas browser pass | Majors only; none taken in that session | None |
+| Records sweep (no plan file; audit §1 and §6) | ~1 hr: `HANDOVER.md`, `research/open-questions.md` | None | None |
 | [signals-substrate.md](signals-substrate.md) | ~1 day | Medium — D1 vs KV, retention, MCP exposure | None — its MCP OAuth prereq landed in session 31 |
 | [news-layer.md](news-layer.md) | ~1–2 days + sweep cadence | Medium — filter rule, sweep tuning | signals-substrate (unbuilt); integrity-foundations' enforcement half |
 | [agent-social-layer.md](agent-social-layer.md) | ~1–2 days | Medium — endorsement subjects, page naming | signals-substrate (unbuilt) |
@@ -51,8 +121,8 @@ order they could be picked up; pick any.
 The 2026-07-11 suggested order is now spent: every link in it has shipped
 except `integrity-foundations`'s enforcement half, and the FLF entry went in
 before its deadline. `audit-2026-08.md`'s Suggested order governs near-term
-work, and what it has left is chunk 7's operator half (the npm publish, then
-the registry) and chunk 8 (the launch post). Of the four pre-review plans that
+work, and what it has left is chunk 8's operator half (post, link back,
+measure); chunk 7 closed in session 73. Of the four pre-review plans that
 paragraph called independent, three have since shipped; only
 `cross-domain-claim-drag` is still open, and it still interleaves freely.
 
