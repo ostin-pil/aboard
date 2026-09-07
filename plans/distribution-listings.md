@@ -18,9 +18,9 @@ two of them does not have to work out which is current.
 | --- | --- |
 | npm package | **Done.** `aboard-mcp-server@0.1.1` live and carrying `mcpName: me.untype/aboard`, published in session 69. |
 | Official MCP registry | **Done.** `me.untype/aboard` serves `0.1.1` with one `packages` entry (`aboard-mcp-server` `0.1.1`) alongside the remote. The `0.1.0` entry remains as history. |
-| Glama | Two objects, and they had been conflated. The **connector** at `glama.ai/mcp/connectors/me.untype/aboard` is the unhealthy one; session 72 settled that the `GET`/405 shape is not the cause and that serving anything else on `GET` would be harmful, and claimed ownership via `/.well-known/glama.json`. The **server** listing at `glama.ai/mcp/servers/OWNER/REPO` is a separate, unstarted route that runs a Dockerfile against `mcp-server/`, and it is the one the awesome-mcp-servers badge points at. See `knowledge/issues.md`, 2026-08-26. |
+| Glama | Two objects, and they had been conflated. The **connector** at `glama.ai/mcp/connectors/me.untype/aboard` is the unhealthy one; session 72 settled that the `GET`/405 shape is not the cause and that serving anything else on `GET` would be harmful, and claimed ownership via `/.well-known/glama.json`. The **server** listing is a separate route that runs a Dockerfile against `mcp-server/`, and it is the one the awesome-mcp-servers badge points at. As of 2026-09-07 it exists without anyone having submitted it: Glama's crawler indexed the repository at `af74ee5` and published `glama.ai/mcp/servers/ostin-pil/aboard`, maintenance B, licence A, all nine tools enumerated. Still **unclaimed**, and with no Glama release, so two of the four scored dimensions are unavailable. Runbook in section 1, corrected for what the crawler already did. See `knowledge/issues.md`, 2026-08-26. |
 | mcp.so | **Dropped.** No free submission path found; see below. |
-| awesome-mcp-servers | **Filed 2026-08-26** as [#12962](https://github.com/punkpeye/awesome-mcp-servers/pull/12962). Do not expect a merge; see section 3. |
+| awesome-mcp-servers | **Filed 2026-08-26** as [#12962](https://github.com/punkpeye/awesome-mcp-servers/pull/12962); **Glama score badge added 2026-09-07** (`85a850a`), answering the maintainer's request of that morning. Do not expect a merge; see section 3. |
 | Search Console | **Done 2026-08-27.** `untype.me` verified as a Domain property; `sitemap.xml` submitted. |
 
 Re-verified 2026-08-27 by `npm view aboard-mcp-server`, a `GET` against
@@ -261,6 +261,45 @@ The order is not optional. The badge URL 404s until the listing exists, and
 a broken image in the PR is worse than the omission session 71 chose
 deliberately.
 
+**Corrected 2026-09-07 (session 79).** Steps 1 to 3 below describe work that
+no longer needs doing. Glama's crawler indexed the repository on its own, at
+`af74ee5`, and the server listing has been live at
+`glama.ai/mcp/servers/ostin-pil/aboard` since before this session looked at
+it. The listing reads the `Dockerfile`, enumerates all nine tools, and grades
+the repository maintenance B and licence A with CI passing. The badge URL
+therefore already resolved, which is why step 4 could run first: the badge
+landed on #12962 as `85a850a` on 2026-09-07.
+
+What is left is not submission. The listing is **Unclaimed**, and its score
+page puts profile completion at 17% with two of the four scored dimensions
+unavailable. Both facts trace to one missing object, a Glama *release*, which
+cannot be created before the claim.
+
+- **Claim the server.** Sign in to Glama with the GitHub account that owns
+  the repository, then use the Claim control beside the owner name. Operator
+  only, because it is an account authentication step. `ostin-pil/aboard` is
+  personally owned, so the `glama.json` maintainers route that Glama
+  documents for organisation-owned repositories is not needed for the claim
+  itself.
+- **Build, then release.** Dockerfile admin page, configure the build spec,
+  Build, then Make Release beside the successful build. Build & Release does
+  both and picks the version. This is what unlocks Server Coherence and Tool
+  Definition Quality, and it is what the maintainer's "quality score
+  evaluated" asks for. Note that it moves the bar past the one his mail
+  states: starting and answering introspection is not enough to score.
+- **`glama.json` at the repository root.** A checklist item of its own,
+  landed this session. Do not conflate it with `public/.well-known/glama.json`
+  from session 72. Different object, different schema, different purpose: the
+  well-known file is the *connector* ownership claim and carries maintainer
+  objects keyed by email against `connector.json`, while the root file is
+  *server* metadata against `server.json` and carries bare GitHub usernames.
+  Validated against the published schema when it landed.
+
+Two checklist items are left alone on purpose. "No recent usage" wants tool
+calls made through Glama's own Try in Browser, which is seeding a metric
+rather than fixing anything, and "No related servers" is discoverability
+metadata. Neither is a claim about whether the server works.
+
 **0. Confirm the image still builds.** Only needed if `mcp-server/` or the
 `Dockerfile` changed since 2026-08-29. Podman is what is installed on the
 authoring machine; docker is not, and either works.
@@ -407,17 +446,19 @@ mark reads as a vendor badge on well-known services. Left off. Add it if
 you disagree; it is a one-character edit.
 
 The PR was filed without the badge on 2026-08-26. The maintainer's mail of
-2026-08-28 now asks for one, and the runbook in section 1 owns the ordering;
-this is the snippet it refers to, inserted immediately after the repository
+2026-08-28 asked for one, his comment of 2026-09-07 asked again, and the
+runbook in section 1 owns the ordering. **Added 2026-09-07** as `85a850a`,
+one line changed and nothing else, inserted immediately after the repository
 link to match the neighbours:
 
 ```
 [![ostin-pil/aboard MCP server](https://glama.ai/mcp/servers/ostin-pil/aboard/badges/score.svg)](https://glama.ai/mcp/servers/ostin-pil/aboard)
 ```
 
-Confirm that URL against the listing Glama actually creates before
-pasting it. The section shows both an `@owner/repo` and a bare
-`owner/repo` spelling, so the shape is not reliably predictable.
+The section shows both an `@owner/repo` and a bare `owner/repo` spelling, so
+the shape was not predictable in advance. Read off the live listing on
+2026-09-07 it is the bare form, `ostin-pil/aboard`, and the badge renders at
+that path.
 
 **PR title.**
 
