@@ -208,12 +208,16 @@ which was correct about the connector and does not apply here.
 The server route also sidesteps the problem entirely. It runs `mcp-server/`,
 our stdio package, which never touches the Worker or the connector health
 check that has now resisted three sessions. A `Dockerfile` at the repo root
-builds it: two-stage, non-root, runtime dependencies only. It is unbuilt
-here because docker is not installed on the authoring machine; what was
-verified is the substance it packages, the built stdio server answering
-`initialize` and `tools/list` over real stdio. That probe is what surfaced
-the `serverInfo.version` drift, since the server had been announcing 0.1.0
-from the published 0.1.1 with nothing able to see it.
+builds it: two-stage, non-root, runtime dependencies only.
+
+Built and verified 2026-08-29 with podman 5.8.2, the Dockerfile being plain
+OCI so podman builds it unchanged. The image starts, reports `serverInfo`
+`aboard-mcp-server` 0.1.1, answers `tools/list` with all nine tools, and
+runs as `node` rather than root, at 187 MB. That clears Glama's stated bar,
+which is that the server starts and responds to introspection. Running the
+same stdio probe against the host build a day earlier is what surfaced the
+`serverInfo.version` drift, since the server had been announcing 0.1.0 from
+the published 0.1.1 with nothing able to see it.
 
 Order matters if the badge is wanted: the badge URL 404s until the server
 listing exists, and a broken image in the PR is worse than the omission
@@ -247,6 +251,89 @@ rather than a note about our PR specifically. It removes a stated blocker;
 against 1,880 arrivals a month and 74 merges it does not make the merge
 likely, and section 3's repricing stands.
 
+### Runbook: the Glama server listing, then the badge
+
+Operator time, roughly 20 minutes, all of it in a browser except step 0.
+Written 2026-08-29 against the maintainer's mail of 2026-08-28. Every
+prerequisite in the repo is already met; nothing here needs a code change.
+
+The order is not optional. The badge URL 404s until the listing exists, and
+a broken image in the PR is worse than the omission session 71 chose
+deliberately.
+
+**0. Confirm the image still builds.** Only needed if `mcp-server/` or the
+`Dockerfile` changed since 2026-08-29. Podman is what is installed on the
+authoring machine; docker is not, and either works.
+
+```bash
+podman machine start          # first run only; the VM is not up by default
+podman build -t aboard-mcp-server:test .
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+  | podman run --rm -i aboard-mcp-server:test
+```
+
+Expect `serverInfo` naming `aboard-mcp-server` at the version in
+`mcp-server/package.json`, then nine tools. `-i` is required: the server
+speaks stdio and there is no port to publish.
+
+**1. Submit the server.** <https://glama.ai/mcp/servers>, "Add MCP Server".
+Repository `https://github.com/ostin-pil/aboard`. If the form offers a
+subdirectory or path field, give it `mcp-server`; the server is not at the
+repo root and the root is a Next.js app. If it offers a Dockerfile field,
+paste the repo's `Dockerfile` verbatim, which is what the mail means by "add
+Dockerfile directly to Glama".
+
+**2. Wait for the checks, then read them.** Glama runs license detection, a
+security scan, and a health test that launches the container. The bar the
+maintainer states is only that the server starts and answers introspection.
+Two things it may flag that are expected rather than defects: the four
+`propose_*` tools decline without a credential, which is correct behaviour
+and not an error, and `prompts/list` answers `-32601` on the stdio server.
+That last one is a deliberate divergence from the remote endpoint, argued in
+`src/lib/mcp/protocol.test.ts`; if it turns out to fail the check, that is
+new evidence and the decision is worth reopening rather than working around.
+
+**3. Read the score before advertising it.** Glama issues a score once it
+indexes. A low score is a reason to fix something or to skip the badge, not
+a thing to paste. This is the same judgement session 71 applied to the
+connector badge.
+
+**4. Add the badge to the PR.** Only once step 3 looks good and the badge
+URL actually renders. Edit
+[#12962](https://github.com/punkpeye/awesome-mcp-servers/pull/12962),
+placing the badge after the description on the existing line, keeping the
+entry in `🔬 Research` between `OrgMentem/zotio` and
+`ovlabs/mcp-server-originalvoices`. Change nothing else in the file: a diff
+that touches other lines is a merge conflict waiting in a queue of several
+thousand.
+
+```
+[![ostin-pil/aboard MCP server](https://glama.ai/mcp/servers/ostin-pil/aboard/badges/score.svg)](https://glama.ai/mcp/servers/ostin-pil/aboard)
+```
+
+Confirm the badge renders in the PR preview before submitting. The path is
+`OWNER/REPO` as Glama lists it, which should be `ostin-pil/aboard`, but read
+it off the listing URL from step 1 rather than assuming.
+
+**5. Commit identity, if you push from a fresh clone.** Session 71 hit this:
+a clone with no git identity failed the commit while the push succeeded,
+briefly leaving an empty branch on the fork. Set `Costa
+<ostin.pil@gmail.com>` before committing, matching the aboard config.
+
+**What done means.** The listing exists and passes, the badge renders, and
+the PR is updated. Not "the PR is merged": at 1,880 arrivals a month against
+74 merges that is not a condition this project can satisfy, and section 3
+already records why the completion condition was repriced to "filed".
+
+**What this does not do.** It does not clear the connector's unhealthy
+badge, which is a different object with a different check. The only lever
+there is `/.well-known/glama.json`, published since session 72, plus
+`support@glama.ai` and their Discord. See the note above on why that badge
+may not be worth chasing.
+
 ## 2. mcp.so (dropped)
 
 Decided 2026-08-23, after the operator found no free submission path.
@@ -269,7 +356,7 @@ comparable servers, which the chunk 4 instrumentation would show.
 request, so it is the most exacting of the three and the draft below is
 ready to paste.
 
-**Filed 2026-08-26 as [#12962](https://github.com/punkpeye/awesome-mcp-servers/pull/12962)**, one line in `🔬 Research` between `OrgMentem/zotio` and `ovlabs/mcp-server-originalvoices`, with no Glama score badge because the connector currently renders unhealthy and an unhealthy badge is worse than none.
+**Filed 2026-08-26 as [#12962](https://github.com/punkpeye/awesome-mcp-servers/pull/12962)**, one line in `🔬 Research` between `OrgMentem/zotio` and `ovlabs/mcp-server-originalvoices`, with no Glama score badge. That was reasoned from the connector rendering unhealthy, which turned out to be the wrong object: the badge is the *server* one, and no server listing exists yet. The maintainer's mail of 2026-08-28 asks for both. Runbook in section 1.
 
 **File it, and then forget about it.** Measured 2026-08-26: 3,575 open
 pull requests, 1,880 opened in the last 30 days against 74 merged, and
@@ -319,8 +406,10 @@ server, so it qualifies on the letter of the legend, but in practice the
 mark reads as a vendor badge on well-known services. Left off. Add it if
 you disagree; it is a one-character edit.
 
-If Glama has indexed by the time you open the PR, insert its badge
-immediately after the repository link, matching the neighbours:
+The PR was filed without the badge on 2026-08-26. The maintainer's mail of
+2026-08-28 now asks for one, and the runbook in section 1 owns the ordering;
+this is the snippet it refers to, inserted immediately after the repository
+link to match the neighbours:
 
 ```
 [![ostin-pil/aboard MCP server](https://glama.ai/mcp/servers/ostin-pil/aboard/badges/score.svg)](https://glama.ai/mcp/servers/ostin-pil/aboard)

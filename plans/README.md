@@ -15,9 +15,10 @@ each item unblocks, then by how long it has already waited.
 
 1. **Glama listing and badge, answer #12962.** The awesome-mcp-servers
    maintainer asked on 2026-09-07 for the Glama claim and score badge.
-   The runbook is `distribution-listings.md` §"Runbook", on the unmerged
-   `feature/session-76-glama-runbook` branch: land it (log, PR), then
-   run it. About twenty minutes in a browser once the branch is in.
+   The runbook is `distribution-listings.md` §"Runbook", landed on
+   `main` in session 76: run it. About twenty minutes in a browser,
+   except step 0, which is only needed if `mcp-server/` or the
+   `Dockerfile` changed since 2026-08-29.
 2. **Settle the launch-post version, then post.** Two versions exist
    (committed, and an uncommitted rewrite in the primary checkout that
    drops the fact-check block). Pick one, keep the fact-check record
@@ -106,7 +107,7 @@ own rows. The item is no longer carried.
 | Plan | Effort | Decision-heavy? | Prereq |
 | --- | --- | --- | --- |
 | [audit-2026-08.md](audit-2026-08.md) | 8 of 9 chunks done. Chunk 8's build half closed in session 74; posting is priority 2 above. Its telemetry baseline moved on 2026-09-05 (reads fell from ~35 to ~2 a day), so the measurement half compares seven-day windows and names the cliff | One: which launch-post version is canonical | None |
-| [distribution-listings.md](distribution-listings.md) | ~20 min operator, priority 1 above: the Glama server listing, then the badge on #12962, which the maintainer asked for on 2026-09-07. npm, registry and Search Console are done | None; the runbook on `feature/session-76-glama-runbook` decides the steps | Landing that branch, which has a commit but no log or PR |
+| [distribution-listings.md](distribution-listings.md) | ~20 min operator, priority 1 above: the Glama server listing, then the badge on #12962, which the maintainer asked for on 2026-09-07. npm, registry and Search Console are done | None; the runbook decides the steps | None: the runbook landed in session 76 |
 | [integrity-foundations.md](integrity-foundations.md) | do-now slice shipped (session 34); enforcement half unscoped | Decisions taken; see its Status, whose two open lint findings have since been superseded rather than edited | Enforcement half was gated on the MCP write path, which is now met |
 | [cross-domain-claim-drag.md](cross-domain-claim-drag.md) | ~half-day | Yes — extent strategy, confirm UX, coordinate math | None |
 | [organic-traffic-dual-ux.md](organic-traffic-dual-ux.md) | ~1 day: §5 and §6 only. §1–§3 all shipped (its Status; §2's Worker negotiation landed in `3ecace2`, which that Status used to deny), §4 has since landed (per-page `alternates.canonical`, the ensemble median on the OG card), and §7's Worker instrumentation landed as audit chunk 4 in session 60 | Light — leaderboard timing, feed granularity | First resolution for §5's leaderboard; rest none |
