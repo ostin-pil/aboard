@@ -358,3 +358,32 @@ Seven files were affected: `robots.txt`, `llms.txt`, and the five markdown twins
 **Detecting this class.** `curl -sI <url> | grep -i content-type` on anything the static export serves, and treat a bare `text/*` as the bug. Do not check by fetching the body: `curl` prints the bytes correctly regardless, and the fault only exists in a client that honours the header. `npx wrangler dev --local` serves `out/` through the real assets binding and applies `_headers`, so this is verifiable before deploying.
 
 Status: resolved — `public/_headers` now sets `charset=utf-8` on `/robots.txt`, `/llms.txt` and `/*.md`, and `src/lib/headers.test.ts` is the first reader that file has had. It asserts a charset on every charset-dependent content type and pins the three paths; both faults were planted and caught.
+
+---
+
+## 2026-09-11 — Cloudflare challenges datacenter callers, so hosted MCP clients get a 403 the Worker never sees
+
+**Symptom.** The awesome-remote-mcp-servers CI probed `https://aboard.untype.me/mcp` with an anonymous `initialize`, the same handshake any MCP client opens with, and reported the endpoint as needing an API key. Their script only classifies that way after a 401 or 403. The identical request from the authoring machine returns 200 with a result.
+
+**The cause.** Cloudflare serves a managed challenge to the caller's network before the request reaches the Worker. Reproduced from a GitHub Actions runner (Azure, `57.151.136.182`): `HTTP/2 403`, `cf-mitigated: challenge`, `server: cloudflare`, a `Just a moment...` interstitial of 5,586 bytes, and no `WWW-Authenticate`. The site root answers 403 to the same runner, so this is not specific to `/mcp` or to `POST`. A non-JavaScript client cannot pass a managed challenge, and every MCP client and health checker is one.
+
+**What it explains.** Glama has listed the connector unhealthy since 2026-08-23 and it survived the session 69 origin fix, session 71's re-probe and session 72's research, each of which confirmed the endpoint answers correctly from a developer machine. A challenge served to Glama's checking network fits every one of those observations, and it fits them better than the `GET`/405 hypothesis session 72 already argued against. It is not proven for Glama specifically, because their checker does not identify itself; what is proven is that the same class of caller is challenged.
+
+**The evidence that the Worker never saw it.** Analytics Engine records a `mcp_probe` row for every handshake `POST`, so a request that reaches the Worker leaves a trace whatever it answers. Their CI ran at 22:06:46 UTC. The dataset holds zero rows between 22:06 and 22:08, against 18 rows in the surrounding forty minutes, including four from manual replays at 22:05:22 to 22:05:28. The block is upstream of the Worker.
+
+**It is not all datacenters.** A fetch from Anthropic's infrastructure got our real `405` on `GET /mcp`, so this is IP reputation rather than a blanket rule on non-residential networks. Azure ranges, which is where GitHub Actions runners live, are challenged.
+
+**What could not see it.** Every command in the session gate, because none of them makes a request to production. `curl` from the authoring machine, because a residential IP is not challenged. `wrangler tail` and the `mcp_probe` counters, because both observe only what reaches the Worker, and a challenge is answered at the edge. Session 72 added that telemetry precisely to settle this class of question, and it can only ever show the traffic that got through. The absence of a row is the signal, and nothing prompts anyone to look for an absence.
+
+**How to detect it.** Run the probe from a network that is not the authoring machine, and read the headers rather than the body. A push-triggered workflow on a throwaway branch is enough:
+
+```bash
+curl -sS -i -X POST https://aboard.untype.me/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}}'
+```
+
+`cf-mitigated: challenge` is the tell. Do not conclude anything from a 403 body alone: ours and Cloudflare's differ, but a client that reads only the status cannot tell them apart, which is exactly the confusion this caused.
+
+Status: open. The zone needs the challenge lifted for the API surfaces, and `wrangler`'s OAuth token carries no zone scope, so it needs a zone-scoped API token or the dashboard. Blocking [#257](https://github.com/punkpeye/awesome-remote-mcp-servers/pull/257) and, on the current evidence, the Glama connector badge that three sessions have now spent effort on.
