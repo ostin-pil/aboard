@@ -677,9 +677,36 @@ has starred the repo." Done 2026-09-11.
 "responded with 🔑, entry says 🔓". Their runner was served a Cloudflare
 challenge and never reached the Worker, which is a live defect for every
 hosted MCP client and is written up in `knowledge/issues.md` under
-2026-09-11. The entry is correct and needs no edit. Once the zone is
-fixed, a push to the branch re-triggers the check, because the workflow
-runs on `synchronize`.
+2026-09-11. The entry is correct and needs no edit.
+
+The auth marker is settled. A reply on 2026-09-13 explained the
+challenge, and the maintainer answered on 2026-09-15 that "our live
+probe confirms the endpoint is reachable with no auth (🔓), matching
+your marker", so `🔓` stands and the `auth-check` comment is stale.
+
+**The merge condition is now the connector's health**, which is the
+first time any venue has made that a requirement rather than a
+suggestion: "the connector must be Healthy before we can merge...
+Please reply here when the connector page shows Healthy and I'll
+proceed with the merge." He also guessed the cause unprompted, which is
+worth recording because three sessions here did not: "some Cloudflare
+challenges may block automated requests. You may need to whitelist
+Glama's IPs or adjust security settings."
+
+That makes one zone change the unblocker for both listings, and it
+retires the standing advice that the connector badge is close to
+uninformative and not worth chasing. It was uninformative as a quality
+signal and is now a gate.
+
+**Done 2026-09-17.** Bot Fight Mode is off and the endpoint answers a
+GitHub Actions runner with 200 on `initialize`, `tools/list` and the
+site root, where it answered 403 six days earlier. `knowledge/issues.md`
+under 2026-09-11 carries the diagnosis, the zone evidence and the
+verification. What is left on #257 is not ours: Glama re-checks hourly,
+the connector should turn Healthy on its own, and the maintainer asked
+to be told when it does. Pushing to the branch also re-runs their CI,
+because the workflow fires on `synchronize`, though the marker question
+is already settled in the entry's favour.
 
 ## Canonical copy
 
