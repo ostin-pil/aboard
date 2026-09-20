@@ -20,7 +20,8 @@ two of them does not have to work out which is current.
 | Official MCP registry | **Done.** `me.untype/aboard` serves `0.1.1` with one `packages` entry (`aboard-mcp-server` `0.1.1`) alongside the remote. The `0.1.0` entry remains as history. |
 | Glama | Two objects, and they had been conflated. The **connector** at `glama.ai/mcp/connectors/me.untype/aboard` is the unhealthy one; session 72 settled that the `GET`/405 shape is not the cause and that serving anything else on `GET` would be harmful, and claimed ownership via `/.well-known/glama.json`. The **server** listing is a separate route that runs a Dockerfile against `mcp-server/`, and it is the one the awesome-mcp-servers badge points at. As of 2026-09-07 it exists without anyone having submitted it: Glama's crawler indexed the repository at `af74ee5` and published `glama.ai/mcp/servers/ostin-pil/aboard`, maintenance B, licence A, all nine tools enumerated. Still **unclaimed**, and with no Glama release, so two of the four scored dimensions are unavailable. Runbook in section 1, corrected for what the crawler already did. See `knowledge/issues.md`, 2026-08-26. |
 | mcp.so | **Dropped.** No free submission path found; see below. |
-| awesome-mcp-servers | **Filed 2026-08-26** as [#12962](https://github.com/punkpeye/awesome-mcp-servers/pull/12962); **Glama score badge added 2026-09-07** (`85a850a`), answering the maintainer's request of that morning. Do not expect a merge; see section 3. |
+| awesome-mcp-servers | **Closed 2026-09-08, re-filed 2026-09-11.** [#12962](https://github.com/punkpeye/awesome-mcp-servers/pull/12962) carried the Glama badge from 2026-09-07 (`85a850a`) and was then closed with a form notice: hosted servers move to a new list. The installable package still qualifies under that list's own scope rule, so it is re-filed as [#14203](https://github.com/punkpeye/awesome-mcp-servers/pull/14203) with the hosted URL removed from the description. Section 3 carries the repriced throughput. |
+| awesome-remote-mcp-servers | **Filed 2026-09-11** as [#257](https://github.com/punkpeye/awesome-remote-mcp-servers/pull/257), first entry in `🧠 Knowledge & Memory`. CI labelled it `endpoint-ok` and `has-connector`, then flagged the auth marker: its runner got a Cloudflare challenge rather than our endpoint. Blocked on that, not on the entry. See section 5 and `knowledge/issues.md`, 2026-09-11. |
 | Search Console | **Done 2026-08-27.** `untype.me` verified as a Domain property; `sitemap.xml` submitted. |
 
 Re-verified 2026-08-27 by `npm view aboard-mcp-server`, a `GET` against
@@ -397,16 +398,52 @@ ready to paste.
 
 **Filed 2026-08-26 as [#12962](https://github.com/punkpeye/awesome-mcp-servers/pull/12962)**, one line in `🔬 Research` between `OrgMentem/zotio` and `ovlabs/mcp-server-originalvoices`, with no Glama score badge. That was reasoned from the connector rendering unhealthy, which turned out to be the wrong object: the badge is the *server* one, and no server listing exists yet. The maintainer's mail of 2026-08-28 asks for both. Runbook in section 1.
 
-**File it, and then forget about it.** Measured 2026-08-26: 3,575 open
-pull requests, 1,880 opened in the last 30 days against 74 merged, and
-no commit to `main` since 2026-08-17. A submission filed today sits
-behind the whole backlog, and the oldest entry still open was filed
-2025-12-03. Four years is the optimistic reading and assumes the queue
-drains in order, which it does not.
+**Closed 2026-09-08 (session 80).** The maintainer closed it with a
+templated notice: remote (hosted) servers are moving to
+`awesome-remote-mcp-servers`, so this list "stays focused on local/stdio
+servers". Only seven pull requests were closed unmerged there between
+2026-09-08 and 2026-09-11, so this was triage on a specific PR rather
+than a sweep, and the likeliest trigger is the line's own closing
+clause, "or hosted at `https://aboard.untype.me/mcp`".
+
+The close is not a scope ruling against aboard. `CONTRIBUTING.md` now
+reads: "This list is for servers with a public GitHub repository -
+something you install and run yourself. If your server is remote-only
+(just a hosted URL, no installable package), it belongs in
+awesome-remote-mcp-servers instead." aboard ships `aboard-mcp-server` on
+npm and runs over stdio, so it is not remote-only, and 537 entries on
+that list carry both the `☁️` and `🏠` markers.
+
+**Re-filed 2026-09-11 as [#14203](https://github.com/punkpeye/awesome-mcp-servers/pull/14203)**,
+same placement, with two changes: the Glama server badge is in the line
+from the start, and the description ends at `npx aboard-mcp-server` with
+no mention of the hosted endpoint. The hosted endpoint is filed on the
+other list instead, which matches the split Glama itself draws between a
+server and a connector. The PR is `MERGEABLE` and labelled `has-emoji`,
+`valid-name`, `has-glama`.
+
+**"File it, and then forget about it" no longer follows from the
+numbers.** It was correct arithmetic on what session 71 measured
+(3,575 open, 1,880 arriving a month against 74 merged, no commit to
+`main` since 2026-08-17, the oldest open entry filed 2025-12-03).
+Re-measured 2026-09-11, the queue behaves differently: 383 pull requests
+merged in a single sweep on 2026-09-07 between 00:55 and 23:11 UTC, at a
+median age of 17 days, 107 of them opened that same month; 115 merged in
+all of August; none since 2026-09-08; and the open queue down from 3,575
+to 2,364.
+
+So merges arrive in sporadic large sweeps that do reach recent
+submissions, rather than draining a four-year queue in order. Our own
+badge landed at 22:33 UTC on 2026-09-07, thirty-eight minutes before
+that sweep ended, and the PR was closed the next afternoon instead.
+Treat "merged" as unlikely on any given week and plausible within a
+sweep. Still do not sequence work behind it.
 
 The `🤖🤖🤖` agent fast track `CONTRIBUTING.md` offers does not change
 this. 1,666 of the 3,575 open pull requests already carry it, so it
-marks 47% of the queue and confers no priority.
+marks 47% of the queue and confers no priority. Both aboard PRs leave it
+off, which keeps them comparable with #12962 and is a one-word edit if
+that judgement changes.
 
 None of that is a reason to skip it. One submission costs nothing to
 maintain and the backlink is permanent if it ever lands. It is a reason
@@ -564,6 +601,112 @@ The site is a static export, so indexing problems here would be about
 discovery rather than rendering. This is also the measurement chunk 8
 wants in place before the launch post, alongside the chunk 4
 instrumentation.
+
+## 5. awesome-remote-mcp-servers
+
+<https://github.com/punkpeye/awesome-remote-mcp-servers>. Created
+2026-09-08 by the same maintainer, to hold the hosted endpoints the
+older list is shedding. Filed 2026-09-11 as
+[#257](https://github.com/punkpeye/awesome-remote-mcp-servers/pull/257).
+
+**The odds here are real, which is what makes it worth the effort.**
+Measured 2026-09-11, three days after the list was created: 177 pull
+requests merged, 65 open, 11 closed unmerged, and a median time to merge
+of 4.7 hours (90th percentile 33 hours, oldest open 80 hours). That is a
+list clearing submissions the same day, and none of section 3's
+arithmetic about an unreachable backlog transfers to it.
+
+**The badge is mandatory, which reverses session 71's rule.** That rule
+("an unhealthy badge is worse than none") weighed a badge against no
+badge. Here there is no such choice: `CONTRIBUTING.md` says every entry
+carries the Glama *connector* badge and "PRs that add an entry without
+one are not merged", and CI labels a badgeless entry `missing-connector`
+and comments on it. 187 of 242 listed entries carry one; the 55 without
+are names like Notion, Tavily and Bright Data that read as the
+maintainer's own seed entries.
+
+An unhealthy badge is accepted in practice. 26 of the 186 badges render
+exactly as aboard's connector badge does, a red dot with no rating in
+the description, and that set includes Stripe, Atlassian, Figma, Vercel
+and Supabase alongside eleven that arrived through pull requests merged
+on 2026-09-08 (Rootr, notepad.page, Atlas Red, docs2mcp and others).
+Those badges are read today rather than at merge time, so what is proven
+is that red badges stay listed, not that a red one merges. CI itself
+only fetches the connector page and checks for a 200, so ours passes.
+
+**Format.** Three lines, and the CI parses them with regexes worth
+matching exactly:
+
+```
+- [aboard](https://aboard.untype.me) `https://aboard.untype.me/mcp`
+  [![aboard MCP connector](https://glama.ai/mcp/connectors/me.untype/aboard/badges/score.svg)](https://glama.ai/mcp/connectors/me.untype/aboard)
+  🔓 - Read a graph of falsifiable claims, forecasts and debates on systemic problems; writes open a PR a human reviews.
+```
+
+The name links to the homepage rather than the repository, which is the
+opposite of the older list. The description is one sentence ending in a
+period, capped at 120 characters (ours is 113). No language, platform or
+scope emoji exist here; the only marker is authentication, and it is
+`🔓`, `🔑` or `🔐`.
+
+**The marker is not a choice.** CI sends an anonymous `initialize` and
+derives the marker from the answer: a result means `🔓`, a 401 or 403
+with `Bearer` or `resource_metadata` in `WWW-Authenticate` means `🔐`,
+and any other 401 or 403 means `🔑`. A marker that disagrees with the
+probe gets an `auth-check` comment. aboard answers reads anonymously, so
+`🔓` is both true and the only marker that passes. The four write tools
+declining without a token belongs in the description, which is how
+notepad.page and MarkIt handle the same shape.
+
+**Section.** `🧠 Knowledge & Memory`, where aboard sorts first,
+alphabetically before Atlas Red. This is the opposite call from section
+3, and the lists differ rather than the judgement: the older list's
+Knowledge & Memory is agent memory stores, while this one's holds HAIDAA
+("search signed scientific claims, methods, provenance, contradictions,
+retractions") and Ontonym ("read the shared graph, and propose actions a
+human approves"), which are the two closest neighbours aboard has
+anywhere. `🔎 Search & Data Extraction`, the other candidate, is
+scrapers, web search and job boards.
+
+**Starring the repository is a merge condition**, stated first in the
+contribution steps: "PRs are not merged unless the account opening them
+has starred the repo." Done 2026-09-11.
+
+**What is blocking it.** CI labelled #257 `endpoint-ok` and
+`has-connector`, then posted an `auth-check` comment: the endpoint
+"responded with 🔑, entry says 🔓". Their runner was served a Cloudflare
+challenge and never reached the Worker, which is a live defect for every
+hosted MCP client and is written up in `knowledge/issues.md` under
+2026-09-11. The entry is correct and needs no edit.
+
+The auth marker is settled. A reply on 2026-09-13 explained the
+challenge, and the maintainer answered on 2026-09-15 that "our live
+probe confirms the endpoint is reachable with no auth (🔓), matching
+your marker", so `🔓` stands and the `auth-check` comment is stale.
+
+**The merge condition is now the connector's health**, which is the
+first time any venue has made that a requirement rather than a
+suggestion: "the connector must be Healthy before we can merge...
+Please reply here when the connector page shows Healthy and I'll
+proceed with the merge." He also guessed the cause unprompted, which is
+worth recording because three sessions here did not: "some Cloudflare
+challenges may block automated requests. You may need to whitelist
+Glama's IPs or adjust security settings."
+
+That makes one zone change the unblocker for both listings, and it
+retires the standing advice that the connector badge is close to
+uninformative and not worth chasing. It was uninformative as a quality
+signal and is now a gate.
+
+**Done 2026-09-17.** Bot Fight Mode is off and the endpoint answers a
+GitHub Actions runner with 200 on `initialize`, `tools/list` and the
+site root, where it answered 403 six days earlier. `knowledge/issues.md`
+under 2026-09-11 carries the diagnosis, the zone evidence and the
+verification. What is left on #257 is not ours: Glama re-checks hourly,
+the connector should turn Healthy on its own, and the maintainer asked
+to be told when it does. Pushing to the branch also re-runs their CI,
+because the workflow fires on `synchronize`, though the marker question
+is already settled in the entry's favour.
 
 ## Canonical copy
 

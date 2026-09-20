@@ -358,3 +358,42 @@ Seven files were affected: `robots.txt`, `llms.txt`, and the five markdown twins
 **Detecting this class.** `curl -sI <url> | grep -i content-type` on anything the static export serves, and treat a bare `text/*` as the bug. Do not check by fetching the body: `curl` prints the bytes correctly regardless, and the fault only exists in a client that honours the header. `npx wrangler dev --local` serves `out/` through the real assets binding and applies `_headers`, so this is verifiable before deploying.
 
 Status: resolved — `public/_headers` now sets `charset=utf-8` on `/robots.txt`, `/llms.txt` and `/*.md`, and `src/lib/headers.test.ts` is the first reader that file has had. It asserts a charset on every charset-dependent content type and pins the three paths; both faults were planted and caught.
+
+---
+
+## 2026-09-11 — Cloudflare challenges datacenter callers, so hosted MCP clients get a 403 the Worker never sees
+
+**Symptom.** The awesome-remote-mcp-servers CI probed `https://aboard.untype.me/mcp` with an anonymous `initialize`, the same handshake any MCP client opens with, and reported the endpoint as needing an API key. Their script only classifies that way after a 401 or 403. The identical request from the authoring machine returns 200 with a result.
+
+**The cause.** Cloudflare serves a managed challenge to the caller's network before the request reaches the Worker. Reproduced from a GitHub Actions runner (Azure, `57.151.136.182`): `HTTP/2 403`, `cf-mitigated: challenge`, `server: cloudflare`, a `Just a moment...` interstitial of 5,586 bytes, and no `WWW-Authenticate`. The site root answers 403 to the same runner, so this is not specific to `/mcp` or to `POST`. A non-JavaScript client cannot pass a managed challenge, and every MCP client and health checker is one.
+
+**What it explains.** Glama has listed the connector unhealthy since 2026-08-23 and it survived the session 69 origin fix, session 71's re-probe and session 72's research, each of which confirmed the endpoint answers correctly from a developer machine. A challenge served to Glama's checking network fits every one of those observations, and it fits them better than the `GET`/405 hypothesis session 72 already argued against. It is not proven for Glama specifically, because their checker does not identify itself; what is proven is that the same class of caller is challenged.
+
+**The evidence that the Worker never saw it.** Analytics Engine records a `mcp_probe` row for every handshake `POST`, so a request that reaches the Worker leaves a trace whatever it answers. Their CI ran at 22:06:46 UTC. The dataset holds zero rows between 22:06 and 22:08, against 18 rows in the surrounding forty minutes, including four from manual replays at 22:05:22 to 22:05:28. The block is upstream of the Worker.
+
+**It is not all datacenters.** A fetch from Anthropic's infrastructure got our real `405` on `GET /mcp`, so this is IP reputation rather than a blanket rule on non-residential networks. Azure ranges, which is where GitHub Actions runners live, are challenged.
+
+**What could not see it.** Every command in the session gate, because none of them makes a request to production. `curl` from the authoring machine, because a residential IP is not challenged. `wrangler tail` and the `mcp_probe` counters, because both observe only what reaches the Worker, and a challenge is answered at the edge. Session 72 added that telemetry precisely to settle this class of question, and it can only ever show the traffic that got through. The absence of a row is the signal, and nothing prompts anyone to look for an absence.
+
+**How to detect it.** Run the probe from a network that is not the authoring machine, and read the headers rather than the body. A push-triggered workflow on a throwaway branch is enough:
+
+```bash
+curl -sS -i -X POST https://aboard.untype.me/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"probe","version":"0"}}}'
+```
+
+`cf-mitigated: challenge` is the tell. Do not conclude anything from a 403 body alone: ours and Cloudflare's differ, but a client that reads only the status cannot tell them apart, which is exactly the confusion this caused.
+
+**Confirmed at the zone, 2026-09-17.** A zone-scoped token settled what the inference could not. `GET /zones/{id}/bot_management` returns `fight_mode: true` on a Free plan, with `security_level` at `medium` and no custom WAF rules, so Bot Fight Mode is the only thing that could be issuing these. The zone's own security events for the preceding 24 hours carry 80 `botFight` `managed_challenge` actions, 70 of them on `/mcp`, against ASNs 14618 and 16509 (AWS), 16276 (OVH), 24940 (Hetzner), 8075 (Microsoft) and 396982 (Google), with the user agents `node` (48 requests), `python-httpx/0.28.1`, and `mcp-watch/0.1`. Those are MCP clients and health checkers. The endpoint has been refusing its own audience roughly seventy times a day.
+
+Bot Fight Mode cannot be narrowed on this plan. Cloudflare documents that it runs in a separate pipeline where WAF `Skip`, `Bypass` and `Allow` actions have no effect, and per-caller exemptions need Super Bot Fight Mode, which is Pro. Allowlisting is not usable either when the legitimate callers span five cloud ASNs. So the fix is to turn `fight_mode` off, which leaves `enable_js`, crawler protection and the AI-bot settings untouched.
+
+The awesome-remote-mcp-servers maintainer reached the same diagnosis independently on 2026-09-15, without seeing any of this: "note: some Cloudflare challenges may block automated requests. You may need to whitelist Glama's IPs or adjust security settings."
+
+**Fixed 2026-09-17.** Bot Fight Mode off, nothing else touched: `enable_js` stays `true`, crawler protection stays disabled, the AI-bot settings stay as they were. Verified from a GitHub Actions runner, which is the only vantage point that can see this: `POST initialize` returns 200 with `serverInfo`, `tools/list` returns 200, and the site root returns 200, where six days earlier the same three requests from the same kind of runner returned 403 with `cf-mitigated: challenge`. The zone's events agree: the last `botFight` challenge on `/mcp` is timestamped 18:05:46, before the toggle, and at the observed checker cadence of roughly one request every 75 seconds there would have been about ten more by the time the runner passed at 18:19.
+
+Status: resolved. What remains is other people's schedules rather than work here: Glama re-checks the connector hourly and the badge should turn Healthy on its own, which is the merge condition the awesome-remote-mcp-servers maintainer set on [#257](https://github.com/punkpeye/awesome-remote-mcp-servers/pull/257).
+
+The lesson worth keeping is about the shape of the blind spot rather than the setting. A challenge is answered at the edge, so every instrument this project owns sits downstream of it: the gate never calls production, `curl` from the authoring machine is never challenged, and `wrangler tail` and the `mcp_probe` counters can only report requests that arrived. Session 72 built that telemetry to settle exactly this class of question and it could not, because the evidence was an absence. Reaching for a vantage point outside the developer machine is the move that was available from 2026-08-23 onward and was not taken for three sessions.
