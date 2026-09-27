@@ -84,7 +84,7 @@ The tool mix is what identifies the caller. In the pre-fix window only two tools
 
 The recognised-crawler share is flat to within six arrivals, which is what a fix aimed at datacenter clients should look like: it did not change who Google sends.
 
-**The agent class `glama` has never appeared in a single row.** Not before the fix, not after. Glama's checker either sends no user agent carrying its name, in which case it is inside `other` or `none` and invisible to this dimension, or it is not calling. The classifier only matches a user agent containing "glama" (`src/lib/telemetry.ts`), so an absence here is not evidence that the connector is unchecked. It does mean this dataset cannot answer the connector question, and the browser is still the only place to read it.
+**The agent class `glama` has never appeared in a single row.** Not before the fix, not after. The classifier only matches a user agent containing "glama" (`src/lib/telemetry.ts`), so that absence says nothing about whether the connector is being checked. Section 5 settles the question by timestamp instead, which is the correlation `worker/README.md` said this counter existed for.
 
 ## 4. Writes and Markdown twins
 
@@ -92,7 +92,27 @@ Four `proposal` rows exist in total, all `unauthorized`, all through `POST /api/
 
 Markdown twins: 96 served, `/` 58 and `/about` 13, the rest spread across claim pages. The 2026-09-13 spike of 25 is one caller walking claim pages.
 
-## 5. The claims ledger
+## 5. The Glama connector is still failing, and the rows say why
+
+Read in the browser on 2026-09-27: status **Unhealthy**, uptime **0.0% over 41 days**, last tested 12:44 in the page's own local time. The page also shows the connector is **not claimed**. Session 77's audit recorded it as "claimed", and the Admin tab today offers "Sign in to claim", so that entry was about the server listing rather than the connector, and the claim lever session 80 put first in the queue has never been pulled on this surface.
+
+Zero per cent over forty-one days matters more than the label. The connector has never passed, so whatever is wrong predates Bot Fight Mode being suspected and survived it being turned off.
+
+**The checker reaches the Worker.** Glama's page shows local time, one hour ahead of the dataset, so "12:44" is 11:44 UTC. That minute carries three arrivals, landing together:
+
+| Timestamp, UTC | Kind | Method | Agent class | Accept class |
+| --- | --- | --- | --- | --- |
+| 2026-09-27 11:44:07 | `mcp_probe` | `POST` | `other` | `event-stream` |
+| 2026-09-27 11:44:07 | `mcp_probe` | `GET` | `other` | `event-stream` |
+| 2026-09-27 11:44:07 | `mcp_probe` | `POST` | `other` | `event-stream` |
+
+A `POST` and a `GET` at the same second, both asking for `text/event-stream`. The `POST` handshake is answered 200. The `GET` is answered **405**, by the decision session 72 took deliberately and `worker/README.md` still argues for.
+
+That makes the 405 the leading suspect for the unhealthy verdict, and it fits the rest of the data. `GET` arrivals quadrupled on the first day after the fix, so before it the checker's `GET` was being challenged at the edge and never arrived at all; the fix bought the endpoint a 405 where it previously bought a 403. From a checker's side those may look equally broken. `GET` with `accept: text/event-stream` now arrives two to nine times an hour, first seen 2026-08-30, 1,025 in total, so more than one caller wants that shape.
+
+This is a hypothesis with a clear test and it is not proven here. The alternatives worth ruling out before changing anything: the check may require a claimed connector with a test profile, which the Admin tab advertises; and it may read something else entirely that returns 200 to us. What the rows do establish is that the request arrives, that it is answered, and that Cloudflare is no longer between them.
+
+## 6. The claims ledger
 
 | Claim | Where | Verdict |
 | --- | --- | --- |
@@ -108,7 +128,7 @@ Markdown twins: 96 served, `/` 58 and `/about` 13, the rest spread across claim 
 | Priority 3, identify the 1,150-a-day probe client | `plans/README.md` | **Answered as far as the data can.** It is a `POST` with `accept: text/event-stream` and a user agent the classifier files under `other`, running at a fixed cadence, 6,947 arrivals in nine days. A closed-set classifier cannot name it; identifying it further needs a raw user agent the counter deliberately does not keep |
 | Priority 5, post-launch measurement | `plans/README.md` | **This document**, with the caveat that there has been no launch to measure against |
 
-## 6. A replacement sentence, offered rather than applied
+## 7. A replacement sentence, offered rather than applied
 
 The launch post lives on session 78's unmerged branch and stays that session's to edit. If it wants the window extended, the shape it already settled on holds:
 
@@ -116,7 +136,7 @@ The launch post lives on session 78's unmerged branch and stays that session's t
 
 One caveat to weigh before using it. The 2026-09-18 to 2026-09-26 stretch averages under five reads a day, so a forty-day mean of 11.6 describes a busier period than the present one. The window, the range and the floor stay true; the implied rate does not.
 
-## 7. Method
+## 8. Method
 
 Queried on 2026-09-27 between 11:44 and 12:10 UTC against `aboard_events` through `https://api.cloudflare.com/client/v4/accounts/<account_id>/analytics_engine/sql`, the token from the keychain and never printed, per `worker/README.md` under "Querying it". All days are UTC days. Row schema from `src/lib/telemetry.ts`: for `mcp_probe`, `blob1` is the method, `blob2` the agent class, `blob3` the accept class.
 
@@ -162,7 +182,7 @@ GROUP BY period, method, agent_class, accept_class ORDER BY period, probes DESC
 
 The same `period` expression, with `blob1` alone, gives the reads-by-tool split; substituting `toStartOfHour(timestamp)` and a 2026-09-16 to 2026-09-19 range gives the hourly series behind section 1.
 
-## 8. What this does not establish
+## 9. What this does not establish
 
 That the fix caused the rise. The `GET` step lands on the first full day after it and the crawler share stayed flat, which is the shape the Bot Fight story predicts, but nine days a side cannot separate a step from a trend, arrivals here are dominated by single actors, and session 80's listing work is a co-intervention inside the same window.
 
@@ -170,4 +190,4 @@ That the post-fix rate is the new normal. Nine days, and a baseline is a window 
 
 That probe volume is readership. Probes reach no tool by definition. Reads are the interesting number and reads are small.
 
-That the Glama connector is or is not being checked. This dataset cannot see it.
+That the 405 is why the Glama connector reads unhealthy. The checker's `GET` arrives and is refused, which makes it the leading suspect, and the connector being unclaimed is a live alternative. Section 5 has the test.
