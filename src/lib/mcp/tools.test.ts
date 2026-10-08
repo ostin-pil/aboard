@@ -201,6 +201,16 @@ describe("output schemas", () => {
     }
   });
 
+  it("roots every one at type object, as the spec requires", () => {
+    // The SDK client parses tools/list against a schema demanding this, and a
+    // single tool missing it fails the whole listing. get_forecast's bare
+    // top-level oneOf did exactly that from 2026-08-07, which is why Glama's
+    // connector check never passed once.
+    for (const tool of toolListing()) {
+      expect(tool.outputSchema.type, tool.name).toBe("object");
+    }
+  });
+
   it("leaves no dangling $ref, so a client can validate offline", () => {
     // The whole reason the closures are inlined rather than referenced by URL.
     // A schema that names a definition it does not carry is worse than none:
