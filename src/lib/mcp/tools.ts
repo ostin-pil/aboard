@@ -178,8 +178,14 @@ const listClaimsOutput = z.object({
  * output is a discriminated union rather than one shape with optional halves.
  * Modelling it as the latter would tell a client both fields might be absent,
  * which is never true of either branch.
+ *
+ * The root `type` is redundant to a validator, since both branches already say
+ * it, and mandatory to a client: the spec requires an output schema to be an
+ * object schema at the root, and the SDK rejects the whole of `tools/list`
+ * over one that is not.
  */
 const getForecastOutput = {
+  type: "object",
   oneOf: [
     {
       type: "object",
